@@ -13,8 +13,8 @@ model User {
   id        String    @id @default(uuid())
   email     String    @unique
   name      String?
-  tasks     Task[]
   approvals Approval[]
+  auditLogs AuditLog[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
