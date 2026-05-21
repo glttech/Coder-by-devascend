@@ -72,28 +72,28 @@ export function evaluateResponse(prompt: string, response: string): EvaluationRe
     reason: migrationFound ? 'Response suggests running migrations or dependency upgrades.' : undefined,
   });
 
-  // Very naive scope drift check: ensure the response mentions only files listed in the prompt.
-  // We extract file paths from the prompt and see if the response references other paths.
+  // Scope drift check: if the prompt lists specific file paths, ensure the response only
+  // references those files.  We require tokens to look like real paths (containing both a
+  // directory separator and a file extension) so that placeholder prose such as
+  // "Specify relevant files based on the objective." does not produce false positives.
+  // When the prompt contains no actual paths the scope is undefined and the check is skipped.
   try {
-    const fileRegex = /files?\s*:?\s*([\s\S]*?)(?:\n{2,}|$)/i;
-    const match = prompt.match(fileRegex);
-    if (match) {
-      const listed = match[1]
-        .split(/\n|,|\s+/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      // Collect any file names in the response (simple heuristic: anything with a dot and a slash)
+    const promptPaths = Array.from(
+      new Set(prompt.match(/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)+\.[A-Za-z0-9]+/g) || []),
+    );
+    if (promptPaths.length > 0) {
       const respFiles = Array.from(new Set(response.match(/[A-Za-z0-9/_-]+\.[A-Za-z0-9]+/g) || []));
-      const outside = respFiles.filter((f) => !listed.some((l) => f.includes(l)));
+      const outside = respFiles.filter((f) => !promptPaths.some((p) => f.includes(p) || p.includes(f)));
       const passed = outside.length === 0;
       results.push({
         name: 'scope-drift',
         passed,
         reason: passed ? undefined : `Response references files outside of allowed scope: ${outside.join(', ')}`,
       });
+    } else {
+      results.push({ name: 'scope-drift', passed: true });
     }
   } catch (err) {
-    // If parsing fails, skip the scope drift check.
     results.push({ name: 'scope-drift', passed: true });
   }
 

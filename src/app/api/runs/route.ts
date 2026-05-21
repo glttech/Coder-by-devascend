@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   }
   try {
     // Create a new agent run record
+    const now = new Date();
     const run = await prisma.agentRun.create({
       data: {
         taskId,
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
         selectedTool,
         response,
         status: response ? 'succeeded' : 'pending',
+        endedAt: response ? now : undefined,
       },
     });
     // Create evaluation results if a response was supplied

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/tasks – return a list of tasks in descending creation order.
+const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
+const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
+const VALID_AGENT_TOOLS = ['open-swe', 'claude-code-manual', 'codex-manual', 'openclaw-manual'];
+
+// GET /api/tasks – return a list of tasks in descending creation order.
 export async function GET() {
   try {
     const tasks = await prisma.task.findMany({
@@ -14,22 +18,37 @@ export async function GET() {
   }
 }
 
-// POST /api/tasks – create a new task.  Expects a JSON body matching the
+// POST /api/tasks – create a new task.  Expects a JSON body matching the
 // Task model fields (except id, status and timestamps).  Returns the
 // created task.
 export async function POST(request: Request) {
   const data = await request.json();
-  try {
-    const {
-      title,
-      instruction,
-      projectId,
-      agentTool,
-      riskLevel,
-      environment,
-      approvalRequired,
-    } = data;
+  const { title, instruction, projectId, agentTool, riskLevel, environment, approvalRequired } = data;
 
+  const errors: string[] = [];
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    errors.push('title is required');
+  }
+  if (!instruction || typeof instruction !== 'string' || instruction.trim().length === 0) {
+    errors.push('instruction is required');
+  }
+  if (!agentTool || !VALID_AGENT_TOOLS.includes(agentTool)) {
+    errors.push(`agentTool must be one of: ${VALID_AGENT_TOOLS.join(', ')}`);
+  }
+  if (!riskLevel || !VALID_RISK_LEVELS.includes(riskLevel)) {
+    errors.push(`riskLevel must be one of: ${VALID_RISK_LEVELS.join(', ')}`);
+  }
+  if (!environment || !VALID_ENVIRONMENTS.includes(environment)) {
+    errors.push(`environment must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+  }
+  if (typeof approvalRequired !== 'boolean') {
+    errors.push('approvalRequired must be a boolean');
+  }
+  if (errors.length > 0) {
+    return new NextResponse(JSON.stringify({ error: errors.join('; ') }), { status: 422 });
+  }
+
+  try {
     // Determine which project to associate with the task.  If a projectId is
     // provided, use it directly.  Otherwise, find or create a default project.
     let finalProjectId: string;
@@ -49,8 +68,8 @@ export async function POST(request: Request) {
 
     const task = await prisma.task.create({
       data: {
-        title,
-        instruction,
+        title: title.trim(),
+        instruction: instruction.trim(),
         projectId: finalProjectId,
         agentTool,
         riskLevel,
