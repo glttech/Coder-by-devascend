@@ -1,6 +1,8 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Displays all tasks with their status and a link to the detail page.  This
  * page supplements the dashboard and provides an easy way to access tasks.
