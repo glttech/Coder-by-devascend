@@ -74,6 +74,8 @@ ai-dev-orchestrator/
 
    If you already have PostgreSQL running on your local machine, simply set `DATABASE_URL` to use `localhost` instead of `db` in your `.env` file (e.g. `postgresql://postgres:postgres@localhost:5432/aidv?schema=public`).
 
+   **Port note:** The default connection uses `localhost:5432`. If port 5432 is already in use on your machine, start Postgres on another port (for example map Docker to `5433:5432`) and set `DATABASE_URL` accordingly, e.g. `postgresql://postgres:postgres@localhost:5433/aidv?schema=public`.
+
 3. **Configure environment variables:**
 
    Copy `.env.example` to `.env` and customise the values.  At minimum you need to set `DATABASE_URL`.  Leave the Langfuse and Promptfoo keys blank in Phase 1 unless you have them.
