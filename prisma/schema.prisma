@@ -1,0 +1,107 @@
+// Prisma schema defining the database models for the ai‑dev‑orchestrator.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String?
+  approvals Approval[]
+  auditLogs AuditLog[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id                String      @id @default(uuid())
+  title             String
+  instruction       String
+  projectId         String
+  project           Project     @relation(fields: [projectId], references: [id])
+  agentTool         String      // e.g. "open-swe", "claude-code-manual", etc.
+  riskLevel         String      // "low", "medium", "high"
+  environment       String      // "local", "dev", "staging", "production"
+  approvalRequired  Boolean
+  status            String      @default("pending") // "pending", "running", "completed", "failed"
+  agentRuns         AgentRun[]
+  approval          Approval?
+  audits            AuditLog[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model PromptTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AgentRun {
+  id             String      @id @default(uuid())
+  taskId         String
+  task           Task        @relation(fields: [taskId], references: [id])
+  generatedPrompt String
+  selectedTool   String
+  response       String?
+  filesChanged   String?
+  commandsRun    String?
+  testResult     String?
+  commitHash     String?
+  status         String      @default("pending") // "pending", "running", "succeeded", "failed"
+  startedAt      DateTime    @default(now())
+  endedAt        DateTime?
+  evaluations    Evaluation[]
+  audits         AuditLog[]
+}
+
+model Evaluation {
+  id         String    @id @default(uuid())
+  agentRunId String
+  agentRun   AgentRun  @relation(fields: [agentRunId], references: [id])
+  name       String
+  passed     Boolean
+  score      Float?
+  reason     String?
+  createdAt  DateTime  @default(now())
+}
+
+model Approval {
+  id         String    @id @default(uuid())
+  taskId     String    @unique
+  task       Task      @relation(fields: [taskId], references: [id])
+  approverId String?
+  approved   Boolean?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User?     @relation(fields: [approverId], references: [id])
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  taskId     String?
+  agentRunId String?
+  userId     String?
+  event      String
+  details    String?
+  createdAt  DateTime  @default(now())
+  task       Task?     @relation(fields: [taskId], references: [id])
+  agentRun   AgentRun? @relation(fields: [agentRunId], references: [id])
+  user       User?     @relation(fields: [userId], references: [id])
+}

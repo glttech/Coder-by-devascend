@@ -1,0 +1,33 @@
+# Ignore node dependencies and build output
+node_modules
+.next
+dist
+build
+
+# Environment and secret files
+.env
+.env.*
+
+# Logs and coverage
+*.log
+logs
+coverage
+
+# OS metadata
+.DS_Store
+
+
+# Note: keep Prisma migrations checked in so schema changes are version controlled
+
+# Temporary files and caches
+tmp
+temp
+*.tmp
+*.swp
+*.swo
+
+# Exclude compiled output
+out
+
+# Keep example env file
+!.env.example
