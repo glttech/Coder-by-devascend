@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { computeStateVersion } from '@/lib/stateVersion';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 };
 
 // GET /api/instructions/[id] — return instruction details with linked task context.
+// stateVersion is included as part of the full instruction record.
 export async function GET(
   _request: Request,
   { params }: { params: { id: string } },
@@ -47,6 +49,7 @@ export async function GET(
 }
 
 // PATCH /api/instructions/[id] — perform a controlled lifecycle status transition.
+// Recomputes stateVersion after every valid update.
 // Body: { status, approvedBy?, approvalNote?, blockedReason?, completedNotes? }
 export async function PATCH(
   request: Request,
@@ -76,6 +79,7 @@ export async function PATCH(
     }
 
     const currentStatus = instruction.status;
+    const previousStateVersion = instruction.stateVersion;
     const allowedNext = ALLOWED_TRANSITIONS[currentStatus] ?? [];
 
     // Terminal state guard.
@@ -140,6 +144,13 @@ export async function PATCH(
       data: updateData,
     });
 
+    // Recompute stateVersion from the post-update state.
+    const nextStateVersion = computeStateVersion(updated);
+    const withVersion = await prisma.instruction.update({
+      where: { id: params.id },
+      data: { stateVersion: nextStateVersion },
+    });
+
     await prisma.auditLog.create({
       data: {
         taskId: instruction.taskId,
@@ -150,6 +161,8 @@ export async function PATCH(
           taskId: instruction.taskId,
           previousStatus: currentStatus,
           nextStatus,
+          previousStateVersion: previousStateVersion ?? null,
+          nextStateVersion,
           ...(approvedBy ? { approvedBy } : {}),
           ...(approvalNote ? { approvalNote } : {}),
           ...(blockedReason ? { blockedReason } : {}),
@@ -159,7 +172,7 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({ instruction: updated });
+    return NextResponse.json({ instruction: withVersion });
   } catch (err) {
     console.error('[instructions PATCH]', err);
     return NextResponse.json({ error: 'Failed to update instruction' }, { status: 500 });

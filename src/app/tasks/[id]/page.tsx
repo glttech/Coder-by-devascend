@@ -102,6 +102,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 <th className="border-b py-2 text-left">Title</th>
                 <th className="border-b py-2 text-left">Status</th>
                 <th className="border-b py-2 text-left">Created</th>
+                <th className="border-b py-2 text-left">State Version</th>
                 <th className="border-b py-2 text-left">Actions</th>
               </tr>
             </thead>
@@ -114,6 +115,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
                     <InstructionStatusBadge status={instr.status} />
                   </td>
                   <td className="py-2 pr-2">{instr.createdAt.toISOString().split('T')[0]}</td>
+                  <td className="py-2 pr-2 text-xs" style={{ fontFamily: 'monospace', color: '#6b7280' }} title={instr.stateVersion ?? undefined}>
+                    {instr.stateVersion ? instr.stateVersion.slice(0, 12) : '—'}
+                  </td>
                   <td className="py-2 pr-2">
                     <InstructionActions instructionId={instr.id} currentStatus={instr.status} />
                   </td>

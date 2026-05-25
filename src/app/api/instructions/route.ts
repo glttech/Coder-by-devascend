@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { computeStateVersion } from '@/lib/stateVersion';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
 
     const resolvedStatus: InstructionStatus = status && isValidStatus(status) ? status : 'draft';
 
+    // Create the record first to get the generated id, then compute stateVersion.
     const instruction = await prisma.instruction.create({
       data: {
         taskId: taskId!.trim(),
@@ -63,20 +65,27 @@ export async function POST(request: Request) {
       },
     });
 
+    const stateVersion = computeStateVersion(instruction);
+    const withVersion = await prisma.instruction.update({
+      where: { id: instruction.id },
+      data: { stateVersion },
+    });
+
     await prisma.auditLog.create({
       data: {
         taskId: task.id,
-        instructionId: instruction.id,
+        instructionId: withVersion.id,
         event: 'instruction_created',
         details: JSON.stringify({
-          instructionId: instruction.id,
-          title: instruction.title,
-          status: instruction.status,
+          instructionId: withVersion.id,
+          title: withVersion.title,
+          status: withVersion.status,
+          stateVersion,
         }),
       },
     });
 
-    return NextResponse.json({ instruction }, { status: 201 });
+    return NextResponse.json({ instruction: withVersion }, { status: 201 });
   } catch (err) {
     console.error('[instructions POST]', err);
     return NextResponse.json({ error: 'Failed to create instruction' }, { status: 500 });
