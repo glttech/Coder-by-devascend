@@ -30,4 +30,7 @@ temp
 out
 
 # Keep example env file
-!.env.exampletsconfig.tsbuildinfo
+!.env.example
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
