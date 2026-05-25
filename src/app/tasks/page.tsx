@@ -8,7 +8,15 @@ export const dynamic = 'force-dynamic';
  * page supplements the dashboard and provides an easy way to access tasks.
  */
 export default async function TaskList() {
-  const tasks = await prisma.task.findMany({ orderBy: { createdAt: 'desc' } });
+  const tasks = await prisma.task.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: {
+      instructions: {
+        where: { status: 'pending_approval' },
+        select: { id: true },
+      },
+    },
+  });
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Tasks</h2>
@@ -21,6 +29,7 @@ export default async function TaskList() {
             <th className="border-b py-2 text-left">Status</th>
             <th className="border-b py-2 text-left">Agent</th>
             <th className="border-b py-2 text-left">Created</th>
+            <th className="border-b py-2 text-left">Instructions</th>
           </tr>
         </thead>
         <tbody>
@@ -35,6 +44,13 @@ export default async function TaskList() {
               <td className="py-2 pr-2">{task.status}</td>
               <td className="py-2 pr-2">{task.agentTool}</td>
               <td className="py-2 pr-2">{task.createdAt.toISOString().split('T')[0]}</td>
+              <td className="py-2 pr-2">
+                {task.instructions.length > 0 && (
+                  <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#d97706', color: '#fff' }}>
+                    {task.instructions.length} pending
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

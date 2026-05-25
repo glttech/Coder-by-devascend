@@ -42,6 +42,7 @@ model Task {
   approval          Approval?
   audits            AuditLog[]
   operatorSessions  OperatorSession[]
+  instructions      Instruction[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -99,6 +100,7 @@ model AuditLog {
   taskId            String?
   agentRunId        String?
   operatorSessionId String?
+  instructionId     String?
   userId            String?
   event             String
   details           String?
@@ -106,7 +108,26 @@ model AuditLog {
   task              Task?            @relation(fields: [taskId], references: [id])
   agentRun          AgentRun?        @relation(fields: [agentRunId], references: [id])
   operatorSession   OperatorSession? @relation(fields: [operatorSessionId], references: [id])
+  instruction       Instruction?     @relation(fields: [instructionId], references: [id])
   user              User?            @relation(fields: [userId], references: [id])
+}
+
+model Instruction {
+  id           String      @id @default(uuid())
+  taskId       String
+  task         Task        @relation(fields: [taskId], references: [id])
+  title        String
+  body         String
+  // Lifecycle: draft | pending_approval | approved | executing | completed | blocked
+  status       String      @default("draft")
+  approvedBy   String?
+  approvedAt   DateTime?
+  approvalNote String?
+  executingAt  DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  auditLogs    AuditLog[]
 }
 
 model OperatorSession {
