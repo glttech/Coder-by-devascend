@@ -6,6 +6,7 @@ import EvaluationList from '@/components/EvaluationList';
 import ApprovalPanel from '@/components/ApprovalPanel';
 import CopyButton from '@/components/CopyButton';
 import OperatorPanel from '@/components/OperatorPanel';
+import InstructionActions from '@/components/InstructionActions';
 
 const STATUS_BADGE: Record<string, { background: string; color: string }> = {
   draft:            { background: '#6b7280', color: '#fff' },
@@ -101,17 +102,21 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 <th className="border-b py-2 text-left">Title</th>
                 <th className="border-b py-2 text-left">Status</th>
                 <th className="border-b py-2 text-left">Created</th>
+                <th className="border-b py-2 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
               {task.instructions.map((instr) => (
-                <tr key={instr.id} className="hover:bg-gray-100">
+                <tr key={instr.id} className="hover:bg-gray-100" style={{ verticalAlign: 'top' }}>
                   <td className="py-2 pr-2 text-xs" style={{ fontFamily: 'monospace' }}>{instr.id.slice(0, 8)}</td>
                   <td className="py-2 pr-2">{instr.title}</td>
                   <td className="py-2 pr-2">
                     <InstructionStatusBadge status={instr.status} />
                   </td>
                   <td className="py-2 pr-2">{instr.createdAt.toISOString().split('T')[0]}</td>
+                  <td className="py-2 pr-2">
+                    <InstructionActions instructionId={instr.id} currentStatus={instr.status} />
+                  </td>
                 </tr>
               ))}
             </tbody>
