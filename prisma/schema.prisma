@@ -120,11 +120,13 @@ model Instruction {
   body         String
   // Lifecycle: draft | pending_approval | approved | executing | completed | blocked
   status       String      @default("draft")
-  approvedBy   String?
-  approvedAt   DateTime?
-  approvalNote String?
-  executingAt  DateTime?
-  resolvedAt   DateTime?
+  approvedBy      String?
+  approvedAt      DateTime?
+  approvalNote    String?
+  executingAt     DateTime?
+  resolvedAt      DateTime?
+  blockedReason   String?
+  completedNotes  String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   auditLogs    AuditLog[]
