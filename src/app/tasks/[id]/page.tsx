@@ -5,6 +5,7 @@ import RunPromptPanel from '@/components/RunPromptPanel';
 import EvaluationList from '@/components/EvaluationList';
 import ApprovalPanel from '@/components/ApprovalPanel';
 import CopyButton from '@/components/CopyButton';
+import OperatorPanel from '@/components/OperatorPanel';
 
 interface TaskPageProps {
   params: { id: string };
@@ -64,6 +65,16 @@ export default async function TaskPage({ params }: TaskPageProps) {
       <section>
         <h2 className="text-lg font-semibold mb-2">New Agent Run</h2>
         <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
+      </section>
+
+      {/* Operator Console — Phase 1.5 */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Operator Console</h2>
+        <p className="text-sm" style={{ color: '#6b7280', marginBottom: 12 }}>
+          After running a prompt in an AI coding agent, paste the response here. The system will
+          analyze risk, check for missing evidence, and generate a safe next prompt.
+        </p>
+        <OperatorPanel taskId={task.id} taskTitle={task.title} />
       </section>
 
       <section>

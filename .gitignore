@@ -30,4 +30,4 @@ temp
 out
 
 # Keep example env file
-!.env.example
+!.env.exampletsconfig.tsbuildinfo
