@@ -7,6 +7,24 @@ import ApprovalPanel from '@/components/ApprovalPanel';
 import CopyButton from '@/components/CopyButton';
 import OperatorPanel from '@/components/OperatorPanel';
 
+const STATUS_BADGE: Record<string, { background: string; color: string }> = {
+  draft:            { background: '#6b7280', color: '#fff' },
+  pending_approval: { background: '#d97706', color: '#fff' },
+  approved:         { background: '#2563eb', color: '#fff' },
+  executing:        { background: '#7c3aed', color: '#fff' },
+  completed:        { background: '#16a34a', color: '#fff' },
+  blocked:          { background: '#dc2626', color: '#fff' },
+};
+
+function InstructionStatusBadge({ status }: { status: string }) {
+  const style = STATUS_BADGE[status] ?? { background: '#6b7280', color: '#fff' };
+  return (
+    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, ...style }}>
+      {status.replace('_', ' ')}
+    </span>
+  );
+}
+
 interface TaskPageProps {
   params: { id: string };
 }
@@ -23,6 +41,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
       agentRuns: { include: { evaluations: true } },
       project: true,
       approval: true,
+      instructions: { orderBy: { createdAt: 'desc' } },
     },
   });
   if (!task) {
@@ -65,6 +84,39 @@ export default async function TaskPage({ params }: TaskPageProps) {
       <section>
         <h2 className="text-lg font-semibold mb-2">New Agent Run</h2>
         <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
+      </section>
+
+      {/* Instructions — Phase 2 lifecycle foundation */}
+      <section>
+        <h2 className="text-lg font-semibold mb-2">Instructions</h2>
+        {task.instructions.length === 0 ? (
+          <p className="text-sm text-gray-600">
+            No instructions yet. Use <code>POST /api/instructions</code> with this task ID to create one.
+          </p>
+        ) : (
+          <table className="min-w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="border-b py-2 text-left">ID</th>
+                <th className="border-b py-2 text-left">Title</th>
+                <th className="border-b py-2 text-left">Status</th>
+                <th className="border-b py-2 text-left">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {task.instructions.map((instr) => (
+                <tr key={instr.id} className="hover:bg-gray-100">
+                  <td className="py-2 pr-2 text-xs" style={{ fontFamily: 'monospace' }}>{instr.id.slice(0, 8)}</td>
+                  <td className="py-2 pr-2">{instr.title}</td>
+                  <td className="py-2 pr-2">
+                    <InstructionStatusBadge status={instr.status} />
+                  </td>
+                  <td className="py-2 pr-2">{instr.createdAt.toISOString().split('T')[0]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       {/* Operator Console — Phase 1.5 */}
