@@ -52,7 +52,10 @@ export default async function TaskPage({ params }: TaskPageProps) {
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="text-lg font-semibold mb-2">Task Details</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold">Task Details</h2>
+          <Link href={`/tasks/${task.id}/report`} className="text-blue-600 underline text-xs">View Evidence Report →</Link>
+        </div>
         <div className="space-y-1 text-sm">
           <div><strong>Title:</strong> {task.title}</div>
           <div><strong>Instruction:</strong> {task.instruction}</div>
