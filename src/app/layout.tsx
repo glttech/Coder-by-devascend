@@ -16,6 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <nav className="space-x-4 text-sm">
             <a href="/">Dashboard</a>
             <a href="/tasks">Tasks</a>
+            <a href="/instructions/pending">Pending Approvals</a>
           </nav>
         </header>
         <main className="p-6 max-w-5xl mx-auto">{children}</main>
