@@ -64,9 +64,11 @@ export function evaluateResponse(prompt: string, response: string): EvaluationRe
   });
 
   // Flag if the response suggests database migrations or installing new packages.
-  // Bare `npm install` / `pip install` (lockfile-only runs) are NOT flagged;
-  // only installs followed by a package name are considered dependency upgrades.
-  const migrationPattern = /(migrate|prisma\s+migrate|database\s+migration|upgrade\s+dependency|npm\s+install\s+\S|pip\s+install\s+\S)/i;
+  // Bare `npm install` / `pip install` (lockfile-only runs) are NOT flagged.
+  // Package installs require either a flag (--save, -D, etc.), a scoped name
+  // (@scope/pkg), or a name ≥4 chars, to avoid false-positives like
+  // "npm install to restore deps" where "to" is a preposition.
+  const migrationPattern = /(migrate|prisma\s+migrate|database\s+migration|upgrade\s+dependency|npm\s+install\s+(?:--?\S+|@\S+|\S{4,})|pip\s+install\s+(?:--?\S+|\S{4,}))/i;
   const migrationFound = migrationPattern.test(response);
   results.push({
     name: 'migration-or-upgrade',
