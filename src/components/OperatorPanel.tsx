@@ -57,6 +57,11 @@ const SEV_CLASS: Record<string, string> = {
   low:      'badge badge-sev-low',
 };
 
+const SEV_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+const BLOCKED_KEYS = new Set(['destructive-command', 'secrets-exposure']);
+const SENIOR_KEYS  = new Set(['auth-security-change', 'database-migration', 'production-environment', 'infra-docker-ci']);
+
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   async function handleCopy() {
@@ -69,8 +74,51 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
+function DecisionFactors({ session, action }: { session: EnrichedSession; action: string }) {
+  const blocking    = session.riskFlagDetails.filter((f) => BLOCKED_KEYS.has(f.key));
+  const seniorNeeds = session.riskFlagDetails.filter((f) => SENIOR_KEYS.has(f.key));
+  const missing     = session.missingEvidenceDetails;
+
+  if (action === 'CONTINUE' && missing.length === 0) return null;
+
+  return (
+    <div className="card card-sm" style={{ borderLeft: '3px solid var(--brand)' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 10 }}>
+        Why This Decision
+      </div>
+      {blocking.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--red-text)' }}>Blocking flags:</span>
+          <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {blocking.map((f) => <li key={f.key}>{f.label} — {f.description}</li>)}
+          </ul>
+        </div>
+      )}
+      {seniorNeeds.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--orange-text)' }}>Senior approval required for:</span>
+          <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {seniorNeeds.map((f) => <li key={f.key}>{f.label}</li>)}
+          </ul>
+        </div>
+      )}
+      {missing.length > 0 && (
+        <div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber-text)' }}>Missing evidence:</span>
+          <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {missing.map((e) => <li key={e.key}>{e.label} — {e.description}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnalysisPanel({ session }: { session: EnrichedSession }) {
   const action = session.recommendedAction ?? 'CONTINUE';
+  const sortedFlags = [...session.riskFlagDetails].sort(
+    (a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9),
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
@@ -80,27 +128,37 @@ function AnalysisPanel({ session }: { session: EnrichedSession }) {
         seniorApprovalRequired={session.seniorApprovalRequired}
       />
 
+      <DecisionFactors session={session} action={action} />
+
       <div className="analysis-grid">
         <div className="card card-sm">
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 10 }}>
-            Risk Flags
+            Risk Flags {sortedFlags.length > 0 && <span style={{ fontWeight: 400 }}>({sortedFlags.length})</span>}
           </div>
-          {session.riskFlagDetails.length === 0 ? (
+          {sortedFlags.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--green-text)' }}>✓ No risk flags detected</p>
           ) : (
-            session.riskFlagDetails.map((f) => (
-              <div key={f.key} className="risk-item">
-                <span className={SEV_CLASS[f.severity] ?? 'badge badge-neutral'}>{f.severity.toUpperCase()}</span>
-                <span className="risk-item-label">{f.label}</span>
-                <span className="risk-item-desc">{f.description}</span>
-              </div>
-            ))
+            sortedFlags.map((f) => {
+              const isBlocking = BLOCKED_KEYS.has(f.key);
+              const needsSenior = SENIOR_KEYS.has(f.key);
+              return (
+                <div key={f.key} className="risk-item">
+                  <span className={SEV_CLASS[f.severity] ?? 'badge badge-neutral'}>{f.severity.toUpperCase()}</span>
+                  <span className="risk-item-label">
+                    {f.label}
+                    {isBlocking  && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--red-text)', fontWeight: 700 }}>BLOCKS</span>}
+                    {needsSenior && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--orange-text)', fontWeight: 700 }}>SENIOR</span>}
+                  </span>
+                  <span className="risk-item-desc">{f.description}</span>
+                </div>
+              );
+            })
           )}
         </div>
 
         <div className="card card-sm">
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 10 }}>
-            Missing Evidence
+            Missing Evidence {session.missingEvidenceDetails.length > 0 && <span style={{ fontWeight: 400 }}>({session.missingEvidenceDetails.length})</span>}
           </div>
           {session.missingEvidenceDetails.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--green-text)' }}>✓ All required evidence provided</p>
@@ -311,8 +369,14 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1 }}>
                   Step {s.currentStep} · {s.agentTool ?? 'unknown'} · {new Date(s.createdAt).toLocaleString()}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {s.riskFlags.length}r · {s.missingEvidence.length}m
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'right' }}>
+                  {s.riskFlagDetails.length > 0
+                    ? s.riskFlagDetails
+                        .sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9))
+                        .slice(0, 2)
+                        .map((f) => f.label)
+                        .join(', ') + (s.riskFlagDetails.length > 2 ? ` +${s.riskFlagDetails.length - 2}` : '')
+                    : '✓ No flags'}
                 </span>
               </div>
             );
