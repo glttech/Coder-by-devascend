@@ -43,7 +43,7 @@ function DetailsSummary({ raw }: { raw: string | null }) {
         <div key={k}>
           <span style={{ color: '#6b7280' }}>{k}:</span>{' '}
           <span style={{ fontFamily: 'monospace' }}>
-            {typeof v === 'string' && v.length > 40 ? v.slice(0, 12) + '…' : String(v ?? '—')}
+            {typeof v === 'string' && v.length > 60 ? v.slice(0, 30) + '…' : String(v ?? '—')}
           </span>
         </div>
       ))}
@@ -113,7 +113,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
                 </td>
                 <td className="py-2 pr-4 text-xs">
                   {log.task ? (
-                    <Link href={`/tasks/${log.task.id}?audit=1`} className="text-blue-600 underline">
+                    <Link href={`/tasks/${log.task.id}`} className="text-blue-600 underline">
                       {log.task.title.length > 24 ? log.task.title.slice(0, 24) + '…' : log.task.title}
                     </Link>
                   ) : (

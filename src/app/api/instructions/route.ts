@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { computeStateVersion } from '@/lib/stateVersion';
 
@@ -55,20 +56,30 @@ export async function POST(request: Request) {
 
     const resolvedStatus: InstructionStatus = status && isValidStatus(status) ? status : 'draft';
 
-    // Create the record first to get the generated id, then compute stateVersion.
-    const instruction = await prisma.instruction.create({
-      data: {
-        taskId: taskId!.trim(),
-        title: title!.trim(),
-        body: instructionBody!.trim(),
-        status: resolvedStatus,
-      },
+    // Pre-generate the ID so stateVersion can be computed before the write,
+    // allowing a single atomic create rather than a create+update two-phase write.
+    const id = randomUUID();
+    const resolvedTitle = title!.trim();
+    const resolvedBody = instructionBody!.trim();
+    const resolvedTaskId = taskId!.trim();
+
+    const stateVersion = computeStateVersion({
+      id,
+      taskId: resolvedTaskId,
+      title: resolvedTitle,
+      body: resolvedBody,
+      status: resolvedStatus,
     });
 
-    const stateVersion = computeStateVersion(instruction);
-    const withVersion = await prisma.instruction.update({
-      where: { id: instruction.id },
-      data: { stateVersion },
+    const withVersion = await prisma.instruction.create({
+      data: {
+        id,
+        taskId: resolvedTaskId,
+        title: resolvedTitle,
+        body: resolvedBody,
+        status: resolvedStatus,
+        stateVersion,
+      },
     });
 
     await prisma.auditLog.create({

@@ -2,6 +2,8 @@ import prisma from '@/lib/prisma';
 import { buildPrompt } from '@/lib/promptBuilder';
 import Link from 'next/link';
 import RunPromptPanel from '@/components/RunPromptPanel';
+
+export const dynamic = 'force-dynamic';
 import EvaluationList from '@/components/EvaluationList';
 import ApprovalPanel from '@/components/ApprovalPanel';
 import CopyButton from '@/components/CopyButton';

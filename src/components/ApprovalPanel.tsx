@@ -59,7 +59,7 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved }: Pr
       {/* Clarify that approvals only govern workflows within this tool. External agents still run manually. */}
       <p className="text-xs text-gray-600 mt-2">
         Note: Approval here only controls actions inside this orchestrator. External coding agents (e.g. Claude
-        Code or Codex) are still run manually in Phase 1.
+        Code or Codex) are run manually via the Operator Console below.
       </p>
     </div>
   );

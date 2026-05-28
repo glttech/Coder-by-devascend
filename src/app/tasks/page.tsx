@@ -21,6 +21,10 @@ export default async function TaskList() {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Tasks</h2>
       <Link href="/tasks/new" className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">New Task</Link>
+      {tasks.length === 0 && (
+        <p className="text-sm text-gray-600">No tasks yet. Click New Task to create your first task.</p>
+      )}
+      {tasks.length > 0 && (
       <table className="min-w-full text-sm border-collapse mt-4">
         <thead>
           <tr>
@@ -55,6 +59,7 @@ export default async function TaskList() {
           ))}
         </tbody>
       </table>
+      )}
     </div>
   );
 }

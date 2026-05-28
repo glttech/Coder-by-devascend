@@ -103,7 +103,7 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
       {showApproveForm && (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
           <input
-            placeholder="Approved by (optional)"
+            placeholder="Approval note (optional)"
             value={approvalNote}
             onChange={(e) => setApprovalNote(e.target.value)}
             style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #ccc', borderRadius: 3 }}
