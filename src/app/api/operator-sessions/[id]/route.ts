@@ -1,31 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { analyzeRisk, getRiskFlagDetails } from '@/lib/riskAnalyzer';
-import { checkMissingEvidence, getMissingEvidenceDetails } from '@/lib/evidenceChecker';
+import { analyzeRisk } from '@/lib/riskAnalyzer';
+import { checkMissingEvidence } from '@/lib/evidenceChecker';
 import { computeDecision } from '@/lib/decisionEngine';
 import { generateNextPrompt } from '@/lib/nextPromptGenerator';
+import { parseLines, enrichSession } from '@/lib/sessionHelpers';
 
 export const dynamic = 'force-dynamic';
-
-function parseLines(value: unknown): string[] {
-  if (!value || typeof value !== 'string') return [];
-  return value
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
-}
-
-function enrichSession(session: {
-  riskFlags: string[];
-  missingEvidence: string[];
-  [key: string]: unknown;
-}) {
-  return {
-    ...session,
-    riskFlagDetails: getRiskFlagDetails(session.riskFlags),
-    missingEvidenceDetails: getMissingEvidenceDetails(session.missingEvidence),
-  };
-}
 
 // PATCH /api/operator-sessions/[id]
 export async function PATCH(

@@ -93,11 +93,12 @@ export default async function TaskPage({ params }: TaskPageProps) {
       </section>
 
       {/* Instructions — Phase 2 lifecycle foundation */}
-      <section>
+      <section id="instructions">
         <h2 className="text-lg font-semibold mb-2">Instructions</h2>
         {task.instructions.length === 0 ? (
           <p className="text-sm text-gray-600">
-            No instructions yet. Use <code>POST /api/instructions</code> with this task ID to create one.
+            No instructions linked to this task. Instructions track work items through approval, execution,
+            and completion stages. Create one via the API to start the lifecycle.
           </p>
         ) : (
           <table className="min-w-full text-sm border-collapse">
