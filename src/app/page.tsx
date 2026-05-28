@@ -1,20 +1,17 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusBadge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Dashboard page.  Displays high-level statistics about tasks, recent
- * agent runs, and governance health signals (Phase 2 Step 7).
- */
 export default async function Dashboard() {
   let totalTasks = 0;
   let byStatus: Record<string, number> = {};
   let recentRuns: { id: string; taskId: string; status: string; startedAt: Date }[] = [];
   let pendingApprovals = 0;
   let failedEvaluations = 0;
-
-  // Governance health signals
   let pendingInstructions = 0;
   let blockedInstructions = 0;
   let staleInstructions = 0;
@@ -25,102 +22,108 @@ export default async function Dashboard() {
     const tasks = await prisma.task.findMany({ include: { agentRuns: { include: { evaluations: true } }, approval: true } });
     for (const t of tasks) {
       byStatus[t.status] = (byStatus[t.status] || 0) + 1;
-      if (t.approvalRequired && (!t.approval || t.approval.approved === null)) {
-        pendingApprovals++;
-      }
+      if (t.approvalRequired && (!t.approval || t.approval.approved === null)) pendingApprovals++;
       for (const run of t.agentRuns) {
-        for (const evalRes of run.evaluations) {
-          if (!evalRes.passed) failedEvaluations++;
-        }
+        for (const ev of run.evaluations) { if (!ev.passed) failedEvaluations++; }
         recentRuns.push({ id: run.id, taskId: t.id, status: run.status, startedAt: run.startedAt });
       }
     }
     recentRuns.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
     recentRuns = recentRuns.slice(0, 5);
 
-    // Governance health: instruction status counts
     [pendingInstructions, blockedInstructions] = await Promise.all([
       prisma.instruction.count({ where: { status: 'pending_approval' } }),
       prisma.instruction.count({ where: { status: 'blocked' } }),
     ]);
 
-    // Stale instructions: approved/executing with no stateVersion (pre-hash rows) or
-    // instructions in executing/approved state older than 7 days without resolution.
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     staleInstructions = await prisma.instruction.count({
-      where: {
-        status: { in: ['approved', 'executing'] },
-        updatedAt: { lt: sevenDaysAgo },
-      },
+      where: { status: { in: ['approved', 'executing'] }, updatedAt: { lt: sevenDaysAgo } },
     });
 
-    // Operator sessions needing action: recommendedAction is not CONTINUE and session
-    // was created in the last 48 hours (still actionable).
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     sessionsNeedingAction = await prisma.operatorSession.count({
       where: {
         createdAt: { gte: twoDaysAgo },
-        AND: [
-          { recommendedAction: { not: null } },
-          { recommendedAction: { not: 'CONTINUE' } },
-        ],
+        AND: [{ recommendedAction: { not: null } }, { recommendedAction: { not: 'CONTINUE' } }],
       },
     });
   } catch (err) {
-    console.warn('Database not ready or other error', err);
+    console.warn('Database not ready', err);
   }
 
   const healthWarning = pendingInstructions > 0 || blockedInstructions > 0 || staleInstructions > 0 || sessionsNeedingAction > 0;
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Overview</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Tasks" value={totalTasks.toString()} />
-          {Object.entries(byStatus).map(([status, count]) => (
-            <StatCard key={status} label={status.replace(/_/g, ' ').replace(/^(.)/, (c) => c.toUpperCase())} value={count.toString()} />
-          ))}
-          <StatCard label="Pending Approvals" value={pendingApprovals.toString()} />
-          <StatCard label="Failed Evaluations" value={failedEvaluations.toString()} />
-        </div>
-      </section>
+    <div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Governance overview for AI-assisted development"
+      />
 
-      {/* Governance Health Signals — Phase 2 Step 7 */}
-      <section>
-        <div className="flex items-center gap-3 mb-3">
-          <h2 className="text-lg font-semibold">Governance Health</h2>
-          {healthWarning ? (
-            <span style={{ background: '#fef3c7', color: '#92400e', padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>
-              Needs attention
-            </span>
-          ) : (
-            <span style={{ background: '#dcfce7', color: '#15803d', padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>
-              All clear
-            </span>
-          )}
+      {/* Overview stats */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Overview</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="stat-card">
+            <div className="stat-card-label">Total Tasks</div>
+            <div className="stat-card-value">{totalTasks}</div>
+          </div>
+          {Object.entries(byStatus).map(([status, count]) => (
+            <div key={status} className="stat-card">
+              <div className="stat-card-label">{status.replace(/_/g, ' ')}</div>
+              <div className="stat-card-value">{count}</div>
+            </div>
+          ))}
+          <div className="stat-card">
+            <div className="stat-card-label">Pending Approvals</div>
+            <div className="stat-card-value" style={{ color: pendingApprovals > 0 ? 'var(--amber)' : 'var(--text)' }}>
+              {pendingApprovals}
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-label">Failed Evaluations</div>
+            <div className="stat-card-value" style={{ color: failedEvaluations > 0 ? 'var(--red)' : 'var(--text)' }}>
+              {failedEvaluations}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Governance Health */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Governance Health</span>
+          <span className={`badge ${healthWarning ? 'badge-warning' : 'badge-success'}`}>
+            {healthWarning ? 'Needs attention' : 'All clear'}
+          </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <HealthCard
-            label="Pending Instruction Approvals"
+            label="Pending Approvals"
             value={pendingInstructions}
             href="/instructions/pending"
             warn={pendingInstructions > 0}
-            warnColor="#d97706"
+            warnColor="var(--amber)"
+            warnBorder="#fde68a"
           />
           <HealthCard
             label="Blocked Instructions"
             value={blockedInstructions}
             href="/tasks"
             warn={blockedInstructions > 0}
-            warnColor="#dc2626"
+            warnColor="var(--red)"
+            warnBorder="#fca5a5"
           />
           <HealthCard
             label="Stale (7d+)"
             value={staleInstructions}
             href="/tasks"
             warn={staleInstructions > 0}
-            warnColor="#7c3aed"
+            warnColor="var(--purple)"
+            warnBorder="#c4b5fd"
             tooltip="Approved/executing instructions not updated in 7+ days"
           />
           <HealthCard
@@ -128,82 +131,85 @@ export default async function Dashboard() {
             value={sessionsNeedingAction}
             href="/tasks"
             warn={sessionsNeedingAction > 0}
-            warnColor="#d97706"
+            warnColor="var(--orange)"
+            warnBorder="#fdba74"
             tooltip="Operator sessions from last 48h with non-CONTINUE decision"
           />
         </div>
-        <p className="text-xs mt-2" style={{ color: '#9ca3af' }}>
-          <Link href="/audit" className="text-blue-600 underline">View full audit log</Link>
-          {' · '}
-          <Link href="/instructions/pending" className="text-blue-600 underline">Review pending instructions</Link>
-        </p>
-      </section>
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
+          <Link href="/audit" style={{ color: 'var(--blue)' }}>View audit log →</Link>
+          <Link href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review pending instructions →</Link>
+        </div>
+      </div>
 
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Recent Agent Runs</h2>
+      {/* Recent runs */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Recent Agent Runs</span>
+        </div>
         {recentRuns.length === 0 ? (
-          <p className="text-sm text-gray-600">No runs recorded yet.</p>
+          <EmptyState
+            icon="◎"
+            title="No agent runs recorded yet"
+            description="Run a prompt from a task detail page to record agent runs and evaluation results here."
+          />
         ) : (
-          <table className="min-w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="border-b py-2 text-left">Run ID</th>
-                <th className="border-b py-2 text-left">Task</th>
-                <th className="border-b py-2 text-left">Status</th>
-                <th className="border-b py-2 text-left">Started At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentRuns.map((run) => (
-                <tr key={run.id} className="hover:bg-gray-100">
-                  <td className="py-2 pr-2 text-blue-600 underline">
-                    <Link href={`/tasks/${run.taskId}`}>{run.id.slice(0, 8)}</Link>
-                  </td>
-                  <td className="py-2 pr-2">
-                    <Link href={`/tasks/${run.taskId}`}>{run.taskId.slice(0, 8)}</Link>
-                  </td>
-                  <td className="py-2 pr-2">{run.status}</td>
-                  <td className="py-2 pr-2">{run.startedAt.toISOString().split('T')[0]}</td>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Run ID</th>
+                  <th>Task</th>
+                  <th>Status</th>
+                  <th>Started</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentRuns.map((run) => (
+                  <tr key={run.id}>
+                    <td>
+                      <Link href={`/tasks/${run.taskId}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 12 }}>
+                        {run.id.slice(0, 8)}
+                      </Link>
+                    </td>
+                    <td>
+                      <Link href={`/tasks/${run.taskId}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 12 }}>
+                        {run.taskId.slice(0, 8)}
+                      </Link>
+                    </td>
+                    <td>
+                      <StatusBadge status={run.status} />
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                      {run.startedAt.toISOString().split('T')[0]}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </section>
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-white border rounded p-4 shadow-sm flex flex-col items-start">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span className="text-2xl font-bold">{value}</span>
+      </div>
     </div>
   );
 }
 
 function HealthCard({
-  label, value, href, warn, warnColor, tooltip,
+  label, value, href, warn, warnColor, warnBorder, tooltip,
 }: {
-  label: string;
-  value: number;
-  href: string;
-  warn: boolean;
-  warnColor: string;
-  tooltip?: string;
+  label: string; value: number; href: string;
+  warn: boolean; warnColor: string; warnBorder: string; tooltip?: string;
 }) {
-  const borderColor = warn ? warnColor : '#e5e7eb';
-  const valueColor = warn ? warnColor : '#111827';
   return (
-    <Link href={href} style={{ textDecoration: 'none' }}>
-      <div
-        className="bg-white rounded p-4 shadow-sm flex flex-col items-start"
-        style={{ border: `2px solid ${borderColor}`, cursor: 'pointer' }}
-        title={tooltip}
-      >
-        <span className="text-sm text-gray-500">{label}</span>
-        <span className="text-2xl font-bold" style={{ color: valueColor }}>{value}</span>
+    <Link
+      href={href}
+      className="health-card"
+      style={{ border: warn ? `2px solid ${warnBorder}` : '1px solid var(--border)' }}
+      title={tooltip}
+    >
+      <div className="health-card-label">{label}</div>
+      <div className="health-card-value" style={{ color: warn ? warnColor : 'var(--text)' }}>
+        {value}
       </div>
     </Link>
   );

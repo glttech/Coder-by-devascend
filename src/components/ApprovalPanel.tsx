@@ -36,30 +36,32 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved }: Pr
     }
   }
   return (
-    <div className="border p-4 rounded bg-yellow-50">
-      <h3 className="text-sm font-medium mb-2">Approval</h3>
-      <p className="text-sm mb-2">Status: <span className="font-semibold">{statusLabel}</span></p>
-      {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-      <div className="flex space-x-2">
-        <button
-          onClick={() => submitApproval(true)}
-          disabled={loading || approved === true}
-          className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-        >
-          Approve
+    <div className="approval-panel">
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--amber-text)', marginBottom: 10 }}>
+        Approval Gate
+      </div>
+      <div className="approval-panel-status">
+        Status:{' '}
+        <strong style={{ color: approved === true ? 'var(--green-text)' : approved === false ? 'var(--red-text)' : 'var(--amber-text)' }}>
+          {statusLabel}
+        </strong>
+      </div>
+      {error && (
+        <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', fontSize: 13, marginBottom: 10 }}>
+          {error}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => submitApproval(true)} disabled={loading || approved === true} className="btn btn-success btn-sm">
+          ✓ Approve
         </button>
-        <button
-          onClick={() => submitApproval(false)}
-          disabled={loading || approved === false}
-          className="bg-red-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-        >
-          Reject
+        <button onClick={() => submitApproval(false)} disabled={loading || approved === false} className="btn btn-danger btn-sm">
+          ✕ Reject
         </button>
       </div>
-      {/* Clarify that approvals only govern workflows within this tool. External agents still run manually. */}
-      <p className="text-xs text-gray-600 mt-2">
-        Note: Approval here only controls actions inside this orchestrator. External coding agents (e.g. Claude
-        Code or Codex) are run manually via the Operator Console below.
+      <p className="approval-panel-note">
+        This approval governs actions inside the orchestrator only. External coding agents
+        (Claude Code, Codex) are run manually via the Operator Console.
       </p>
     </div>
   );

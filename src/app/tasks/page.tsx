@@ -1,64 +1,85 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { RiskBadge, EnvBadge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Displays all tasks with their status and a link to the detail page.  This
- * page supplements the dashboard and provides an easy way to access tasks.
- */
 export default async function TaskList() {
   const tasks = await prisma.task.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      instructions: {
-        where: { status: 'pending_approval' },
-        select: { id: true },
-      },
+      instructions: { where: { status: 'pending_approval' }, select: { id: true } },
     },
   });
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Tasks</h2>
-      <Link href="/tasks/new" className="bg-indigo-600 text-white px-3 py-1 rounded text-sm">New Task</Link>
-      {tasks.length === 0 && (
-        <p className="text-sm text-gray-600">No tasks yet. Click New Task to create your first task.</p>
-      )}
-      {tasks.length > 0 && (
-      <table className="min-w-full text-sm border-collapse mt-4">
-        <thead>
-          <tr>
-            <th className="border-b py-2 text-left">ID</th>
-            <th className="border-b py-2 text-left">Title</th>
-            <th className="border-b py-2 text-left">Status</th>
-            <th className="border-b py-2 text-left">Agent</th>
-            <th className="border-b py-2 text-left">Created</th>
-            <th className="border-b py-2 text-left">Instructions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => (
-            <tr key={task.id} className="hover:bg-gray-100">
-              <td className="py-2 pr-2">
-                <Link href={`/tasks/${task.id}`} className="text-blue-600 underline">
-                  {task.id.slice(0, 8)}
-                </Link>
-              </td>
-              <td className="py-2 pr-2">{task.title}</td>
-              <td className="py-2 pr-2">{task.status}</td>
-              <td className="py-2 pr-2">{task.agentTool}</td>
-              <td className="py-2 pr-2">{task.createdAt.toISOString().split('T')[0]}</td>
-              <td className="py-2 pr-2">
-                {task.instructions.length > 0 && (
-                  <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#d97706', color: '#fff' }}>
-                    {task.instructions.length} pending
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <PageHeader
+        title="Tasks"
+        subtitle={`${tasks.length} task${tasks.length !== 1 ? 's' : ''} total`}
+        actions={
+          <Link href="/tasks/new" className="btn btn-primary">
+            + New Task
+          </Link>
+        }
+      />
+
+      {tasks.length === 0 ? (
+        <EmptyState
+          icon="◈"
+          title="No tasks yet"
+          description="Tasks represent units of AI-assisted development work. Create your first task to begin generating prompts and tracking agent runs."
+          action={<Link href="/tasks/new" className="btn btn-primary">Create first task</Link>}
+        />
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Risk</th>
+                <th>Env</th>
+                <th>Agent</th>
+                <th>Created</th>
+                <th>Pending</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tasks.map((task) => (
+                <tr key={task.id}>
+                  <td>
+                    <Link href={`/tasks/${task.id}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 11 }}>
+                      {task.id.slice(0, 8)}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link href={`/tasks/${task.id}`} style={{ color: 'var(--text)', fontWeight: 500 }}>
+                      {task.title}
+                    </Link>
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{task.status}</td>
+                  <td><RiskBadge level={task.riskLevel} /></td>
+                  <td><EnvBadge env={task.environment} /></td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                    {task.createdAt.toISOString().split('T')[0]}
+                  </td>
+                  <td>
+                    {task.instructions.length > 0 && (
+                      <span className="badge badge-pending_approval">
+                        {task.instructions.length} pending
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

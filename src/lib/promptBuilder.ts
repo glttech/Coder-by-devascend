@@ -1,17 +1,20 @@
 import { Task } from '@prisma/client';
 
+type TaskWithProject = Task & { project?: { name: string } | null };
+
 /**
  * Construct a structured execution prompt for a given task.  This helper
- * encapsulates the default format defined in the Phase 1 requirements.
+ * encapsulates the default format defined in the Phase 1 requirements.
  *
  * You can customise the sections or inject additional context (e.g. repo
  * details) here.  For now we derive most sections from the task itself and
  * leave others blank for the agent to interpret.
  */
-export function buildPrompt(task: Task): string {
+export function buildPrompt(task: TaskWithProject): string {
+  const projectName = task.project?.name ?? task.projectId ?? 'unknown';
   return [
     `Objective:\n${task.instruction}`,
-    `Scope:\nPlease make changes only within the scope of the project ${task.projectId ?? 'unknown'} as relevant to the objective.`,
+    `Scope:\nPlease make changes only within the scope of the project ${projectName} as relevant to the objective.`,
     `Files/areas to inspect:\nSpecify relevant files based on the objective.`,
     `Files/areas not to touch:\nDo not modify files unrelated to the task.`,
     `Safety constraints:\nFollow best practices and avoid any destructive commands or production access.`,
