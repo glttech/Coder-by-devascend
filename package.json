@@ -10,7 +10,8 @@
     "prisma": "prisma",
     "migrate": "prisma migrate dev",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "./node_modules/.bin/tsx --test 'src/lib/__tests__/**/*.test.ts'"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",

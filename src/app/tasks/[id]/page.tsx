@@ -2,13 +2,13 @@ import prisma from '@/lib/prisma';
 import { buildPrompt } from '@/lib/promptBuilder';
 import Link from 'next/link';
 import RunPromptPanel from '@/components/RunPromptPanel';
-
-export const dynamic = 'force-dynamic';
 import EvaluationList from '@/components/EvaluationList';
 import ApprovalPanel from '@/components/ApprovalPanel';
 import CopyButton from '@/components/CopyButton';
 import OperatorPanel from '@/components/OperatorPanel';
 import InstructionActions from '@/components/InstructionActions';
+
+export const dynamic = 'force-dynamic';
 
 const STATUS_BADGE: Record<string, { background: string; color: string }> = {
   draft:            { background: '#6b7280', color: '#fff' },
