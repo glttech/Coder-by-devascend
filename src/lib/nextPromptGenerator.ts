@@ -49,19 +49,23 @@ export function generateNextPrompt(input: NextPromptInput): string {
   }
 
   if (input.decision === 'SENIOR_APPROVAL_REQUIRED') {
-    const riskLabels = input.riskFlags.map((f) => f.label).join(', ');
+    const riskLabels = input.riskFlags.map((f) => `- ${f.label}: ${f.description}`).join('\n');
+    const fileContext = input.filesMentioned.length > 0
+      ? `\nFiles you changed: ${input.filesMentioned.slice(0, 5).join(', ')}`
+      : '';
     return [
-      'PAUSE — Senior approval is required before you continue.',
+      `PAUSE — Senior approval required for: "${input.taskTitle}"`,
       '',
-      `High-risk areas detected: ${riskLabels}.`,
+      'The following high-risk areas were detected in your response:',
+      riskLabels,
       '',
-      'Before proceeding, provide:',
-      '1. A summary of every change you have made so far.',
-      '2. A list of every file you modified and every command you ran.',
-      '3. A description of what you intend to do next.',
-      '4. Any risks or concerns you have identified.',
+      'Before any further action, provide:',
+      '1. Summary of every change made so far (not a description of intent — what actually changed).',
+      '2. Every file modified (exact paths) and every command run, in order.',
+      '3. What you intend to do next and why.',
+      '4. Any concerns or irreversible actions already taken.' + fileContext,
       '',
-      'Do not make any further changes until a senior engineer has reviewed and approved.',
+      'Do not make any further changes until a senior engineer has reviewed and explicitly approved.',
     ].join('\n');
   }
 
