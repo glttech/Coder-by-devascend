@@ -63,7 +63,7 @@ export default async function PendingApprovalsPage() {
                 </td>
                 <td className="py-2">
                   <Link
-                    href={`/tasks/${instr.task.id}`}
+                    href={`/tasks/${instr.task.id}#instructions`}
                     className="text-blue-600 underline text-xs"
                   >
                     Review →

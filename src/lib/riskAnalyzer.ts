@@ -18,7 +18,7 @@ const RISK_RULES: RiskRule[] = [
     key: 'auth-security-change',
     label: 'Auth / Security path change',
     severity: 'high',
-    pattern: /\b(auth(?:entication|orization)?|permission|role[- ]based|oauth|jwt|session(?:token|secret)?|middleware|cors|csrf|bcrypt|passport|bearer)\b/i,
+    pattern: /\b(auth(?:entication|orization)?|permission|role[- ]based|oauth|jwt|session(?:token|secret)?|middleware|cors|csrf|bcrypt|passport)\b/i,
     description: 'Response references authentication, authorization, or security-sensitive paths.',
   },
   {
