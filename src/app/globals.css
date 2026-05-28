@@ -897,3 +897,39 @@ tbody tr:hover { background-color: #f8fafc; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
 }
+
+/* ── Dashboard: risky decision summary rows ──────────────────────────────── */
+.decision-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+.decision-summary-row:hover { background: #f8fafc; }
+.decision-summary-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.decision-summary-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.decision-summary-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}

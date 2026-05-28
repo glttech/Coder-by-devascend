@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { StatusBadge } from '@/components/ui/Badge';
+import { StatusBadge, DecisionBadge, RiskBadge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,8 @@ export default async function Dashboard() {
   let blockedInstructions = 0;
   let staleInstructions = 0;
   let sessionsNeedingAction = 0;
+  let recentTasks: { id: string; title: string; status: string; riskLevel: string; environment: string; createdAt: Date }[] = [];
+  let riskyDecisions: { id: string; taskId: string; taskTitle: string; recommendedAction: string; decisionReason: string | null; createdAt: Date }[] = [];
 
   try {
     totalTasks = await prisma.task.count();
@@ -48,6 +50,27 @@ export default async function Dashboard() {
         AND: [{ recommendedAction: { not: null } }, { recommendedAction: { not: 'CONTINUE' } }],
       },
     });
+
+    recentTasks = await prisma.task.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { id: true, title: true, status: true, riskLevel: true, environment: true, createdAt: true },
+    });
+
+    const riskySessions = await prisma.operatorSession.findMany({
+      where: { AND: [{ recommendedAction: { not: null } }, { recommendedAction: { not: 'CONTINUE' } }] },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: { task: { select: { id: true, title: true } } },
+    });
+    riskyDecisions = riskySessions.map((s) => ({
+      id: s.id,
+      taskId: s.task.id,
+      taskTitle: s.task.title,
+      recommendedAction: s.recommendedAction!,
+      decisionReason: s.decisionReason,
+      createdAt: s.createdAt,
+    }));
   } catch (err) {
     console.warn('Database not ready', err);
   }
@@ -141,6 +164,85 @@ export default async function Dashboard() {
           <Link href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review pending instructions →</Link>
         </div>
       </div>
+
+      {/* Recent Tasks */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Recent Tasks</span>
+          <Link href="/tasks" style={{ fontSize: 12, color: 'var(--blue)' }}>View all →</Link>
+        </div>
+        {recentTasks.length === 0 ? (
+          <EmptyState
+            icon="◈"
+            title="No tasks yet"
+            description="Create your first task to start tracking AI-assisted development work."
+            action={<Link href="/tasks/new" className="btn btn-primary">New Task</Link>}
+          />
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Risk</th>
+                  <th>Env</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTasks.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <Link href={`/tasks/${t.id}`} style={{ color: 'var(--blue)', fontWeight: 500 }}>
+                        {t.title}
+                      </Link>
+                    </td>
+                    <td><StatusBadge status={t.status} /></td>
+                    <td><RiskBadge level={t.riskLevel} /></td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.environment}</td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {t.createdAt.toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Risky Decisions */}
+      {riskyDecisions.length > 0 && (
+        <div className="section">
+          <div className="section-header">
+            <span className="section-title">Latest Risky Decisions</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Operator sessions requiring action in the last 48h
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {riskyDecisions.map((d) => (
+              <Link
+                key={d.id}
+                href={`/tasks/${d.taskId}`}
+                style={{ textDecoration: 'none' }}
+              >
+                <div className="decision-summary-row">
+                  <DecisionBadge decision={d.recommendedAction} />
+                  <span className="decision-summary-title">{d.taskTitle}</span>
+                  <span className="decision-summary-reason">
+                    {d.decisionReason ? d.decisionReason.slice(0, 80) + (d.decisionReason.length > 80 ? '…' : '') : ''}
+                  </span>
+                  <span className="decision-summary-time">
+                    {d.createdAt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent runs */}
       <div className="section">
