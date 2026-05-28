@@ -7,36 +7,17 @@ import ApprovalPanel from '@/components/ApprovalPanel';
 import CopyButton from '@/components/CopyButton';
 import OperatorPanel from '@/components/OperatorPanel';
 import InstructionActions from '@/components/InstructionActions';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardHeader } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_BADGE: Record<string, { background: string; color: string }> = {
-  draft:            { background: '#6b7280', color: '#fff' },
-  pending_approval: { background: '#d97706', color: '#fff' },
-  approved:         { background: '#2563eb', color: '#fff' },
-  executing:        { background: '#7c3aed', color: '#fff' },
-  completed:        { background: '#16a34a', color: '#fff' },
-  blocked:          { background: '#dc2626', color: '#fff' },
-};
-
-function InstructionStatusBadge({ status }: { status: string }) {
-  const style = STATUS_BADGE[status] ?? { background: '#6b7280', color: '#fff' };
-  return (
-    <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, ...style }}>
-      {status.replace('_', ' ')}
-    </span>
-  );
-}
 
 interface TaskPageProps {
   params: { id: string };
 }
 
-/**
- * Task detail page.  Displays the generated execution prompt, existing runs,
- * evaluation results and approval panel.  Users can copy the prompt, run
- * it manually, paste the response, and record the run.
- */
 export default async function TaskPage({ params }: TaskPageProps) {
   const task = await prisma.task.findUnique({
     where: { id: params.id },
@@ -47,130 +28,195 @@ export default async function TaskPage({ params }: TaskPageProps) {
       instructions: { orderBy: { createdAt: 'desc' } },
     },
   });
+
   if (!task) {
-    return <p className="text-red-600">Task not found.</p>;
+    return (
+      <div className="empty-state" style={{ maxWidth: 420 }}>
+        <div className="empty-state-icon">✕</div>
+        <div className="empty-state-title">Task not found</div>
+        <p className="empty-state-description">This task ID does not exist or has been removed.</p>
+      </div>
+    );
   }
+
   const prompt = buildPrompt(task);
+
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">Task Details</h2>
-          <Link href={`/tasks/${task.id}/report`} className="text-blue-600 underline text-xs">View Evidence Report →</Link>
+    <div>
+      <PageHeader
+        title={task.title}
+        subtitle={
+          <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>
+            {task.id}
+          </span>
+        }
+        badge={<RiskBadge level={task.riskLevel} />}
+        actions={
+          <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
+            Evidence Report →
+          </Link>
+        }
+      />
+
+      {/* Metadata */}
+      <div className="section">
+        <Card>
+          <div className="card-header" style={{ marginBottom: 0, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            <span className="card-title">Task Details</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <EnvBadge env={task.environment} />
+              <span className="badge badge-neutral">{task.agentTool}</span>
+            </div>
+          </div>
+          <div className="meta-grid" style={{ marginTop: 12 }}>
+            <div className="meta-row">
+              <span className="meta-label">Instruction</span>
+              <span className="meta-value">{task.instruction}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Status</span>
+              <span className="meta-value">{task.status}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Approval required</span>
+              <span className="meta-value">{task.approvalRequired ? 'Yes' : 'No'}</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Approval */}
+      {task.approvalRequired && (
+        <div className="section">
+          <ApprovalPanel
+            taskId={task.id}
+            approvalRequired={task.approvalRequired}
+            approved={task.approval?.approved}
+          />
         </div>
-        <div className="space-y-1 text-sm">
-          <div><strong>Title:</strong> {task.title}</div>
-          <div><strong>Instruction:</strong> {task.instruction}</div>
-          <div><strong>Agent Tool:</strong> {task.agentTool}</div>
-          <div><strong>Risk Level:</strong> {task.riskLevel}</div>
-          <div><strong>Environment:</strong> {task.environment}</div>
-          <div><strong>Status:</strong> {task.status}</div>
-          <div><strong>Approval Required:</strong> {task.approvalRequired ? 'Yes' : 'No'}</div>
+      )}
+
+      {/* Generated Prompt */}
+      <div className="section">
+        <Card>
+          <CardHeader title="Generated Prompt" subtitle="Structured execution prompt ready to paste into your AI agent" />
+          <pre className="prompt-block prompt-block-scrollable">{prompt}</pre>
+          <div style={{ marginTop: 10 }}>
+            <CopyButton text={prompt} />
+          </div>
+        </Card>
+      </div>
+
+      {/* New Agent Run */}
+      <div className="section">
+        <Card>
+          <CardHeader title="Record Agent Run" subtitle="Submit the agent response to evaluate and track the run" />
+          <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
+        </Card>
+      </div>
+
+      {/* Instructions lifecycle */}
+      <div className="section" id="instructions">
+        <div className="section-header">
+          <span className="section-title">Instructions ({task.instructions.length})</span>
         </div>
-      </section>
-
-      {/* Approval section */}
-      <section>
-        <ApprovalPanel
-          taskId={task.id}
-          approvalRequired={task.approvalRequired}
-          approved={task.approval?.approved}
-        />
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Generated Prompt</h2>
-        <div className="bg-gray-100 border rounded p-4 whitespace-pre-wrap text-sm">
-          {prompt}
-        </div>
-        {/* CopyButton is a client component, imported from '@/components/CopyButton' */}
-        <CopyButton text={prompt} />
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-2">New Agent Run</h2>
-        <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
-      </section>
-
-      {/* Instructions — Phase 2 lifecycle foundation */}
-      <section id="instructions">
-        <h2 className="text-lg font-semibold mb-2">Instructions</h2>
         {task.instructions.length === 0 ? (
-          <p className="text-sm text-gray-600">
-            No instructions linked to this task. Instructions track work items through approval, execution,
-            and completion stages. Create one via the API to start the lifecycle.
-          </p>
+          <EmptyState
+            icon="◉"
+            title="No instructions linked"
+            description="Instructions track discrete work items through the approval → execution → completion lifecycle. Create one via the API to start."
+          />
         ) : (
-          <table className="min-w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="border-b py-2 text-left">ID</th>
-                <th className="border-b py-2 text-left">Title</th>
-                <th className="border-b py-2 text-left">Status</th>
-                <th className="border-b py-2 text-left">Created</th>
-                <th className="border-b py-2 text-left">State Version</th>
-                <th className="border-b py-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {task.instructions.map((instr) => (
-                <tr key={instr.id} className="hover:bg-gray-100" style={{ verticalAlign: 'top' }}>
-                  <td className="py-2 pr-2 text-xs" style={{ fontFamily: 'monospace' }}>{instr.id.slice(0, 8)}</td>
-                  <td className="py-2 pr-2">{instr.title}</td>
-                  <td className="py-2 pr-2">
-                    <InstructionStatusBadge status={instr.status} />
-                  </td>
-                  <td className="py-2 pr-2">{instr.createdAt.toISOString().split('T')[0]}</td>
-                  <td className="py-2 pr-2 text-xs" style={{ fontFamily: 'monospace', color: '#6b7280' }} title={instr.stateVersion ?? undefined}>
-                    {instr.stateVersion ? instr.stateVersion.slice(0, 12) : '—'}
-                  </td>
-                  <td className="py-2 pr-2">
-                    <InstructionActions instructionId={instr.id} currentStatus={instr.status} />
-                  </td>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>State Version</th>
+                  <th>Created</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {task.instructions.map((instr) => (
+                  <tr key={instr.id} style={{ verticalAlign: 'top' }}>
+                    <td>
+                      <span className="id-chip">{instr.id.slice(0, 8)}</span>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{instr.title}</td>
+                    <td><StatusBadge status={instr.status} /></td>
+                    <td>
+                      <span
+                        className="id-chip"
+                        title={instr.stateVersion ?? undefined}
+                        style={{ cursor: instr.stateVersion ? 'help' : 'default' }}
+                      >
+                        {instr.stateVersion ? instr.stateVersion.slice(0, 12) : '—'}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                      {instr.createdAt.toISOString().split('T')[0]}
+                    </td>
+                    <td>
+                      <InstructionActions instructionId={instr.id} currentStatus={instr.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </section>
+      </div>
 
-      {/* Operator Console — Phase 1.5 */}
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Operator Console</h2>
-        <p className="text-sm" style={{ color: '#6b7280', marginBottom: 12 }}>
-          After running a prompt in an AI coding agent, paste the response here. The system will
-          analyze risk, check for missing evidence, and generate a safe next prompt.
+      {/* Operator Console */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Operator Console</span>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          After running the prompt in an AI coding agent, paste the response here. The system will
+          analyze risk, check for missing evidence, and generate a safe next step.
         </p>
         <OperatorPanel taskId={task.id} taskTitle={task.title} />
-      </section>
+      </div>
 
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Previous Runs</h2>
+      {/* Previous Runs */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Previous Runs ({task.agentRuns.length})</span>
+        </div>
         {task.agentRuns.length === 0 ? (
-          <p className="text-sm text-gray-600">No runs recorded yet.</p>
+          <EmptyState
+            icon="◎"
+            title="No runs recorded yet"
+            description="Submit an agent response above to record a run and see evaluation results here."
+          />
         ) : (
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {task.agentRuns.map((run) => (
-              <div key={run.id} className="border rounded p-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <div>
-                    <strong>Run:</strong> {run.id.slice(0, 8)} ({run.selectedTool})
+              <Card key={run.id} size="sm">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span className="id-chip">{run.id.slice(0, 8)}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{run.selectedTool}</span>
                   </div>
-                  <div>
-                    <strong>Status:</strong> {run.status}
-                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{run.status}</span>
                 </div>
-                <div className="bg-gray-50 border rounded p-2 text-xs whitespace-pre-wrap mb-2">
+                <pre className="prompt-block" style={{ maxHeight: 160, overflowY: 'auto', fontSize: 11 }}>
                   {run.response || 'No response recorded.'}
-                </div>
+                </pre>
                 {run.evaluations.length > 0 && (
-                  <EvaluationList evaluations={run.evaluations} />
+                  <div style={{ marginTop: 10 }}>
+                    <EvaluationList evaluations={run.evaluations} />
+                  </div>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

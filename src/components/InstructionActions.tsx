@@ -20,12 +20,12 @@ const LABEL: Record<string, string> = {
   blocked:          'Block',
 };
 
-const BUTTON_STYLE: Record<string, React.CSSProperties> = {
-  pending_approval: { background: '#d97706', color: '#fff' },
-  approved:         { background: '#2563eb', color: '#fff' },
-  executing:        { background: '#7c3aed', color: '#fff' },
-  completed:        { background: '#16a34a', color: '#fff' },
-  blocked:          { background: '#dc2626', color: '#fff' },
+const BUTTON_CLASS: Record<string, string> = {
+  pending_approval: 'action-btn action-btn-pending',
+  approved:         'action-btn action-btn-approve',
+  executing:        'action-btn action-btn-execute',
+  completed:        'action-btn action-btn-complete',
+  blocked:          'action-btn action-btn-block',
 };
 
 interface Props {
@@ -78,11 +78,6 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
     transition(next);
   }
 
-  const btnBase: React.CSSProperties = {
-    padding: '2px 10px', borderRadius: 4, fontSize: 12, fontWeight: 600,
-    border: 'none', cursor: 'pointer', marginRight: 6, opacity: loading ? 0.6 : 1,
-  };
-
   return (
     <div style={{ marginTop: 4 }}>
       {!showBlockForm && !showApproveForm && !showCompleteForm && (
@@ -92,7 +87,7 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
               key={next}
               disabled={loading}
               onClick={() => handleClick(next)}
-              style={{ ...btnBase, ...BUTTON_STYLE[next] }}
+              className={BUTTON_CLASS[next] ?? 'action-btn action-btn-pending'}
             >
               {LABEL[next] ?? next}
             </button>
@@ -101,26 +96,18 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
       )}
 
       {showApproveForm && (
-        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <div className="inline-form">
           <input
+            className="inline-input"
             placeholder="Approval note (optional)"
             value={approvalNote}
             onChange={(e) => setApprovalNote(e.target.value)}
-            style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #ccc', borderRadius: 3 }}
           />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              disabled={loading}
-              onClick={() => transition('approved', { approvalNote })}
-              style={{ ...btnBase, ...BUTTON_STYLE.approved }}
-            >
+          <div className="inline-actions">
+            <button disabled={loading} onClick={() => transition('approved', { approvalNote })} className="action-btn action-btn-approve">
               Confirm Approve
             </button>
-            <button
-              disabled={loading}
-              onClick={() => setShowApproveForm(false)}
-              style={{ ...btnBase, background: '#6b7280', color: '#fff' }}
-            >
+            <button disabled={loading} onClick={() => setShowApproveForm(false)} className="action-btn action-btn-cancel">
               Cancel
             </button>
           </div>
@@ -128,26 +115,18 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
       )}
 
       {showCompleteForm && (
-        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <div className="inline-form">
           <input
+            className="inline-input"
             placeholder="Completion notes (optional)"
             value={completedNotes}
             onChange={(e) => setCompletedNotes(e.target.value)}
-            style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #ccc', borderRadius: 3 }}
           />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              disabled={loading}
-              onClick={() => transition('completed', { completedNotes })}
-              style={{ ...btnBase, ...BUTTON_STYLE.completed }}
-            >
+          <div className="inline-actions">
+            <button disabled={loading} onClick={() => transition('completed', { completedNotes })} className="action-btn action-btn-complete">
               Confirm Complete
             </button>
-            <button
-              disabled={loading}
-              onClick={() => setShowCompleteForm(false)}
-              style={{ ...btnBase, background: '#6b7280', color: '#fff' }}
-            >
+            <button disabled={loading} onClick={() => setShowCompleteForm(false)} className="action-btn action-btn-cancel">
               Cancel
             </button>
           </div>
@@ -155,33 +134,29 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
       )}
 
       {showBlockForm && (
-        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 }}>
+        <div className="inline-form">
           <input
+            className="inline-input"
             placeholder="Reason for blocking (required)"
             value={blockedReason}
             onChange={(e) => setBlockedReason(e.target.value)}
-            style={{ fontSize: 12, padding: '3px 6px', border: '1px solid #ccc', borderRadius: 3 }}
           />
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="inline-actions">
             <button
               disabled={loading || blockedReason.trim().length === 0}
               onClick={() => transition('blocked', { blockedReason })}
-              style={{ ...btnBase, ...BUTTON_STYLE.blocked, opacity: blockedReason.trim().length === 0 || loading ? 0.5 : 1 }}
+              className="action-btn action-btn-block"
             >
               Confirm Block
             </button>
-            <button
-              disabled={loading}
-              onClick={() => { setShowBlockForm(false); setBlockedReason(''); }}
-              style={{ ...btnBase, background: '#6b7280', color: '#fff' }}
-            >
+            <button disabled={loading} onClick={() => { setShowBlockForm(false); setBlockedReason(''); }} className="action-btn action-btn-cancel">
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {error && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--red)', fontSize: 11, marginTop: 4 }}>{error}</p>}
     </div>
   );
 }

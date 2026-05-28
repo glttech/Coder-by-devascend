@@ -25,9 +25,9 @@ export default function CopyButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       type="button"
-      className="mt-2 bg-indigo-600 text-white px-3 py-1 rounded text-sm"
+      className={`copy-btn${copied ? ' copied' : ''}`}
     >
-      {copied ? 'Copied!' : 'Copy Prompt'}
+      {copied ? '✓ Copied' : '⎘ Copy Prompt'}
     </button>
   );
 }

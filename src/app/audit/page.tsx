@@ -1,24 +1,10 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { EventBadge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
-
-const EVENT_BADGE: Record<string, React.CSSProperties> = {
-  instruction_created:        { background: '#dbeafe', color: '#1d4ed8' },
-  instruction_status_changed: { background: '#ede9fe', color: '#6d28d9' },
-  operator_session_created:   { background: '#dcfce7', color: '#15803d' },
-  operator_session_updated:   { background: '#d1fae5', color: '#065f46' },
-};
-
-function EventBadge({ event }: { event: string }) {
-  const style = EVENT_BADGE[event] ?? { background: '#f3f4f6', color: '#374151' };
-  const label = event.replace(/_/g, ' ');
-  return (
-    <span style={{ ...style, padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-      {label}
-    </span>
-  );
-}
 
 function parseDetails(raw: string | null): Record<string, unknown> | null {
   if (!raw) return null;
@@ -27,22 +13,17 @@ function parseDetails(raw: string | null): Record<string, unknown> | null {
 
 function DetailsSummary({ raw }: { raw: string | null }) {
   const data = parseDetails(raw);
-  if (!data) return <span style={{ color: '#9ca3af' }}>—</span>;
+  if (!data) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
 
-  // Surface the most useful fields first, omit IDs already shown in other columns.
-  const display: [string, unknown][] = [];
   const skip = new Set(['instructionId', 'taskId', 'at']);
-  for (const [k, v] of Object.entries(data)) {
-    if (skip.has(k)) continue;
-    display.push([k, v]);
-  }
+  const display: [string, unknown][] = Object.entries(data).filter(([k]) => !skip.has(k));
 
   return (
-    <div style={{ fontSize: 11, lineHeight: 1.5 }}>
+    <div style={{ fontSize: 11, lineHeight: 1.6 }}>
       {display.slice(0, 6).map(([k, v]) => (
         <div key={k}>
-          <span style={{ color: '#6b7280' }}>{k}:</span>{' '}
-          <span style={{ fontFamily: 'monospace' }}>
+          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{k}:</span>{' '}
+          <span style={{ fontFamily: 'monospace', color: 'var(--text)' }}>
             {typeof v === 'string' && v.length > 60 ? v.slice(0, 30) + '…' : String(v ?? '—')}
           </span>
         </div>
@@ -57,7 +38,6 @@ interface AuditPageProps {
 
 export default async function AuditPage({ searchParams }: AuditPageProps) {
   const { taskId, instructionId } = searchParams;
-
   const where: Record<string, unknown> = {};
   if (taskId) where.taskId = taskId;
   if (instructionId) where.instructionId = instructionId;
@@ -72,70 +52,75 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
     },
   });
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Audit Log</h2>
-        <span className="text-sm" style={{ color: '#6b7280' }}>
-          {logs.length === 200 ? '200+ entries (latest 200 shown)' : `${logs.length} entries`}
-          {taskId && <> · filtered by task <code>{taskId.slice(0, 8)}</code></>}
-          {instructionId && <> · filtered by instruction <code>{instructionId.slice(0, 8)}</code></>}
-        </span>
-      </div>
+  const subtitle = [
+    logs.length === 200 ? '200+ entries (latest 200 shown)' : `${logs.length} entries`,
+    taskId ? `· filtered by task ${taskId.slice(0, 8)}` : null,
+    instructionId ? `· filtered by instruction ${instructionId.slice(0, 8)}` : null,
+  ].filter(Boolean).join(' ');
 
-      {(taskId || instructionId) && (
-        <p className="text-xs">
-          <Link href="/audit" className="text-blue-600 underline">Clear filters</Link>
-        </p>
-      )}
+  return (
+    <div>
+      <PageHeader
+        title="Audit Log"
+        subtitle={subtitle}
+        actions={
+          (taskId || instructionId) ? (
+            <Link href="/audit" className="btn btn-ghost btn-sm">Clear filters</Link>
+          ) : undefined
+        }
+      />
 
       {logs.length === 0 ? (
-        <p className="text-sm" style={{ color: '#6b7280' }}>No audit entries found.</p>
+        <EmptyState
+          icon="◎"
+          title="No audit entries"
+          description="Audit entries are recorded automatically when instructions are created, status-changed, or operator sessions are submitted."
+        />
       ) : (
-        <table className="min-w-full text-sm border-collapse">
-          <thead>
-            <tr>
-              <th className="border-b py-2 text-left pr-4" style={{ width: 140 }}>When</th>
-              <th className="border-b py-2 text-left pr-4">Event</th>
-              <th className="border-b py-2 text-left pr-4">Task</th>
-              <th className="border-b py-2 text-left pr-4">Instruction</th>
-              <th className="border-b py-2 text-left">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-gray-100" style={{ verticalAlign: 'top' }}>
-                <td className="py-2 pr-4 text-xs" style={{ color: '#6b7280', whiteSpace: 'nowrap' }}>
-                  {log.createdAt.toISOString().replace('T', ' ').slice(0, 19)}
-                </td>
-                <td className="py-2 pr-4">
-                  <EventBadge event={log.event} />
-                </td>
-                <td className="py-2 pr-4 text-xs">
-                  {log.task ? (
-                    <Link href={`/tasks/${log.task.id}`} className="text-blue-600 underline">
-                      {log.task.title.length > 24 ? log.task.title.slice(0, 24) + '…' : log.task.title}
-                    </Link>
-                  ) : (
-                    <span style={{ color: '#9ca3af' }}>—</span>
-                  )}
-                </td>
-                <td className="py-2 pr-4 text-xs">
-                  {log.instruction ? (
-                    <Link href={`/audit?instructionId=${log.instruction.id}`} className="text-blue-600 underline">
-                      {log.instruction.title.length > 24 ? log.instruction.title.slice(0, 24) + '…' : log.instruction.title}
-                    </Link>
-                  ) : (
-                    <span style={{ color: '#9ca3af' }}>—</span>
-                  )}
-                </td>
-                <td className="py-2">
-                  <DetailsSummary raw={log.details} />
-                </td>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: 150 }}>When</th>
+                <th>Event</th>
+                <th>Task</th>
+                <th>Instruction</th>
+                <th>Details</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id} style={{ verticalAlign: 'top' }}>
+                  <td style={{ whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)', paddingTop: 12 }}>
+                    {log.createdAt.toISOString().replace('T', ' ').slice(0, 19)}
+                  </td>
+                  <td style={{ paddingTop: 12 }}>
+                    <EventBadge event={log.event} />
+                  </td>
+                  <td style={{ fontSize: 12 }}>
+                    {log.task ? (
+                      <Link href={`/tasks/${log.task.id}`} style={{ color: 'var(--blue)' }}>
+                        {log.task.title.length > 28 ? log.task.title.slice(0, 28) + '…' : log.task.title}
+                      </Link>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)' }}>—</span>
+                    )}
+                  </td>
+                  <td style={{ fontSize: 12 }}>
+                    {log.instruction ? (
+                      <Link href={`/audit?instructionId=${log.instruction.id}`} style={{ color: 'var(--blue)' }}>
+                        {log.instruction.title.length > 28 ? log.instruction.title.slice(0, 28) + '…' : log.instruction.title}
+                      </Link>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)' }}>—</span>
+                    )}
+                  </td>
+                  <td><DetailsSummary raw={log.details} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

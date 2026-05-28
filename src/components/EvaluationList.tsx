@@ -11,16 +11,23 @@ interface Props {
  */
 export default function EvaluationList({ evaluations }: Props) {
   return (
-    <div className="border-t pt-2 mt-2">
-      <h3 className="text-sm font-medium mb-1">Evaluations</h3>
-      <ul className="space-y-1 text-sm">
-        {evaluations.map((ev) => (
-          <li key={ev.id} className={ev.passed ? 'text-green-700' : 'text-red-700'}>
-            <span className="font-semibold">{ev.name}:</span> {ev.passed ? 'Pass' : 'Fail'}
-            {ev.reason && <span className="ml-1 text-gray-700">— {ev.reason}</span>}
-          </li>
-        ))}
-      </ul>
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 6 }}>
+        Evaluations
+      </div>
+      {evaluations.map((ev) => (
+        <div key={ev.id} className="eval-item">
+          <span className={`eval-dot ${ev.passed ? 'eval-dot-pass' : 'eval-dot-fail'}`} />
+          <div>
+            <span className="eval-name">{ev.name}</span>
+            {' '}
+            <span style={{ fontSize: 11, color: ev.passed ? 'var(--green-text)' : 'var(--red-text)', fontWeight: 600 }}>
+              {ev.passed ? 'Pass' : 'Fail'}
+            </span>
+            {ev.reason && <div className="eval-reason">{ev.reason}</div>}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
