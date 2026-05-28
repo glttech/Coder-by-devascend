@@ -73,7 +73,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
   const latestSession = task.operatorSessions[0] ?? null;
 
   return (
-    <div className="space-y-0 max-w-3xl">
+    <div className="max-w-3xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>

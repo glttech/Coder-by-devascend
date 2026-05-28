@@ -105,9 +105,12 @@ export async function POST(request: Request) {
       filesMentioned,
     });
 
+    const sessionCount = await prisma.operatorSession.count({ where: { taskId } });
+
     const session = await prisma.operatorSession.create({
       data: {
         taskId,
+        currentStep: sessionCount + 1,
         agentTool: agentTool ?? null,
         agentResponse: agentResponse ?? null,
         operatorInput: operatorInput ?? null,

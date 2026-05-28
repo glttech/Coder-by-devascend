@@ -16,8 +16,7 @@ export async function POST(request: Request) {
       update: { approved },
       create: { taskId, approved },
     });
-    // Update task status based on approval
-    await prisma.task.update({ where: { id: taskId }, data: { status: approved ? 'approved' : 'rejected' } });
+    // Task status is not changed by approval — approval state is tracked via the Approval model.
     return NextResponse.json(approval, { status: 200 });
   } catch (err) {
     console.error(err);

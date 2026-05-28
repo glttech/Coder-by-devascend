@@ -139,16 +139,24 @@ export async function PATCH(
       updateData.blockedReason = blockedReason!.trim();
     }
 
-    const updated = await prisma.instruction.update({
-      where: { id: params.id },
-      data: updateData,
+    // Compute stateVersion from the merged (current + incoming) state before writing,
+    // so the create and stateVersion land in a single atomic update.
+    const nextStateVersion = computeStateVersion({
+      id: instruction.id,
+      taskId: instruction.taskId,
+      title: instruction.title,
+      body: instruction.body,
+      status: nextStatus,
+      approvedBy: (updateData.approvedBy as string | undefined) ?? instruction.approvedBy,
+      approvalNote: (updateData.approvalNote as string | undefined) ?? instruction.approvalNote,
+      blockedReason: (updateData.blockedReason as string | undefined) ?? instruction.blockedReason,
+      completedNotes: (updateData.completedNotes as string | undefined) ?? instruction.completedNotes,
     });
+    updateData.stateVersion = nextStateVersion;
 
-    // Recompute stateVersion from the post-update state.
-    const nextStateVersion = computeStateVersion(updated);
     const withVersion = await prisma.instruction.update({
       where: { id: params.id },
-      data: { stateVersion: nextStateVersion },
+      data: updateData,
     });
 
     await prisma.auditLog.create({

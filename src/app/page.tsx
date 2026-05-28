@@ -79,7 +79,7 @@ export default async function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Total Tasks" value={totalTasks.toString()} />
           {Object.entries(byStatus).map(([status, count]) => (
-            <StatCard key={status} label={status.replace(/^(.)/, (c) => c.toUpperCase())} value={count.toString()} />
+            <StatCard key={status} label={status.replace(/_/g, ' ').replace(/^(.)/, (c) => c.toUpperCase())} value={count.toString()} />
           ))}
           <StatCard label="Pending Approvals" value={pendingApprovals.toString()} />
           <StatCard label="Failed Evaluations" value={failedEvaluations.toString()} />
@@ -102,7 +102,7 @@ export default async function Dashboard() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <HealthCard
-            label="Pending Approvals"
+            label="Pending Instruction Approvals"
             value={pendingInstructions}
             href="/instructions/pending"
             warn={pendingInstructions > 0}
