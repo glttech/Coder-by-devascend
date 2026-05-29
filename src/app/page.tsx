@@ -84,6 +84,31 @@ export default async function Dashboard() {
         subtitle="Governance overview for AI-assisted development"
       />
 
+      {/* How it works */}
+      <div className="section">
+        <div className="card">
+          <p className="explainer-tagline">
+            AI change control for AI-assisted development — every agent change is risk-checked, gated, and audited before it ships.
+          </p>
+          <div className="explainer-steps">
+            {[
+              { n: '1', title: 'Create a task', desc: 'Define the work, agent tool, risk level, and environment.' },
+              { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt with stop conditions and validation steps.' },
+              { n: '3', title: 'Record the agent response', desc: 'Paste what the AI agent did — files, commands, and output.' },
+              { n: '4', title: 'Get a risk decision', desc: 'The console flags risk, checks evidence, and recommends the safe next step with a full audit trail.' },
+            ].map(({ n, title, desc }) => (
+              <div key={n} className="explainer-step">
+                <div className="explainer-step-num">{n}</div>
+                <div>
+                  <div className="explainer-step-title">{title}</div>
+                  <div className="explainer-step-desc">{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Overview stats */}
       <div className="section">
         <div className="section-header">
