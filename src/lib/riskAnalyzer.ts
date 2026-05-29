@@ -65,10 +65,34 @@ const RISK_RULES: RiskRule[] = [
   },
 ];
 
+// Removes clauses where the speaker negates or disclaims an action so that
+// patterns firing on those phrases do not produce false positives.
+// Examples stripped: "No production touched.", "No files deleted.",
+// "did not touch production", "haven't modified the database".
+export function stripNegatedClauses(text: string): string {
+  return (
+    text
+      // "No <noun/verb phrase>." — short negated nominal sentence (1-6 words), case-insensitive
+      .replace(/\bno\s+(?:\w+\s+){0,5}\w+\./gi, '')
+      // "no <noun> <past-participle>" without trailing period
+      .replace(/\bno\s+\w+(?:\s+\w+){0,4}/gi, '')
+      // "did not / didn't / doesn't / don't / won't / wasn't / weren't /
+      //  haven't / hadn't / has not / have not / never" followed by up to 8 words
+      .replace(
+        /\b(?:did\s+not|didn't|does\s+not|doesn't|do\s+not|don't|won't|will\s+not|was\s+not|wasn't|were\s+not|weren't|have\s+not|haven't|had\s+not|hadn't|has\s+not|hasn't|never|not)\s+(?:\w+\s+){0,7}\w+/gi,
+        '',
+      )
+      // Trim leftover whitespace artifacts
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  );
+}
+
 export function analyzeRisk(text: string): RiskFlag[] {
+  const sanitised = stripNegatedClauses(text);
   const flags: RiskFlag[] = [];
   for (const rule of RISK_RULES) {
-    if (rule.pattern.test(text)) {
+    if (rule.pattern.test(sanitised)) {
       flags.push({
         key: rule.key,
         label: rule.label,
