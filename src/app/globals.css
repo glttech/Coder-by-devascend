@@ -976,3 +976,127 @@ tbody tr:hover { background-color: #f8fafc; }
   flex-wrap: wrap;
   gap: 4px;
 }
+
+/* ── Mobile responsive layout ────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Sidebar becomes a compact top bar */
+  .app-shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    min-height: unset;
+    height: auto;
+    position: static;
+    overflow: visible;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-brand {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: none;
+  }
+  .sidebar-brand-label { display: none; }
+  .sidebar-nav {
+    flex: unset;
+    padding: 0 8px 10px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .sidebar-link {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .sidebar-link-icon { display: none; }
+  .sidebar-footer { display: none; }
+  .main-area { overflow: visible; }
+
+  /* Tighter content padding on mobile */
+  .main-content {
+    padding: 1rem 1rem 2rem;
+  }
+
+  /* Stack 2-col and 3-col grids */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+  .md\:grid-cols-3,
+  .md\:grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Analysis grid single column */
+  .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Tables scroll horizontally instead of overflowing */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Page header stacks on mobile */
+  .page-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Stat cards: 2-up on mobile */
+  .stat-card { min-width: 0; }
+
+  /* Health cards: 2-up on mobile */
+  .health-card { min-width: 0; }
+
+  /* Preset grid: single column on mobile */
+  .preset-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Form grid: single column on mobile */
+  .grid.grid-cols-1 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Decision banner: wrap content */
+  .decision-banner {
+    flex-wrap: wrap;
+  }
+
+  /* Session timeline rows: wrap on mobile */
+  .session-timeline-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Decision summary rows: wrap */
+  .decision-summary-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .decision-summary-title { max-width: 100%; }
+  .decision-summary-reason { display: none; }
+
+  /* Copy button full width on mobile */
+  .copy-btn { width: 100%; justify-content: center; }
+
+  /* Card padding reduced on mobile */
+  .card { padding: 14px; }
+  .card.card-sm { padding: 12px; }
+
+  /* Stat card value: smaller on mobile */
+  .stat-card-value { font-size: 1.5rem; }
+}
+
+/* Narrow phones */
+@media (max-width: 400px) {
+  .main-content { padding: 0.75rem 0.75rem 1.5rem; }
+  .stat-card { padding: 10px 12px; }
+}
