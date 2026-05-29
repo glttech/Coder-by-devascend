@@ -37,9 +37,13 @@ export async function POST(request: Request) {
   }
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     errors.push('title is required');
+  } else if (title.length > 500) {
+    errors.push('title must be 500 characters or fewer');
   }
   if (!instructionBody || typeof instructionBody !== 'string' || instructionBody.trim().length === 0) {
     errors.push('body is required');
+  } else if (instructionBody.length > 50_000) {
+    errors.push('body must be 50,000 characters or fewer');
   }
   if (status !== undefined && !isValidStatus(status)) {
     errors.push(`status must be one of: ${VALID_STATUSES.join(', ')}`);

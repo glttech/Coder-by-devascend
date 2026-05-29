@@ -28,9 +28,13 @@ export async function POST(request: Request) {
   const errors: string[] = [];
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     errors.push('title is required');
+  } else if (title.length > 500) {
+    errors.push('title must be 500 characters or fewer');
   }
   if (!instruction || typeof instruction !== 'string' || instruction.trim().length === 0) {
     errors.push('instruction is required');
+  } else if (instruction.length > 50_000) {
+    errors.push('instruction must be 50,000 characters or fewer');
   }
   if (!agentTool || !VALID_AGENT_TOOLS.includes(agentTool)) {
     errors.push(`agentTool must be one of: ${VALID_AGENT_TOOLS.join(', ')}`);

@@ -50,6 +50,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'taskId is required' }, { status: 422 });
   }
 
+  if (agentResponse && agentResponse.length > 50_000) {
+    return NextResponse.json({ error: 'agentResponse must be 50,000 characters or fewer' }, { status: 422 });
+  }
+
   const filesMentioned = parseLines(body.filesMentioned);
   const commandsMentioned = parseLines(body.commandsMentioned);
 
