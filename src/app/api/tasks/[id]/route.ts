@@ -1,0 +1,116 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+
+const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
+const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
+const TERMINAL_STATUSES = new Set(['completed', 'failed']);
+
+// GET /api/tasks/[id] — return a single task with relations.
+export async function GET(
+  _request: Request,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const task = await prisma.task.findUnique({
+      where: { id: params.id },
+      include: { project: true, approval: true },
+    });
+    if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    return NextResponse.json(task);
+  } catch (err) {
+    console.error('[tasks GET]', err);
+    return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
+  }
+}
+
+// PATCH /api/tasks/[id] — update editable task fields.
+// Accepts any subset of: title, instruction, riskLevel, environment, approvalRequired.
+// Blocked when the task is in a terminal status (completed / failed).
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } },
+) {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const { title, instruction, riskLevel, environment, approvalRequired } = body;
+
+  const errors: string[] = [];
+
+  if (title !== undefined) {
+    if (typeof title !== 'string' || title.trim().length === 0) {
+      errors.push('title must be a non-empty string');
+    } else if (title.length > 500) {
+      errors.push('title must be 500 characters or fewer');
+    }
+  }
+
+  if (instruction !== undefined) {
+    if (typeof instruction !== 'string' || instruction.trim().length === 0) {
+      errors.push('instruction must be a non-empty string');
+    } else if (instruction.length > 50_000) {
+      errors.push('instruction must be 50,000 characters or fewer');
+    }
+  }
+
+  if (riskLevel !== undefined && !VALID_RISK_LEVELS.includes(riskLevel as string)) {
+    errors.push(`riskLevel must be one of: ${VALID_RISK_LEVELS.join(', ')}`);
+  }
+
+  if (environment !== undefined && !VALID_ENVIRONMENTS.includes(environment as string)) {
+    errors.push(`environment must be one of: ${VALID_ENVIRONMENTS.join(', ')}`);
+  }
+
+  if (approvalRequired !== undefined && typeof approvalRequired !== 'boolean') {
+    errors.push('approvalRequired must be a boolean');
+  }
+
+  if (errors.length > 0) {
+    return NextResponse.json({ error: errors.join('; ') }, { status: 422 });
+  }
+
+  try {
+    const existing = await prisma.task.findUnique({ where: { id: params.id } });
+    if (!existing) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+
+    if (TERMINAL_STATUSES.has(existing.status)) {
+      return NextResponse.json(
+        { error: `Task is in terminal status '${existing.status}' and cannot be edited` },
+        { status: 409 },
+      );
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = (title as string).trim();
+    if (instruction !== undefined) updateData.instruction = (instruction as string).trim();
+    if (riskLevel !== undefined) updateData.riskLevel = riskLevel;
+    if (environment !== undefined) updateData.environment = environment;
+    if (approvalRequired !== undefined) updateData.approvalRequired = approvalRequired;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(existing);
+    }
+
+    const updated = await prisma.task.update({
+      where: { id: params.id },
+      data: updateData,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        taskId: params.id,
+        event: 'task_edited',
+        details: JSON.stringify({ fields: Object.keys(updateData), at: new Date().toISOString() }),
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (err) {
+    console.error('[tasks PATCH]', err);
+    return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
+  }
+}

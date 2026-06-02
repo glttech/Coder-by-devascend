@@ -52,9 +52,16 @@ export default async function TaskPage({ params }: TaskPageProps) {
         }
         badge={<RiskBadge level={task.riskLevel} />}
         actions={
-          <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
-            Evidence Report →
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!['completed', 'failed'].includes(task.status) && (
+              <Link href={`/tasks/${task.id}/edit`} className="btn btn-ghost btn-sm">
+                Edit
+              </Link>
+            )}
+            <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
+              Evidence Report →
+            </Link>
+          </div>
         }
       />
 
