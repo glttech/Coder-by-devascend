@@ -68,14 +68,23 @@ const RISK_RULES: RiskRule[] = [
 // Removes clauses where the speaker negates or disclaims an action so that
 // patterns firing on those phrases do not produce false positives.
 // Examples stripped: "No production touched.", "No files deleted.",
-// "did not touch production", "haven't modified the database".
+// "did not touch production", "haven't modified the database",
+// "nothing involving api_key was logged", "nothing failed",
+// "No .env file was read", "avoided running rm -rf",
+// "bypassed the production environment", "skipped the migration".
 export function stripNegatedClauses(text: string): string {
   return (
     text
-      // "No <noun/verb phrase>." — short negated nominal sentence (1-6 words), case-insensitive
-      .replace(/\bno\s+(?:\w+\s+){0,5}\w+\./gi, '')
-      // "no <noun> <past-participle>" without trailing period
-      .replace(/\bno\s+\w+(?:\s+\w+){0,4}/gi, '')
+      // "No <phrase>." — negated sentence up to 9 words, period required.
+      // \S+ allows the first word to start with non-alpha (e.g. .env, api_key=).
+      .replace(/\bno\s+\S+(?:\s+\w+){0,8}\./gi, '')
+      // "no <phrase>" without trailing period — up to 9 words total after "no"
+      .replace(/\bno\s+\S+(?:\s+\w+){0,8}/gi, '')
+      // "nothing <any phrase>" up to 10 words — covers "nothing was X",
+      // "nothing involving X was Y", "nothing failed", etc.
+      .replace(/\bnothing\s+(?:\w+\s+){0,9}\w+/gi, '')
+      // Explicit disclaimer verbs: "avoided / bypassed / skipped <phrase>" — up to 8 words
+      .replace(/\b(?:avoided|bypassed|skipped)\s+(?:\w+\s+){0,7}\w+/gi, '')
       // "did not / didn't / doesn't / don't / won't / wasn't / weren't /
       //  haven't / hadn't / has not / have not / never" followed by up to 8 words
       .replace(
