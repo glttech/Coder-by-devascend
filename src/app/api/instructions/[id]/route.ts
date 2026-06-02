@@ -180,6 +180,36 @@ export async function PATCH(
       },
     });
 
+    // Propagate instruction outcomes to the parent task status.
+    if (nextStatus === 'blocked') {
+      // Any blocked instruction means the task cannot complete cleanly.
+      await prisma.task.update({ where: { id: instruction.taskId }, data: { status: 'failed' } });
+      await prisma.auditLog.create({
+        data: {
+          taskId: instruction.taskId,
+          instructionId: instruction.id,
+          event: 'task_status_changed',
+          details: JSON.stringify({ from: null, to: 'failed', reason: 'instruction_blocked', instructionId: instruction.id, at: now.toISOString() }),
+        },
+      });
+    } else if (nextStatus === 'completed') {
+      // Check whether every instruction for this task is now completed.
+      const remaining = await prisma.instruction.count({
+        where: { taskId: instruction.taskId, status: { not: 'completed' } },
+      });
+      if (remaining === 0) {
+        await prisma.task.update({ where: { id: instruction.taskId }, data: { status: 'completed' } });
+        await prisma.auditLog.create({
+          data: {
+            taskId: instruction.taskId,
+            instructionId: instruction.id,
+            event: 'task_status_changed',
+            details: JSON.stringify({ from: null, to: 'completed', reason: 'all_instructions_completed', at: now.toISOString() }),
+          },
+        });
+      }
+    }
+
     return NextResponse.json({ instruction: withVersion });
   } catch (err) {
     console.error('[instructions PATCH]', err);

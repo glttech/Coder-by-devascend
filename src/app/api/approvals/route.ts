@@ -82,7 +82,19 @@ export async function POST(request: Request) {
       },
     });
 
-    // Task status is not changed by approval — approval state is tracked via the Approval model.
+    // Advance task status: an accepted approval means work can begin.
+    // Only move forward from 'pending' — do not overwrite 'running'/'completed'/'failed'.
+    if (approved === true && task?.status === 'pending') {
+      await prisma.task.update({ where: { id: taskId }, data: { status: 'running' } });
+      await prisma.auditLog.create({
+        data: {
+          taskId,
+          event: 'task_status_changed',
+          details: JSON.stringify({ from: 'pending', to: 'running', reason: 'approval_accepted', at: new Date().toISOString() }),
+        },
+      });
+    }
+
     return NextResponse.json(approval, { status: 200 });
   } catch (err) {
     console.error(err);

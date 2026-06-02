@@ -13,6 +13,7 @@ const EVENT_LABELS: Record<string, string> = {
   task_created:                 'Task Created',
   agent_run_created:            'Agent Run Recorded',
   task_approval_decided:        'Approval Decided',
+  task_status_changed:          'Task Status Changed',
 };
 
 const RISK_EVENTS = new Set(['operator_session_created', 'operator_session_updated']);
