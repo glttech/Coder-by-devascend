@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { RiskBadge, EnvBadge } from '@/components/ui/Badge';
+import InstructionActions from '@/components/InstructionActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,18 @@ export default async function PendingApprovalsPage() {
       task: { select: { id: true, title: true, riskLevel: true, environment: true } },
     },
   });
+
+  // Group instructions by task
+  const taskMap = new Map<string, {
+    task: { id: string; title: string; riskLevel: string; environment: string };
+    instructions: typeof pending;
+  }>();
+  for (const instr of pending) {
+    const key = instr.task.id;
+    if (!taskMap.has(key)) taskMap.set(key, { task: instr.task, instructions: [] });
+    taskMap.get(key)!.instructions.push(instr);
+  }
+  const groups = Array.from(taskMap.values());
 
   return (
     <div>
@@ -33,66 +46,59 @@ export default async function PendingApprovalsPage() {
         <EmptyState
           icon="◉"
           title="No instructions awaiting approval"
-          description="When instructions are submitted for approval they appear here. Approve or block them from the task detail page."
+          description="When instructions are submitted for approval they appear here. Approve or block them directly from this page."
         />
       ) : (
-        <>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Instruction</th>
-                  <th>Task</th>
-                  <th>Risk</th>
-                  <th>Env</th>
-                  <th>Submitted</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map((instr) => (
-                  <tr key={instr.id}>
-                    <td>
-                      <div style={{ fontWeight: 500, color: 'var(--text)' }}>{instr.title}</div>
-                      <span className="id-chip" style={{ marginTop: 3, display: 'inline-block' }}>
-                        {instr.id.slice(0, 8)}
-                      </span>
-                    </td>
-                    <td>
-                      <Link href={`/tasks/${instr.task.id}`} style={{ color: 'var(--blue)', fontWeight: 500 }}>
-                        {instr.task.title}
-                      </Link>
-                    </td>
-                    <td><RiskBadge level={instr.task.riskLevel} /></td>
-                    <td><EnvBadge env={instr.task.environment} /></td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                      {instr.createdAt.toISOString().split('T')[0]}
-                    </td>
-                    <td>
-                      <Link
-                        href={`/tasks/${instr.task.id}#instructions`}
-                        className="btn btn-primary btn-sm"
-                      >
-                        Review →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {groups.map(({ task, instructions }) => (
+            <div key={task.id}>
+              {/* Task group header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)',
+              }}>
+                <Link href={`/tasks/${task.id}`} style={{ fontWeight: 600, color: 'var(--blue)', fontSize: 14 }}>
+                  {task.title}
+                </Link>
+                <RiskBadge level={task.riskLevel} />
+                <EnvBadge env={task.environment} />
+                <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+                  {instructions.length} instruction{instructions.length !== 1 ? 's' : ''} pending
+                </span>
+              </div>
 
-          <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)' }}>
-            Approve or block from the task detail page via{' '}
-            <code style={{ background: 'var(--gray-bg)', padding: '1px 5px', borderRadius: 3 }}>
-              PATCH /api/instructions/[id]
-            </code>{' '}
-            with{' '}
-            <code style={{ background: 'var(--gray-bg)', padding: '1px 5px', borderRadius: 3 }}>
-              {'{"status":"approved"}'}
-            </code>.
-          </div>
-        </>
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Instruction</th>
+                      <th>Submitted</th>
+                      <th style={{ minWidth: 260 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {instructions.map((instr) => (
+                      <tr key={instr.id} style={{ verticalAlign: 'top' }}>
+                        <td>
+                          <div style={{ fontWeight: 500, color: 'var(--text)' }}>{instr.title}</div>
+                          <span className="id-chip" style={{ marginTop: 3, display: 'inline-block' }}>
+                            {instr.id.slice(0, 8)}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: 12, paddingTop: 12 }}>
+                          {instr.createdAt.toISOString().split('T')[0]}
+                        </td>
+                        <td>
+                          <InstructionActions instructionId={instr.id} currentStatus={instr.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
