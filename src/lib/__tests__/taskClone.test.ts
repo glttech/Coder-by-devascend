@@ -15,7 +15,7 @@ interface TaskLike {
 }
 
 function buildCloneTitle(sourceTitle: string): string {
-  return `Copy of ${sourceTitle}`;
+  return `Copy of ${sourceTitle}`.slice(0, 500);
 }
 
 function buildCloneData(source: TaskLike): Omit<TaskLike, 'id'> {
@@ -62,6 +62,19 @@ describe('buildCloneTitle', () => {
 
   test('preserves original title exactly (no trim)', () => {
     assert.equal(buildCloneTitle('  spaces  '), 'Copy of   spaces  ');
+  });
+
+  test('truncates to 500 chars when source title is at max length', () => {
+    const maxTitle = 'x'.repeat(500);
+    const result = buildCloneTitle(maxTitle);
+    assert.equal(result.length, 500);
+    assert.ok(result.startsWith('Copy of '));
+  });
+
+  test('does not truncate when source title is short', () => {
+    const result = buildCloneTitle('Short title');
+    assert.equal(result, 'Copy of Short title');
+    assert.ok(result.length < 500);
   });
 });
 

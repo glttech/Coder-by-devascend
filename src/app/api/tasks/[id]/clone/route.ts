@@ -15,7 +15,7 @@ export async function POST(
 
     const clone = await prisma.task.create({
       data: {
-        title: `Copy of ${source.title}`,
+        title: `Copy of ${source.title}`.slice(0, 500),
         instruction: source.instruction,
         agentTool: source.agentTool,
         riskLevel: source.riskLevel,
