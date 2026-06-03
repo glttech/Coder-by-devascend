@@ -196,11 +196,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #37 |
 | Branch | feat/rate-limiting |
-| Merge SHA | _pending_ |
+| Merge SHA | `ef0a631` |
 | Files changed | `src/middleware.ts`, `src/lib/rateLimiter.ts`, `src/lib/__tests__/rateLimiter.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 272 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | green ✅ |
 | Risk level | Low |
 | Rollback | Revert `src/middleware.ts`, delete `src/lib/rateLimiter.ts` |
 | Repo-only | Yes |
@@ -208,12 +208,71 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 
 ---
 
+### PR #38 — feat: Staleness Indicators (Backlog #15)
+
+#### CEO/Product Decision
+
+- Task: **Backlog #15 — Staleness Indicators**
+- Why: Non-terminal tasks stuck for 7+ days are invisible without this change. Operators need to see at a glance which tasks are stale so they can unblock or close them.
+- Out of scope: schema changes, new endpoints, auth changes
+- Confirmed repo-only work: yes
+
+#### CTO/Architecture Review
+
+- Files touched: `src/app/tasks/page.tsx`, `src/app/page.tsx`
+- No API, schema, or auth changes
+- Stale detection uses existing `updatedAt` field — no new DB columns
+- Dashboard adds one `prisma.task.count` query (cheap, indexed on `updatedAt`)
+- Rollback: revert both page files — no DB state affected
+
+#### CISO/Safety Review
+
+- No secrets involved
+- No new endpoints, no auth/RBAC changes
+- Read-only UI change — no write paths modified
+- Risk: Low
+
+#### Implementation Summary
+
+- `src/app/tasks/page.tsx`:
+  - Added `STALE_THRESHOLD_MS` (7 days) and `TERMINAL_STATUSES` constants
+  - Added `relativeTime(date)` helper showing relative timestamps
+  - Renamed "Created" column to "Last activity" using `relativeTime(task.updatedAt)`
+  - Stale non-terminal rows get amber background highlight + amber timestamp + "stale" badge
+  - PageHeader shows stale count badge when > 0
+- `src/app/page.tsx`:
+  - Added `staleTasks` count query (non-terminal tasks with `updatedAt < 7 days ago`)
+  - Added to `healthWarning` boolean
+  - Added "Stale Tasks (7d+)" `HealthCard` in Governance Health section pointing to `/tasks`
+  - Renamed existing "Stale (7d+)" card to "Stale Instructions (7d+)" for clarity
+
+#### QA/Test Summary
+
+- Backlog #15 spec: UI-only, no tests required
+- All 272 existing tests pass (unchanged)
+- Build clean
+
+| Field | Value |
+|-------|-------|
+| PR | #38 |
+| Branch | feat/staleness-indicators |
+| Merge SHA | _pending_ |
+| Files changed | `src/app/tasks/page.tsx`, `src/app/page.tsx`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 272 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low |
+| Rollback | Revert `src/app/tasks/page.tsx` and `src/app/page.tsx` |
+| Repo-only | Yes |
+| DEV/prod validation | Pending |
+
+---
+
 ### Next Selected Task
 
-**Backlog #11 complete. Next: Backlog #15 — Staleness Indicators (task list "Last activity" + stale badge)**
-- UI-only addition to task list page
-- No schema changes
-- Closes a daily-usability gap (stuck tasks not visible)
+**Backlog #15 complete. Next: Backlog #17 — Task Clone/Duplicate**
+- Low risk, no schema changes
+- Adds a "Clone" button on task detail that creates a new task pre-filled with the same fields
 
 ### Blockers / Deferred
 

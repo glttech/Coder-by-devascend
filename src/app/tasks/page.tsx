@@ -6,6 +6,21 @@ import { RiskBadge, EnvBadge } from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
 
+const STALE_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const TERMINAL_STATUSES = new Set(['completed', 'failed']);
+
+function relativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1)  return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24)  return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7)  return `${diffDay}d ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default async function TaskList() {
   const tasks = await prisma.task.findMany({
     orderBy: { createdAt: 'desc' },
@@ -14,11 +29,23 @@ export default async function TaskList() {
     },
   });
 
+  const sevenDaysAgo = new Date(Date.now() - STALE_THRESHOLD_MS);
+  const staleCount = tasks.filter(
+    (t) => !TERMINAL_STATUSES.has(t.status) && t.updatedAt < sevenDaysAgo,
+  ).length;
+
   return (
     <div>
       <PageHeader
         title="Tasks"
         subtitle={`${tasks.length} task${tasks.length !== 1 ? 's' : ''} total`}
+        badge={
+          staleCount > 0 ? (
+            <span className="badge badge-warning" title="Non-terminal tasks not updated in 7+ days">
+              {staleCount} stale
+            </span>
+          ) : undefined
+        }
         actions={
           <Link href="/tasks/new" className="btn btn-primary">
             + New Task
@@ -44,39 +71,53 @@ export default async function TaskList() {
                 <th>Risk</th>
                 <th>Env</th>
                 <th>Agent</th>
-                <th>Created</th>
+                <th>Last activity</th>
                 <th>Pending</th>
               </tr>
             </thead>
             <tbody>
-              {tasks.map((task) => (
-                <tr key={task.id}>
-                  <td>
-                    <Link href={`/tasks/${task.id}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 11 }}>
-                      {task.id.slice(0, 8)}
-                    </Link>
-                  </td>
-                  <td>
-                    <Link href={`/tasks/${task.id}`} style={{ color: 'var(--text)', fontWeight: 500 }}>
-                      {task.title}
-                    </Link>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{task.status}</td>
-                  <td><RiskBadge level={task.riskLevel} /></td>
-                  <td><EnvBadge env={task.environment} /></td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                    {task.createdAt.toISOString().split('T')[0]}
-                  </td>
-                  <td>
-                    {task.instructions.length > 0 && (
-                      <span className="badge badge-pending_approval">
-                        {task.instructions.length} pending
+              {tasks.map((task) => {
+                const stale = !TERMINAL_STATUSES.has(task.status) && task.updatedAt < sevenDaysAgo;
+                return (
+                  <tr key={task.id} style={stale ? { background: 'var(--amber-bg, rgba(251,191,36,0.05))' } : undefined}>
+                    <td>
+                      <Link href={`/tasks/${task.id}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 11 }}>
+                        {task.id.slice(0, 8)}
+                      </Link>
+                    </td>
+                    <td>
+                      <Link href={`/tasks/${task.id}`} style={{ color: 'var(--text)', fontWeight: 500 }}>
+                        {task.title}
+                      </Link>
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{task.status}</td>
+                    <td><RiskBadge level={task.riskLevel} /></td>
+                    <td><EnvBadge env={task.environment} /></td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
+                    <td style={{ fontSize: 12 }}>
+                      <span style={{ color: stale ? 'var(--amber)' : 'var(--text-muted)' }}>
+                        {relativeTime(task.updatedAt)}
                       </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      {stale && (
+                        <span
+                          className="badge badge-warning"
+                          style={{ marginLeft: 6, fontSize: 10 }}
+                          title="Not updated in 7+ days"
+                        >
+                          stale
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {task.instructions.length > 0 && (
+                        <span className="badge badge-pending_approval">
+                          {task.instructions.length} pending
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

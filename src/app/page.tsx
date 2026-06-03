@@ -15,6 +15,7 @@ export default async function Dashboard() {
   let pendingInstructions = 0;
   let blockedInstructions = 0;
   let staleInstructions = 0;
+  let staleTasks = 0;
   let sessionsNeedingAction = 0;
   let recentTasks: { id: string; title: string; status: string; riskLevel: string; environment: string; createdAt: Date }[] = [];
   let riskyDecisions: { id: string; taskId: string; taskTitle: string; recommendedAction: string; decisionReason: string | null; createdAt: Date }[] = [];
@@ -41,6 +42,9 @@ export default async function Dashboard() {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     staleInstructions = await prisma.instruction.count({
       where: { status: { in: ['approved', 'executing'] }, updatedAt: { lt: sevenDaysAgo } },
+    });
+    staleTasks = await prisma.task.count({
+      where: { status: { notIn: ['completed', 'failed'] }, updatedAt: { lt: sevenDaysAgo } },
     });
 
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
@@ -75,7 +79,7 @@ export default async function Dashboard() {
     console.warn('Database not ready', err);
   }
 
-  const healthWarning = pendingInstructions > 0 || blockedInstructions > 0 || staleInstructions > 0 || sessionsNeedingAction > 0;
+  const healthWarning = pendingInstructions > 0 || blockedInstructions > 0 || staleInstructions > 0 || staleTasks > 0 || sessionsNeedingAction > 0;
 
   return (
     <div>
@@ -166,13 +170,22 @@ export default async function Dashboard() {
             warnBorder="#fca5a5"
           />
           <HealthCard
-            label="Stale (7d+)"
+            label="Stale Instructions (7d+)"
             value={staleInstructions}
             href="/tasks"
             warn={staleInstructions > 0}
             warnColor="var(--purple)"
             warnBorder="#c4b5fd"
             tooltip="Approved/executing instructions not updated in 7+ days"
+          />
+          <HealthCard
+            label="Stale Tasks (7d+)"
+            value={staleTasks}
+            href="/tasks"
+            warn={staleTasks > 0}
+            warnColor="var(--amber)"
+            warnBorder="#fde68a"
+            tooltip="Non-terminal tasks not updated in 7+ days"
           />
           <HealthCard
             label="Sessions Needing Action"
