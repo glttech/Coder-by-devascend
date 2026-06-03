@@ -256,11 +256,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #38 |
 | Branch | feat/staleness-indicators |
-| Merge SHA | _pending_ |
+| Merge SHA | `e82e0972` |
 | Files changed | `src/app/tasks/page.tsx`, `src/app/page.tsx`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 272 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | green ✅ |
 | Risk level | Low |
 | Rollback | Revert `src/app/tasks/page.tsx` and `src/app/page.tsx` |
 | Repo-only | Yes |
@@ -268,11 +268,76 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 
 ---
 
+### PR #39 — feat: Task Clone/Duplicate (Backlog #17)
+
+#### CEO/Product Decision
+
+- Task: **Backlog #17 — Task Clone / Duplicate**
+- Why: Saves time creating similar tasks (copy instruction, riskLevel, environment, agentTool, approvalRequired). Common workflow when running the same task in different environments or with slight instruction edits.
+- Out of scope: schema changes, auth changes, cloning agent runs / approvals / instructions
+- Confirmed repo-only work: yes
+
+#### CTO/Architecture Review
+
+- Files touched: `src/app/api/tasks/[id]/clone/route.ts` (new), `src/components/CloneTaskButton.tsx` (new), `src/app/tasks/[id]/page.tsx`
+- New `POST /api/tasks/[id]/clone` — fetches source, creates new task, emits `task_cloned` audit event
+- `CloneTaskButton` is a small `'use client'` component — redirects to new task on success
+- No schema changes, no auth changes
+- Rollback: delete `clone/route.ts`, delete `CloneTaskButton.tsx`, revert task detail page
+
+#### CISO/Safety Review
+
+- No secrets involved
+- New endpoint follows same Prisma + audit log pattern as all other write endpoints
+- No auth/RBAC weakening
+- Rate limiting middleware already covers POST `/api/tasks/[id]/clone`
+- Risk: Low
+
+#### Implementation Summary
+
+- `src/app/api/tasks/[id]/clone/route.ts`:
+  - `POST /api/tasks/[id]/clone` — 404 if source not found
+  - Clones: title (`"Copy of {title}"`), instruction, agentTool, riskLevel, environment, approvalRequired, projectId
+  - Excludes: id, status (defaults to 'pending'), agentRuns, approval, instructions, auditLogs
+  - Emits `task_cloned` audit event with `sourceTaskId`
+- `src/components/CloneTaskButton.tsx`:
+  - `'use client'` button, calls clone API on click, redirects to new task on success
+  - Shows inline error text on failure
+- `src/app/tasks/[id]/page.tsx`:
+  - Imports `CloneTaskButton`, adds it between Edit and Evidence Report buttons
+
+#### QA/Test Summary
+
+- New `src/lib/__tests__/taskClone.test.ts` — 22 tests across 6 suites:
+  - `buildCloneTitle` — 4 tests (prefix, empty, double-clone, whitespace)
+  - `buildCloneData` field copying — 7 tests
+  - `buildCloneData` excluded fields — 6 tests (id, agentRuns, instructions, approval, auditLogs, status)
+  - `approvalRequired` variants — 2 tests
+  - `buildCloneAuditDetails` — 3 tests
+- 294 total tests pass (was 272; +22 new)
+- Build clean: `/api/tasks/[id]/clone` listed as `ƒ 0 B`
+
+| Field | Value |
+|-------|-------|
+| PR | #39 |
+| Branch | feat/task-clone |
+| Merge SHA | _pending_ |
+| Files changed | `src/app/api/tasks/[id]/clone/route.ts`, `src/components/CloneTaskButton.tsx`, `src/app/tasks/[id]/page.tsx`, `src/lib/__tests__/taskClone.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 294 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low |
+| Rollback | Delete `clone/route.ts`, delete `CloneTaskButton.tsx`, revert task detail page |
+| Repo-only | Yes |
+| DEV/prod validation | Pending |
+
+---
+
 ### Next Selected Task
 
-**Backlog #15 complete. Next: Backlog #17 — Task Clone/Duplicate**
-- Low risk, no schema changes
-- Adds a "Clone" button on task detail that creates a new task pre-filled with the same fields
+**Backlog #17 complete. Next: Backlog #19 — Scope Drift Detection Improvement**
+- Path normalization + drifted file names in evaluation reason
+- Pure-function logic change, test-driven, no schema/API/auth changes
 
 ### Blockers / Deferred
 

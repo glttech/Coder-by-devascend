@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
+import CloneTaskButton from '@/components/CloneTaskButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 Edit
               </Link>
             )}
+            <CloneTaskButton taskId={task.id} />
             <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
               Evidence Report →
             </Link>
