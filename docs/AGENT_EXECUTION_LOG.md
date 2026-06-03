@@ -135,11 +135,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #36 |
 | Branch | feat/risk-analyzer-fuzz |
-| Merge SHA | _pending_ |
+| Merge SHA | `0d3e961` |
 | Files changed | `src/lib/riskAnalyzer.ts`, `src/lib/__tests__/riskAnalyzerFuzz.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 243 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | green ✅ |
 | Risk level | Low |
 | Rollback | Revert `src/lib/riskAnalyzer.ts` |
 | Repo-only | Yes |
@@ -147,16 +147,76 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 
 ---
 
+### PR #37 — feat: Rate Limiting on Mutation Endpoints (Backlog #11)
+
+#### CEO/Product Decision
+
+- Task: **Backlog #11 — Rate Limiting on mutation endpoints**
+- Why: Closes M2 from SECURITY_GAP_ANALYSIS.md — no rate limits means POST endpoints are spammable. In Phase 4 this becomes a real cost/safety risk when agent dispatch triggers LLM calls.
+- Out of scope: schema changes, auth changes, Redis/distributed rate limiting (in-process is sufficient for internal single-server use)
+- Confirmed repo-only work: yes
+
+#### CTO/Architecture Review
+
+- Files touched: `src/middleware.ts`, `src/lib/rateLimiter.ts` (new), `src/lib/__tests__/rateLimiter.test.ts` (new)
+- Rate limit logic extracted to pure functions in `rateLimiter.ts` for testability
+- Middleware store: module-level `Map<string, Bucket>` — persists within the server process, correct for single-server deployment
+- Governance key check preserved, runs before rate limiting
+- No API, schema, or auth changes
+- Rollback: revert `src/middleware.ts` and delete `src/lib/rateLimiter.ts`
+
+#### CISO/Safety Review
+
+- No secrets involved; rate limit keyed on IP only
+- No auth/RBAC weakening — governance key check runs first
+- 429 response does not expose internal state
+- `Retry-After` header is standard HTTP
+- Risk: Low
+
+#### Implementation Summary
+
+- New `src/lib/rateLimiter.ts`:
+  - `checkLimit(store, key, limit, nowMs)` — injectable time for deterministic tests
+  - `getClientIp(forwardedFor, realIp)` — respects x-forwarded-for proxy header
+  - `isMutationMethod(method)` — POST/PATCH = mutation
+  - Constants: `MUTATION_LIMIT=20`, `READ_LIMIT=60`, `WINDOW_MS=60_000`
+- Updated `src/middleware.ts`:
+  - Added rate limit check after governance key guard
+  - Separate buckets per IP for mutations vs reads
+  - Returns 429 + `Retry-After` header when exceeded
+
+#### QA/Test Summary
+
+- New `src/lib/__tests__/rateLimiter.test.ts` — 29 tests in 6 suites:
+  - allow/block at boundary, retryAfter correctness, window reset, key isolation, getClientIp, isMutationMethod
+- 272 total tests pass (was 243; +29 new)
+- Build clean: middleware 25.3 kB (was 25 kB)
+
+| Field | Value |
+|-------|-------|
+| PR | #37 |
+| Branch | feat/rate-limiting |
+| Merge SHA | _pending_ |
+| Files changed | `src/middleware.ts`, `src/lib/rateLimiter.ts`, `src/lib/__tests__/rateLimiter.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 272 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low |
+| Rollback | Revert `src/middleware.ts`, delete `src/lib/rateLimiter.ts` |
+| Repo-only | Yes |
+| DEV/prod validation | Pending |
+
+---
+
 ### Next Selected Task
 
-**Backlog #11 — Rate Limiting on Mutation Endpoints**
-- In-process rate limiter in Next.js middleware
-- 20 req/min POST, 60 req/min GET
-- Returns 429 + Retry-After header
-- Closes M2 from SECURITY_GAP_ANALYSIS.md
+**Backlog #11 complete. Next: Backlog #15 — Staleness Indicators (task list "Last activity" + stale badge)**
+- UI-only addition to task list page
+- No schema changes
+- Closes a daily-usability gap (stuck tasks not visible)
 
 ### Blockers / Deferred
 
 - Backlog #1 (Project Registry Schema): deferred — schema migration, requires Rahul
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
-- Backlog #4 (GitHub Webhook): deferred — security-critical new endpoint, requires Rahul sign-off
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
