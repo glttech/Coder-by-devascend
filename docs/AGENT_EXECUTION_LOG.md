@@ -323,24 +323,94 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 | Branch | feat/task-clone |
 | Merge SHA | _pending_ |
 | Files changed | `src/app/api/tasks/[id]/clone/route.ts`, `src/components/CloneTaskButton.tsx`, `src/app/tasks/[id]/page.tsx`, `src/lib/__tests__/taskClone.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
-| Tests run | 294 pass |
+| Tests run | 296 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | green ✅ |
 | Risk level | Low |
 | Rollback | Delete `clone/route.ts`, delete `CloneTaskButton.tsx`, revert task detail page |
 | Repo-only | Yes |
+| Merge SHA | `d1545d51` |
 | DEV/prod validation | Pending |
+
+---
+
+## Entry 002 — 2026-06-03 (Overnight Session)
+
+**Session goal:** Build GitHub/PR awareness layer — project registry, PR evidence import, PR feature summary, dashboard widgets.
+
+**HEAD at session start:** `d1545d51` (PR #39 — feat: task clone merged)
+
+---
+
+### PR #40 — feat: GitHub Project Registry v1 (Backlog #1 + #2)
+
+#### CEO/Product Decision
+
+- Tasks: **Backlog #1 (schema) + Backlog #2 (UI)** combined
+- Why: Project registry with GitHub fields (repoOwner, repoName, defaultBranch) is the foundation for PR evidence import. Without it, there's no way to call the GitHub API for the right repo.
+- Scope: Schema migration as SQL file + regenerated Prisma client. API CRUD. UI list/create/detail/edit. Sidebar nav update. `GithubPR` model added now to avoid a second migration in PR #41.
+- Not in scope: webhookSecret, autonomy policy, commands, localPath — deferred to Phase 2.3+
+
+#### CTO/Architecture Review
+
+- Schema: Added nullable columns to existing `Project` table (non-breaking), new `GithubPR` table
+- Migration: `prisma/migrations/20260603000001_add_project_github_fields_and_github_pr/migration.sql` — SQL-only, not executed live. Run via `prisma migrate deploy` before starting server.
+- Prisma client regenerated: `npx prisma generate`
+- API: `GET/POST /api/projects`, `GET/PATCH /api/projects/[id]`
+- UI: `/projects` list, `/projects/new` form, `/projects/[id]` detail, `/projects/[id]/edit` edit
+- Sidebar: Projects nav link added between Dashboard and Tasks
+- No auth changes, no existing route changes
+
+#### CISO/Safety Review
+
+- No secrets in schema or migration
+- `repoOwner`/`repoName` are public GitHub identifiers — safe to store
+- No `webhookSecret` in this PR (deferred)
+- Audit log entries for `project_created` and `project_updated`
+- `repoOwner`/`repoName` validated against `/^[a-zA-Z0-9_.-]+$/` — prevents injection
+- Risk: Low
+
+#### Implementation Summary
+
+- `prisma/schema.prisma`: Added `description`, `repoOwner`, `repoName`, `defaultBranch` to `Project`; added `GithubPR` model with full PR metadata fields; `@@unique([projectId, prNumber])`
+- `prisma/migrations/20260603000001_.../migration.sql`: Non-breaking ALTER TABLE + CREATE TABLE
+- `src/app/api/projects/route.ts`: GET (list with counts), POST (create with validation + audit log)
+- `src/app/api/projects/[id]/route.ts`: GET (detail with tasks/PRs), PATCH (partial update + audit log)
+- `src/app/projects/page.tsx`: List with repo link, task/PR counts, staleness
+- `src/app/projects/new/page.tsx`: Create form (client component)
+- `src/app/projects/[id]/page.tsx`: Detail with metadata, recent tasks, imported PRs table
+- `src/app/projects/[id]/edit/page.tsx`: Edit form (client component, pre-filled)
+- `src/components/SidebarNav.tsx`: Added Projects nav link
+
+#### QA/Test Summary
+
+- New `src/lib/__tests__/projectValidation.test.ts` — 27 tests across 5 suites:
+  - name validation (6), repoOwner (8), repoName (4), defaultBranch (4), buildRepoUrl (4), multiple errors (1)
+- 323 total tests pass (was 296; +27 new)
+- Build clean: `/projects`, `/projects/[id]`, `/projects/[id]/edit`, `/projects/new` all listed
+- `npx prisma generate` run successfully after schema change
+
+| Field | Value |
+|-------|-------|
+| PR | #40 |
+| Branch | feat/project-registry |
+| Merge SHA | _pending_ |
+| Files changed | `prisma/schema.prisma`, migration SQL, `src/app/api/projects/route.ts`, `src/app/api/projects/[id]/route.ts`, `src/app/projects/page.tsx`, `src/app/projects/new/page.tsx`, `src/app/projects/[id]/page.tsx`, `src/app/projects/[id]/edit/page.tsx`, `src/components/SidebarNav.tsx`, `src/lib/__tests__/projectValidation.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 323 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low-Medium (schema migration required before server start) |
+| Rollback | Revert schema.prisma, delete migration file, run `prisma generate`, delete project API/UI files, revert SidebarNav |
+| Repo-only | Yes |
+| DEV/prod validation | Pending — migration must be run: `prisma migrate deploy` |
 
 ---
 
 ### Next Selected Task
 
-**Backlog #17 complete. Next: Backlog #19 — Scope Drift Detection Improvement**
-- Path normalization + drifted file names in evaluation reason
-- Pure-function logic change, test-driven, no schema/API/auth changes
+**PR #40 pending merge. After merge: PR #41 — GitHub PR Evidence Import**
 
 ### Blockers / Deferred
 
-- Backlog #1 (Project Registry Schema): deferred — schema migration, requires Rahul
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
