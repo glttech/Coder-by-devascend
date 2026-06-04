@@ -321,7 +321,7 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #39 |
 | Branch | feat/task-clone |
-| Merge SHA | _pending_ |
+| Merge SHA | f406242894bb4f9adf88601581a7aeacb535f6c0 |
 | Files changed | `src/app/api/tasks/[id]/clone/route.ts`, `src/components/CloneTaskButton.tsx`, `src/app/tasks/[id]/page.tsx`, `src/lib/__tests__/taskClone.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 296 pass |
 | Build | clean |
@@ -394,7 +394,7 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #40 |
 | Branch | feat/project-registry |
-| Merge SHA | _pending_ |
+| Merge SHA | f406242894bb4f9adf88601581a7aeacb535f6c0 |
 | Files changed | `prisma/schema.prisma`, migration SQL, `src/app/api/projects/route.ts`, `src/app/api/projects/[id]/route.ts`, `src/app/projects/page.tsx`, `src/app/projects/new/page.tsx`, `src/app/projects/[id]/page.tsx`, `src/app/projects/[id]/edit/page.tsx`, `src/components/SidebarNav.tsx`, `src/lib/__tests__/projectValidation.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 323 pass |
 | Build | clean |
@@ -487,7 +487,7 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #41 |
 | Branch | feat/github-pr-import |
-| Merge SHA | _pending_ |
+| Merge SHA | f406242894bb4f9adf88601581a7aeacb535f6c0 |
 | Files changed | `src/lib/githubClient.ts`, `src/lib/prSummary.ts`, `src/app/api/github-prs/route.ts`, `src/app/projects/[id]/prs/import/page.tsx`, `src/app/projects/[id]/prs/[prId]/page.tsx`, `src/lib/__tests__/githubClient.test.ts`, `src/lib/__tests__/prSummary.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 391 pass |
 | Build | clean |
@@ -501,6 +501,74 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 ### Next Selected Task
 
 **PR #41 pending merge. After merge: PR #42 — Dashboard GitHub Evidence Widgets**
+
+### Blockers / Deferred
+
+- Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+- Migration execution: `prisma migrate deploy` required before server start (deferred to ops)
+
+---
+
+## Entry 006 — 2026-06-04
+
+**Session goal:** PR #42 — Dashboard GitHub Evidence Widgets. Surface imported PR evidence on the main dashboard.
+
+**HEAD at session start:** `f406242894bb4f9adf88601581a7aeacb535f6c0` (PR #41 merged — GitHub PR Evidence Import)
+
+---
+
+### PR #42 — Dashboard GitHub Evidence Widgets
+
+#### CEO/Product Gate
+
+- Dashboard is the first screen operators see; adding PR evidence there closes the loop: every PR imported is now visible without navigating to Projects
+- Three new stat cards (Imported PRs, Open PRs, CI Failures) give instant health signal
+- Recent GitHub PR Evidence table shows last 6 PRs with risk level and CI status
+- No new routes, no schema changes — pure UI addition to existing dashboard server component
+- Approved ✅
+
+#### CTO/Architecture Gate
+
+- Server component (`export const dynamic = 'force-dynamic'`) — 3 parallel `prisma.githubPR.count()` calls + 1 `findMany`
+- `summarisePR` called per row client-side (pure function, ~0 cost) for risk level column
+- No new API routes, no new client components
+- Approved ✅
+
+#### CISO/Safety Gate
+
+- No new data exposure — data already stored in DB, now surfaced in existing authenticated page
+- No secrets, no env changes
+- Risk: None
+- Approved ✅
+
+#### Implementation Summary
+
+- `src/app/page.tsx`: Added 3 GitHub stat cards to Overview section; added "Recent GitHub PR Evidence" section with 7-column table (PR#, project, title, state, CI, risk, imported date)
+
+#### QA/Test Summary
+
+- 391 tests pass (no new tests needed — pure UI, all logic covered by existing prSummary.test.ts)
+- Build clean — dashboard (/) still listed as dynamic
+
+| Field | Value |
+|-------|-------|
+| PR | #42 |
+| Branch | feat/dashboard-github-widgets |
+| Merge SHA | _pending_ |
+| Files changed | `src/app/page.tsx`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 391 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | None |
+| Rollback | Revert page.tsx changes |
+| Repo-only | Yes |
+
+---
+
+### Next Selected Task
+
+**PR #42 pending merge. Overnight sequence complete after merge.**
 
 ### Blockers / Deferred
 
