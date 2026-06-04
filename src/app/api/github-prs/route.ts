@@ -1,0 +1,159 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { fetchGithubPR, parsePRUrl } from '@/lib/githubClient';
+
+// GET /api/github-prs?projectId=... — list imported PRs for a project
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const projectId = searchParams.get('projectId');
+
+  if (!projectId) {
+    return NextResponse.json({ error: 'projectId query parameter is required' }, { status: 400 });
+  }
+
+  try {
+    const prs = await prisma.githubPR.findMany({
+      where: { projectId },
+      orderBy: { importedAt: 'desc' },
+    });
+    return NextResponse.json(prs);
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch GitHub PRs' }, { status: 500 });
+  }
+}
+
+// POST /api/github-prs — import PR by URL or owner/repo/prNumber
+export async function POST(request: Request) {
+  const data = await request.json().catch(() => null);
+  if (!data) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+
+  const { projectId, prUrl, owner, repo, prNumber } = data;
+
+  if (!projectId || typeof projectId !== 'string') {
+    return NextResponse.json({ error: 'projectId is required' }, { status: 422 });
+  }
+
+  // Resolve owner/repo/prNumber from prUrl or direct fields
+  let resolvedOwner: string | undefined;
+  let resolvedRepo: string | undefined;
+  let resolvedPrNumber: number | undefined;
+
+  if (prUrl) {
+    const parsed = parsePRUrl(prUrl);
+    if (!parsed) {
+      return NextResponse.json(
+        { error: 'Invalid GitHub PR URL. Expected: https://github.com/owner/repo/pull/123 or owner/repo#123' },
+        { status: 422 },
+      );
+    }
+    resolvedOwner = parsed.owner;
+    resolvedRepo = parsed.repo;
+    resolvedPrNumber = parsed.prNumber;
+  } else if (owner && repo && prNumber) {
+    if (typeof owner !== 'string' || typeof repo !== 'string') {
+      return NextResponse.json({ error: 'owner and repo must be strings' }, { status: 422 });
+    }
+    const num = Number(prNumber);
+    if (!Number.isInteger(num) || num < 1) {
+      return NextResponse.json({ error: 'prNumber must be a positive integer' }, { status: 422 });
+    }
+    resolvedOwner = owner;
+    resolvedRepo = repo;
+    resolvedPrNumber = num;
+  } else {
+    return NextResponse.json(
+      { error: 'Provide either prUrl or owner + repo + prNumber' },
+      { status: 422 },
+    );
+  }
+
+  // Verify the project exists
+  try {
+    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  } catch {
+    return NextResponse.json({ error: 'Failed to verify project' }, { status: 500 });
+  }
+
+  // Fetch from GitHub — token is server-side only, never sent to client
+  const token = process.env.GITHUB_TOKEN || undefined;
+  const result = await fetchGithubPR(resolvedOwner, resolvedRepo, resolvedPrNumber, token);
+
+  if (!result.ok) {
+    const statusMap: Record<string, number> = {
+      NOT_FOUND: 404,
+      RATE_LIMITED: 429,
+      AUTH_REQUIRED: 401,
+      NETWORK_ERROR: 502,
+      PARSE_ERROR: 502,
+    };
+    return NextResponse.json(
+      { error: result.error.message, code: result.error.code },
+      { status: statusMap[result.error.code] ?? 502 },
+    );
+  }
+
+  const d = result.data;
+
+  // Upsert: if same project+prNumber already imported, refresh it
+  try {
+    const pr = await prisma.githubPR.upsert({
+      where: { projectId_prNumber: { projectId, prNumber: d.prNumber } },
+      create: {
+        projectId,
+        prNumber: d.prNumber,
+        title: d.title,
+        body: d.body,
+        author: d.author,
+        sourceBranch: d.sourceBranch,
+        baseBranch: d.baseBranch,
+        state: d.state,
+        merged: d.merged,
+        mergeSha: d.mergeSha,
+        labels: d.labels,
+        filesChangedCount: d.filesChangedCount,
+        filesChanged: d.filesChanged,
+        ciStatus: d.ciStatus,
+        prUrl: d.prUrl,
+        githubCreatedAt: d.githubCreatedAt ? new Date(d.githubCreatedAt) : null,
+        githubUpdatedAt: d.githubUpdatedAt ? new Date(d.githubUpdatedAt) : null,
+        githubMergedAt: d.githubMergedAt ? new Date(d.githubMergedAt) : null,
+      },
+      update: {
+        title: d.title,
+        body: d.body,
+        author: d.author,
+        sourceBranch: d.sourceBranch,
+        baseBranch: d.baseBranch,
+        state: d.state,
+        merged: d.merged,
+        mergeSha: d.mergeSha,
+        labels: d.labels,
+        filesChangedCount: d.filesChangedCount,
+        filesChanged: d.filesChanged,
+        ciStatus: d.ciStatus,
+        prUrl: d.prUrl,
+        githubUpdatedAt: d.githubUpdatedAt ? new Date(d.githubUpdatedAt) : null,
+        githubMergedAt: d.githubMergedAt ? new Date(d.githubMergedAt) : null,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        event: 'github_pr_imported',
+        details: JSON.stringify({
+          projectId,
+          prNumber: d.prNumber,
+          title: d.title,
+          owner: resolvedOwner,
+          repo: resolvedRepo,
+          at: new Date().toISOString(),
+        }),
+      },
+    });
+
+    return NextResponse.json(pr, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'Failed to save PR evidence' }, { status: 500 });
+  }
+}

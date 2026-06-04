@@ -414,3 +414,96 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+
+---
+
+## Entry 005 — 2026-06-04
+
+**Session goal:** PR #41 — GitHub PR Evidence Import v1. Build server-side GitHub API client, PR import endpoint, import UI, and PR detail page.
+
+**HEAD at session start:** `48bfdbe7` (PR #40 merged — Project Registry v1)
+
+---
+
+### PR #40 — Merge Confirmed
+
+| Field | Value |
+|-------|-------|
+| PR | #40 |
+| Branch | feat/project-registry |
+| Merge SHA | 48bfdbe7 |
+| Status | Merged ✅ |
+
+---
+
+### PR #41 — GitHub PR Evidence Import v1
+
+#### CEO/Product Gate
+
+- Builds on Project Registry (PR #40); projects now have `repoOwner`/`repoName`
+- Enables evidence-based review: given any GitHub PR URL, fetch + store metadata
+- No live diff, no secrets — only public-safe PR metadata
+- Feature Analysis is fully deterministic (no LLM, no external calls beyond GitHub REST)
+- Approved ✅
+
+#### CTO/Architecture Gate
+
+- `src/lib/githubClient.ts`: server-side only; accepts optional `GITHUB_TOKEN` from `process.env` — never exposed to browser
+- `parsePRUrl`: accepts `https://github.com/owner/repo/pull/123` or shorthand `owner/repo#123`
+- `fetchGithubPR`: fetches PR metadata + first 100 changed files + CI check runs; returns typed `Result<GithubPRData, GithubClientError>`
+- `src/lib/prSummary.ts`: pure-function deterministic summariser (no LLM) — extracts whatChanged, whyItMatters, riskLevel, evidenceQuality, validationEvidence, missingEvidence
+- `POST /api/github-prs`: upsert pattern (re-importing refreshes data); reads GITHUB_TOKEN server-side only; emits `github_pr_imported` audit log
+- `GET /api/github-prs?projectId=`: lists imported PRs for a project
+- UI: `/projects/[id]/prs/import` (client form) → redirect → `/projects/[id]/prs/[prId]` (server detail)
+- Approved ✅
+
+#### CISO/Safety Gate
+
+- `GITHUB_TOKEN` accessed via `process.env.GITHUB_TOKEN` in API route only — not in client component, not logged, not committed
+- No secrets in any committed file
+- Changed file names only (no full diff content stored)
+- PR body stored as-is — no eval, no rendering as HTML (shown in `<pre>`)
+- No new attack surface beyond rate-limited `/api/github-prs` route (already behind middleware)
+- Audit log entry on every import
+- Risk: Low
+- Approved ✅
+
+#### QA/Test Summary
+
+- `src/lib/__tests__/githubClient.test.ts`: 25 tests — `parsePRUrl` (full URLs, shorthand, edge cases), `summariseCIStatus`
+- `src/lib/__tests__/prSummary.test.ts`: 43 tests — all summary functions + integration
+- 391 total tests pass (was 348; +43 new)
+- Build clean — all new routes listed: `/api/github-prs`, `/projects/[id]/prs/[prId]`, `/projects/[id]/prs/import`
+
+#### Implementation Summary
+
+- `src/lib/githubClient.ts`: `parsePRUrl`, `fetchGithubPR`
+- `src/lib/prSummary.ts`: `summarisePR` + helpers
+- `src/app/api/github-prs/route.ts`: GET list + POST import
+- `src/app/projects/[id]/prs/import/page.tsx`: client import form
+- `src/app/projects/[id]/prs/[prId]/page.tsx`: server PR detail page
+
+| Field | Value |
+|-------|-------|
+| PR | #41 |
+| Branch | feat/github-pr-import |
+| Merge SHA | _pending_ |
+| Files changed | `src/lib/githubClient.ts`, `src/lib/prSummary.ts`, `src/app/api/github-prs/route.ts`, `src/app/projects/[id]/prs/import/page.tsx`, `src/app/projects/[id]/prs/[prId]/page.tsx`, `src/lib/__tests__/githubClient.test.ts`, `src/lib/__tests__/prSummary.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 391 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low |
+| Rollback | Delete the 7 new source files, revert log |
+| Repo-only | Yes |
+
+---
+
+### Next Selected Task
+
+**PR #41 pending merge. After merge: PR #42 — Dashboard GitHub Evidence Widgets**
+
+### Blockers / Deferred
+
+- Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+- Migration execution: `prisma migrate deploy` required before server start (deferred to ops)
