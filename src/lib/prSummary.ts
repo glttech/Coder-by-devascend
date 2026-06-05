@@ -15,14 +15,18 @@ export interface PRSummary {
 
 // Keywords that indicate high-risk changes
 const HIGH_RISK_PATTERNS = [
-  /auth(?:entication|orization|)/i,
-  /secret|token|credential|password|api[_\s-]?key/i,
-  /database|migration|schema|ALTER\s+TABLE|DROP\s+TABLE/i,
-  /production|prod\b/i,
-  /security|vulnerability|cve-/i,
-  /permission|rbac|role|access[_\s-]?control/i,
-  /payment|billing|stripe|checkout/i,
-  /private[_\s-]key|ssh|tls|ssl|cert/i,
+  // word-bounded so "OAuth", "author", "reauthorize" are not caught
+  /\bauth(?:entic(?:ate[sd]?|ation|ating)|oriz(?:e[sd]?|ation|ing))?\b/i,
+  /\bsecrets?\b|\bcredentials?\b|\bpassword\b|\bapi[_\s-]?key\b/i,
+  // \btoken\b matches "token" as a standalone word but NOT env-var compounds like GITHUB_TOKEN
+  // (underscore is a word char so _TOKEN has no leading word boundary).
+  /\btoken\b/i,
+  /\b(?:database|migration|schema)\b|ALTER\s+TABLE|DROP\s+TABLE/i,
+  /\bproduction\b|\bprod\b/i,
+  /\bsecurity\b|\bvulnerability\b|\bcve-/i,
+  /\b(?:permission|rbac|role|access[_\s-]?control)\b/i,
+  /\b(?:payment|billing|stripe|checkout)\b/i,
+  /\bprivate[_\s-]?key\b|\bssh\b|\btls\b|\bssl\b|\bcert\b/i,
 ];
 
 const MEDIUM_RISK_PATTERNS = [
@@ -54,6 +58,26 @@ const EVIDENCE_NEGATIVE_PATTERNS: { pattern: RegExp; missing: string }[] = [
   { pattern: /draft|do not merge|don'?t merge/i, missing: 'Draft or do-not-merge flag present' },
 ];
 
+// Negation words that indicate a risk keyword is being explicitly excluded or confirmed safe
+const NEGATION_PATTERN = /\b(?:no|not|never|without|doesn?'?t|do(?:es)?\s+not|isn?'?t|is\s+not|aren?'?t|are\s+not|was\s+not|were\s+not|haven?'?t|have\s+not)\b/i;
+
+/**
+ * Remove clauses from text where a negation word co-occurs with a high-risk keyword.
+ * This prevents phrases like "no schema changes" or "token is never exposed" from
+ * triggering false-positive high-risk scores.
+ *
+ * Only applied to PR body prose — titles are always checked as-is.
+ */
+export function stripNegatedClauses(text: string): string {
+  return text
+    .split(/[.;\n]+/)
+    .filter((clause) => {
+      if (!NEGATION_PATTERN.test(clause)) return true;
+      return !HIGH_RISK_PATTERNS.some((p) => p.test(clause));
+    })
+    .join(' ');
+}
+
 /**
  * Extract a plain "what changed" from the PR title.
  * Strips common PR prefixes like feat:, fix:, chore:, etc.
@@ -70,7 +94,10 @@ export function extractWhatChanged(title: string): string {
  * Infer risk level from title and body combined.
  */
 export function inferRiskLevel(title: string, body: string | null): { level: 'low' | 'medium' | 'high' | 'unknown'; reason: string } {
-  const combined = `${title} ${body ?? ''}`;
+  // Strip negated safety-confirmation clauses from the body (e.g. "no schema changes",
+  // "GITHUB_TOKEN is server-side only, never exposed") before matching risk keywords.
+  // Title is kept as-is — titles are direct statements of what the PR does.
+  const combined = `${title} ${stripNegatedClauses(body ?? '')}`;
 
   for (const pattern of HIGH_RISK_PATTERNS) {
     if (pattern.test(combined)) {
