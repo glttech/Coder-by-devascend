@@ -491,7 +491,7 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 | Files changed | `src/lib/githubClient.ts`, `src/lib/prSummary.ts`, `src/app/api/github-prs/route.ts`, `src/app/projects/[id]/prs/import/page.tsx`, `src/app/projects/[id]/prs/[prId]/page.tsx`, `src/lib/__tests__/githubClient.test.ts`, `src/lib/__tests__/prSummary.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 391 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | success |
 | Risk level | Low |
 | Rollback | Delete the 7 new source files, revert log |
 | Repo-only | Yes |
@@ -632,11 +632,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #43 |
 | Branch | feat/github-pr-refresh |
-| Merge SHA | _pending_ |
+| Merge SHA | 9ac13b525338f0301e95b14cb9b9dfefe91eca1a |
 | Files changed | `src/lib/githubClient.ts`, `src/app/api/github-prs/[id]/refresh/route.ts`, `src/components/RefreshPRButton.tsx`, `src/app/projects/[id]/prs/[prId]/page.tsx`, `src/lib/__tests__/githubPRRefresh.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 414 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | success |
 | Risk level | Low |
 | Rollback | Delete `src/app/api/github-prs/[id]/refresh/`, `src/components/RefreshPRButton.tsx`; revert `githubClient.ts` (remove two exports); revert PR detail page |
 | Repo-only | Yes |
