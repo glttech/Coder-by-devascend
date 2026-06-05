@@ -649,3 +649,75 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
 - Migration execution: already applied on DEV for `20260603000001_add_project_github_fields_and_github_pr`
+
+---
+
+## Entry 008 — 2026-06-05
+
+**Session goal:** PR #44 — Project PR List with Filtering. Dedicated PR evidence list page with state/CI/text filters.
+
+**HEAD at session start:** `2e95e7b23abd18ba2adad8b0aaa14772cfcd308d` (PR #43 merged and DEV-validated — GitHub evidence refresh)
+
+---
+
+### PR #44 — Project PR List with Filtering
+
+#### CEO/Product Gate
+
+- Project detail page currently shows only 10 PRs with no filters; operators can't find specific PRs quickly
+- New `/projects/[id]/prs` page gives a full, filterable view: state (open/merged/closed/all), CI status, and text search over PR titles
+- Shows risk level (from `summarisePR`), merge SHA, and last-refreshed timestamp per row
+- Project detail now links "View all →" to the new page; keeps only last 5 PRs inline
+- No schema changes — uses existing `GithubPR` fields only
+- Approved ✅
+
+#### CTO/Architecture Gate
+
+- `src/lib/prFilters.ts`: pure `buildPRFilters()` — returns Prisma `where` object from filter params; single clause for one filter, `AND` array for multiple
+- `normaliseStateFilter()` / `normaliseCIFilter()` — whitelist-based normalisation of raw URL params before they reach Prisma
+- PR list page is a server component; reads `searchParams` (Next.js 14 App Router), builds `where`, queries DB with `prisma.githubPR.findMany`
+- Text search uses Prisma `contains` with `mode: 'insensitive'` — no raw SQL
+- `body` fetched from DB for `summarisePR` risk derivation; never rendered on the list page (only `title` rendered)
+- Approved ✅
+
+#### CISO/Safety Gate
+
+- No GitHub API calls on the list page — purely DB reads
+- URL params normalised through whitelist functions before reaching Prisma — no injection vector
+- `q` passed as Prisma `contains`, not raw SQL — safe
+- No new secrets, no env changes
+- Risk: None
+- Approved ✅
+
+#### Implementation Summary
+
+- `src/lib/prFilters.ts`: `buildPRFilters`, `normaliseStateFilter`, `normaliseCIFilter`
+- `src/app/projects/[id]/prs/page.tsx`: new PR list page with state/CI/text filters
+- `src/app/projects/[id]/page.tsx`: added "View all →" link, reduced inline PRs to 5
+- `src/lib/__tests__/prFilters.test.ts`: 37 new tests
+
+#### QA/Test Summary
+
+- 451 total tests pass (was 414; +37 new across normaliseStateFilter, normaliseCIFilter, buildPRFilters — no filters, state, CI, text, combined)
+- Build clean — `/projects/[id]/prs` listed as dynamic server route
+
+| Field | Value |
+|-------|-------|
+| PR | #44 |
+| Branch | feat/project-pr-list |
+| Merge SHA | _pending_ |
+| Files changed | `src/lib/prFilters.ts`, `src/app/projects/[id]/prs/page.tsx`, `src/app/projects/[id]/page.tsx`, `src/lib/__tests__/prFilters.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 451 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | None |
+| Rollback | Delete `src/lib/prFilters.ts`, `src/app/projects/[id]/prs/page.tsx`; revert project detail page (restore 10 PRs, remove "View all" link) |
+| Repo-only | Yes |
+| DEV validation | Pending — filter interactions (state, CI, text search combos) should be verified on DEV |
+
+---
+
+### Blockers / Deferred
+
+- Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off

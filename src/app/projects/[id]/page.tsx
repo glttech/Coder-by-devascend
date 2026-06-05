@@ -14,7 +14,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     where: { id: params.id },
     include: {
       tasks: { orderBy: { createdAt: 'desc' }, take: 10 },
-      githubPRs: { orderBy: { importedAt: 'desc' }, take: 10 },
+      githubPRs: { orderBy: { importedAt: 'desc' }, take: 5 },
       _count: { select: { tasks: true, githubPRs: true } },
     },
   });
@@ -124,11 +124,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <div className="section">
         <div className="section-header">
           <span className="section-title">GitHub PRs ({project._count.githubPRs})</span>
-          {repoUrl && (
-            <Link href={`/projects/${project.id}/prs/import`} className="btn btn-sm btn-primary" style={{ fontSize: 12 }}>
-              + Import PR
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href={`/projects/${project.id}/prs`} style={{ fontSize: 12, color: 'var(--blue)' }}>
+              View all →
             </Link>
-          )}
+            {repoUrl && (
+              <Link href={`/projects/${project.id}/prs/import`} className="btn btn-sm btn-primary" style={{ fontSize: 12 }}>
+                + Import PR
+              </Link>
+            )}
+          </div>
         </div>
         {project.githubPRs.length === 0 ? (
           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
