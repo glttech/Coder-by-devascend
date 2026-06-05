@@ -250,8 +250,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </div>
         </div>
         {project.githubPRs.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            No PRs imported yet.{repoUrl ? ' Use "Import PR" to fetch evidence from a GitHub PR URL.' : ' Link a GitHub repo to enable PR import.'}
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {repoUrl
+              ? <>No PRs imported yet. Click <strong>+ Import PR</strong> and paste any GitHub PR URL to fetch its evidence for governance review.</>
+              : <>No GitHub repo linked. <Link href={`/projects/${project.id}/edit`} style={{ color: 'var(--blue)' }}>Edit this project</Link> to add a repo, then import PRs.</>
+            }
           </div>
         ) : (
           <div className="table-wrap">

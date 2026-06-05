@@ -953,3 +953,30 @@ Compact CI summary bar at the top of the PR list page (`/projects/[id]/prs`) sho
 
 - 517 total tests pass (+9 new)
 - Build clean
+
+---
+
+## Entry 014 — 2026-06-05 (continued)
+
+**Session goal:** Task 4 — GitHub evidence empty/error state polish.
+
+**HEAD at session start:** `da6247e`
+
+---
+
+### PR #50 — GitHub evidence empty/error state polish
+
+#### What
+
+Better copy and contextual error hints for first-time use and GitHub API error scenarios.
+
+#### Changes
+
+- `src/app/api/github-prs/route.ts`: Now uses `userSafeErrorMessage(code)` for GitHub errors instead of raw `result.error.message` — consistent with the refresh endpoint
+- `src/app/projects/[id]/prs/import/page.tsx`: Added `errorCode` state; shows a contextual hint below the error (e.g. "Ask admin to set GITHUB_TOKEN" for AUTH_REQUIRED, "Retry in a moment" for NETWORK_ERROR); improved info box copy (private repos, rate limits)
+- `src/app/projects/[id]/page.tsx`: Improved "no PRs" empty state — with repo shows actionable import instruction; without repo shows link to Edit project
+
+#### QA/Test Summary
+
+- 508 total tests pass (no new tests needed — logic changes are in API response formatting and UI copy only)
+- Build clean

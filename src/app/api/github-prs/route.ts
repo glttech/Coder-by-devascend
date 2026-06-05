@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { fetchGithubPR, parsePRUrl } from '@/lib/githubClient';
+import { fetchGithubPR, parsePRUrl, userSafeErrorMessage } from '@/lib/githubClient';
 
 // GET /api/github-prs?projectId=... — list imported PRs for a project
 export async function GET(request: Request) {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       PARSE_ERROR: 502,
     };
     return NextResponse.json(
-      { error: result.error.message, code: result.error.code },
+      { error: userSafeErrorMessage(result.error.code), code: result.error.code },
       { status: statusMap[result.error.code] ?? 502 },
     );
   }
