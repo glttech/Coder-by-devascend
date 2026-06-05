@@ -66,11 +66,11 @@ export function resolveGithubCoords(
 export function userSafeErrorMessage(code: GithubClientError['code']): string {
   switch (code) {
     case 'RATE_LIMITED':
-      return 'GitHub API rate limit reached. Try again in an hour, or add a GITHUB_TOKEN to your server environment to increase limits.';
+      return 'GitHub API rate limit reached. Try again in an hour, or ask the server admin to configure a server-side GitHub access token to increase limits.';
     case 'NOT_FOUND':
       return 'PR not found on GitHub. It may have been deleted or the repository made private.';
     case 'AUTH_REQUIRED':
-      return 'GitHub API authentication required. Check that GITHUB_TOKEN is set and has repo access.';
+      return 'GitHub access is not configured on the server. Ask the server admin to configure GitHub read access.';
     case 'NETWORK_ERROR':
       return 'Could not reach GitHub API. Check your network connection and try again.';
     case 'PARSE_ERROR':

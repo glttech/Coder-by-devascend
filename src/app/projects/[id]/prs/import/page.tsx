@@ -8,9 +8,9 @@ interface PageProps {
 }
 
 const ERROR_HINTS: Record<string, string> = {
-  AUTH_REQUIRED: 'Ask your admin to set a GITHUB_TOKEN environment variable on the server with "repo" read access.',
-  RATE_LIMITED: 'Without a token, GitHub allows ~60 requests/hr. Setting GITHUB_TOKEN server-side raises this to 5,000/hr.',
-  NOT_FOUND: 'Double-check the PR URL. Private repos require a GITHUB_TOKEN with repo read access.',
+  AUTH_REQUIRED: 'Ask the server admin to configure GitHub read access on the server.',
+  RATE_LIMITED: 'Without a server-side GitHub access token, GitHub allows ~60 requests/hr. With one configured, the limit increases to 5,000/hr.',
+  NOT_FOUND: 'Double-check the PR URL. Private repos require a server-side GitHub access token with repo read access.',
   NETWORK_ERROR: 'The server could not reach api.github.com. Retry in a moment.',
 };
 
@@ -87,9 +87,8 @@ export default function ImportPRPage({ params }: PageProps) {
             <strong style={{ color: 'var(--text-secondary)' }}>What gets imported:</strong> PR title, description,
             author, branches, state, merged status, file names, CI check status.<br />
             <strong style={{ color: 'var(--text-secondary)' }}>Not imported:</strong> Code diff content, credentials, or secrets.<br />
-            <strong style={{ color: 'var(--text-secondary)' }}>Private repos:</strong> Require a{' '}
-            <code>GITHUB_TOKEN</code> set server-side with <code>repo</code> read access.
-            Without a token, GitHub allows ~60 requests/hour.
+            <strong style={{ color: 'var(--text-secondary)' }}>Private repos:</strong> Require a server-side GitHub access token with repo read access.
+            Without one configured, GitHub allows ~60 requests/hour.
           </div>
 
           {error && (

@@ -103,10 +103,13 @@ describe('userSafeErrorMessage — returns user-safe strings', () => {
     assert.ok(!msg.includes('process.env'));
   });
 
-  test('AUTH_REQUIRED mentions GITHUB_TOKEN key name only (not a value)', () => {
+  test('AUTH_REQUIRED is user-safe and does not expose env var names or token values', () => {
     const msg = userSafeErrorMessage('AUTH_REQUIRED');
-    // Should mention the env key name to help operators, but never a value
-    assert.ok(msg.includes('GITHUB_TOKEN'));
+    // Must be user-readable — mention GitHub access and admin action
+    assert.ok(msg.toLowerCase().includes('github'));
+    assert.ok(msg.toLowerCase().includes('admin') || msg.toLowerCase().includes('configured') || msg.toLowerCase().includes('access'));
+    // Must not expose the env var name to end users
+    assert.ok(!msg.includes('GITHUB_TOKEN'));
     // Must not look like a token value (40-char hex string)
     assert.ok(!/[0-9a-f]{40}/.test(msg));
   });
