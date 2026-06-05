@@ -775,11 +775,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #45 |
 | Branch | feat/project-health-summary |
-| Merge SHA | _pending_ |
+| Merge SHA | 682e81c0bda92a52e1770de8bb2b8becfc06f429 |
 | Files changed | `src/lib/projectHealth.ts`, `src/app/projects/[id]/page.tsx`, `src/lib/__tests__/projectHealth.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 479 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | success |
 | Risk level | None |
 | Rollback | Delete `src/lib/projectHealth.ts`; revert project detail page (remove health section and HealthStat) |
 | Repo-only | Yes |
