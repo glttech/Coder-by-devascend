@@ -980,3 +980,31 @@ Better copy and contextual error hints for first-time use and GitHub API error s
 
 - 508 total tests pass (no new tests needed — logic changes are in API response formatting and UI copy only)
 - Build clean
+
+---
+
+## Entry 015 — 2026-06-05 (continued)
+
+**Session goal:** Task 5 — Release readiness snapshot.
+
+**HEAD at session start:** `acaf76e`
+
+---
+
+### PR #51 — Release readiness snapshot on project page
+
+#### What
+
+Project-level "Release Readiness" card showing a signal (ready/caution/blocked), a plain-English suggested action, and the 5 most recent merged PRs with dates. Fully deterministic — no LLM call, no schema change.
+
+#### Implementation
+
+- `src/lib/projectHealth.ts`: Added `PRHealthInputFull`, `RecentMergedPR`, `ReleaseReadiness` interfaces and `computeReleaseReadiness()` pure function. Signal logic: `blocked` (CI failures or >1 high-risk), `caution` (single high-risk, stale evidence, or pending CI), `ready` (all clear). Recent merged PRs sorted by `githubMergedAt` desc, capped at `recentLimit` (default 5).
+- `src/lib/__tests__/projectHealth.test.ts`: Added 12 new tests across 4 suites: empty input, blocked signal (CI failure, multi-high-risk, both), caution signal (high-risk, stale, pending CI), ready signal, and `recentMergedPRs` (sort order, limit, excludes open PRs).
+- `src/app/projects/[id]/page.tsx`: Extended PR health query to include `githubMergedAt`; added `computeReleaseReadiness` call; added "Release Readiness" section between stale alert and recent tasks (hidden when no PRs imported).
+
+#### QA/Test Summary
+
+- 538 total tests pass (+12 new over merged main)
+- Build clean
+- No schema, env, or secret changes
