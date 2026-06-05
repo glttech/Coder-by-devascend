@@ -885,3 +885,17 @@ DEV scenario `highRisk=1, failedCI=0, pendingCI=0, stale=0` now correctly → **
 
 - 508 total tests pass (was 499; +9 new signal tests)
 - Build clean
+
+| Field | Value |
+|-------|-------|
+| PR | #47 |
+| Branch | fix/health-signal-calibration |
+| Merge SHA | 46ae8fddd5a13796afa860563d426b883f7400c9 |
+| Files changed | `src/lib/projectHealth.ts`, `src/lib/__tests__/projectHealth.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 508 pass |
+| Build | clean |
+| CI status | success |
+| Risk level | Low |
+| Rollback | Revert `healthSignal` function in `src/lib/projectHealth.ts` |
+| Repo-only | Yes |
+| DEV validation | Pending — project health widget should now show "Review suggested" instead of "Needs attention" for highRisk=1 scenario |
