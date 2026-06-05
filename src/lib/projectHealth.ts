@@ -10,6 +10,18 @@ export interface PRHealthInput {
   updatedAt: Date;
 }
 
+export interface PRHealthInputWithId extends PRHealthInput {
+  id: string;
+  prNumber: number;
+}
+
+export interface StalePR {
+  id: string;
+  prNumber: number;
+  title: string;
+  daysSinceRefresh: number;
+}
+
 export interface ProjectHealth {
   total: number;
   mergedCount: number;
@@ -70,4 +82,28 @@ export function healthSignal(h: ProjectHealth): 'critical' | 'warning' | 'clear'
   if (h.highRiskCount === 1 || h.staleCount > 0 || h.pendingCICount > 0) return 'warning';
 
   return 'clear';
+}
+
+/**
+ * Return open PRs that have not been refreshed in 7+ days, sorted oldest-first.
+ * Pure function — no DB or network calls.
+ */
+export function computeStalePRs(prs: PRHealthInputWithId[], now: Date = new Date()): StalePR[] {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  return prs
+    .filter((pr) => !pr.merged && pr.state === 'open')
+    .filter((pr) => {
+      const lastActivity = pr.updatedAt > pr.importedAt ? pr.updatedAt : pr.importedAt;
+      return now.getTime() - lastActivity.getTime() > STALE_MS;
+    })
+    .map((pr) => {
+      const lastActivity = pr.updatedAt > pr.importedAt ? pr.updatedAt : pr.importedAt;
+      return {
+        id: pr.id,
+        prNumber: pr.prNumber,
+        title: pr.title,
+        daysSinceRefresh: Math.floor((now.getTime() - lastActivity.getTime()) / DAY_MS),
+      };
+    })
+    .sort((a, b) => b.daysSinceRefresh - a.daysSinceRefresh);
 }
