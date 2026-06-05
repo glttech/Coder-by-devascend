@@ -1038,5 +1038,55 @@ All 5 overnight tasks complete. No further repo-only work until DEV validation.
 | #49 | `dee453c` | feat(prs): CI evidence quality summary bar on PR list page |
 | #50 | `03a32f2` | feat(ux): polish empty states and GitHub error messages |
 | #51 | `9f9f3db` | feat(projects): release readiness snapshot card |
+| #53 | `7924657` | fix(ux): replace GITHUB_TOKEN env var name with user-safe wording |
 
-**main HEAD:** `9f9f3db`
+**main HEAD:** `7924657`
+
+---
+
+## Entry 016 — 2026-06-05 (continued)
+
+**Session goal:** Polish GitHub import helper text — remove env var name from user-facing copy.
+
+**HEAD at session start:** `941902f`
+
+---
+
+### PR #53 — Remove GITHUB_TOKEN from user-facing copy
+
+#### What
+
+DEV validation of PRs #47–#51 confirmed the UI exposed the implementation-level env var name `GITHUB_TOKEN` in error hints and info copy. This PR replaces all user-facing occurrences with plain-English descriptions.
+
+#### Changes
+
+- `src/lib/githubClient.ts`: `userSafeErrorMessage()` — AUTH_REQUIRED now says "GitHub access is not configured on the server. Ask the server admin to configure GitHub read access." RATE_LIMITED now says "…ask the server admin to configure a server-side GitHub access token…"
+- `src/app/projects/[id]/prs/import/page.tsx`: ERROR_HINTS map — AUTH_REQUIRED, RATE_LIMITED, NOT_FOUND entries reworded; info box `<code>GITHUB_TOKEN</code>` replaced with "server-side GitHub access token"
+- `src/lib/__tests__/githubPRRefresh.test.ts`: Assertion updated — now verifies message does NOT contain `GITHUB_TOKEN` and IS user-readable (contains "github" + "admin"/"configured"/"access")
+
+#### What was NOT changed
+
+- `process.env.GITHUB_TOKEN` in server route handlers (internal, never client-visible)
+- Internal `GithubClientError.message` field (not returned to clients — routes use `userSafeErrorMessage`)
+- Code comments and `prSummary.ts` comment examples
+- `prSummary.test.ts` test data strings
+
+#### QA/Test Summary
+
+- 537 tests pass (no regressions)
+- Build clean
+- No schema, env, or dependency changes
+
+| Field | Value |
+|-------|-------|
+| PR | #53 |
+| Branch | feat/polish-github-token-copy |
+| Merge SHA | `7924657` |
+| Files changed | `src/lib/githubClient.ts`, `src/app/projects/[id]/prs/import/page.tsx`, `src/lib/__tests__/githubPRRefresh.test.ts` |
+| Tests run | 537 pass |
+| Build | clean |
+| CI status | green ✅ |
+| Risk level | Low |
+| Rollback | Revert the three changed files |
+| Repo-only | Yes |
+| DEV validation | Pending
