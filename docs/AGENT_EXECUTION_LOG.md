@@ -1090,3 +1090,54 @@ DEV validation of PRs #47–#51 confirmed the UI exposed the implementation-leve
 | Rollback | Revert the three changed files |
 | Repo-only | Yes |
 | DEV validation | Pending
+
+---
+
+## Entry 017 — 2026-06-05
+
+**Session goal:** Auth/user identity design — inspect codebase, document gaps, propose simplest internal auth model.
+
+**HEAD at session start:** `a8f348f`
+
+---
+
+### PR #54 — Auth/user identity design document
+
+#### What
+
+Design-only PR. No code changed. Created `docs/AUTH_IDENTITY_DESIGN.md` after a thorough audit of all API routes, middleware, Prisma schema, audit log usage, approval flow, and existing session/auth code.
+
+#### Key findings documented
+
+- Zero auth exists. All 14 API routes are open to any caller passing the governance key.
+- `User` model exists in schema but is never populated.
+- `AuditLog.userId` is always NULL — no actor identity in any of the 16 event types.
+- `Approval.approverId` always NULL. `approvedBy` on Instruction is unvalidated client string.
+- No session, cookie, JWT, or auth library present.
+
+#### Proposed design
+
+- **Phase 1:** `iron-session` + `bcryptjs`, admin credentials in env (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`). No DB schema change.
+- **Env-gated:** no `ADMIN_PASSWORD_HASH` = auth skipped (local dev escape hatch).
+- **Session:** HTTP-only encrypted cookie, 8h expiry.
+- **Middleware:** expanded to cover all routes; `/login` and `/api/auth/*` public.
+- **Audit:** `actor` injected into every `details` JSON from session — no migration.
+- **4-PR sequence:** A (scaffold), B (enforce), C (UI), D (Phase 2 schema — Rahul approval).
+
+#### Requires Rahul approval before implementation
+
+Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECRET` set in server env, session duration preference, 5 open questions answered.
+
+| Field | Value |
+|-------|-------|
+| PR | #54 |
+| Branch | docs/auth-identity-design |
+| Merge SHA | `6b3917a` |
+| Files changed | `docs/AUTH_IDENTITY_DESIGN.md` (new, 451 lines) |
+| Tests run | 537 pass (no code changes) |
+| Build | clean |
+| CI status | green ✅ |
+| Risk level | None (docs-only) |
+| Rollback | Delete `docs/AUTH_IDENTITY_DESIGN.md` |
+| Repo-only | Yes |
+| Next step | Rahul reviews and approves design; sets env vars; autonomous implementation begins at PR A |
