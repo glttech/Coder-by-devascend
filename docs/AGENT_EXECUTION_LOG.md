@@ -1008,3 +1008,35 @@ Project-level "Release Readiness" card showing a signal (ready/caution/blocked),
 - 538 total tests pass (+12 new over merged main)
 - Build clean
 - No schema, env, or secret changes
+
+| Field | Value |
+|-------|-------|
+| PR | #51 |
+| Branch | feat/release-readiness-snapshot |
+| Merge SHA | `9f9f3db` |
+| Files changed | `src/lib/projectHealth.ts`, `src/lib/__tests__/projectHealth.test.ts`, `src/app/projects/[id]/page.tsx`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 537 pass (CI green) |
+| Build | clean |
+| CI status | green ✅ |
+| Risk level | Low |
+| Rollback | Remove Release Readiness section from `page.tsx`; remove `computeReleaseReadiness` from `projectHealth.ts` |
+| Repo-only | Yes — no live DEV/prod/secrets touched |
+| DEV validation | Pending |
+
+---
+
+## Session Close — 2026-06-05
+
+All 5 overnight tasks complete. No further repo-only work until DEV validation.
+
+### Merged PRs this session
+
+| PR | SHA | Title |
+|----|-----|-------|
+| #47 | `da6247e` | feat(projects): calibrate project health signal severity |
+| #48 | `acaf76e` | feat(projects): stale evidence alerts on project page |
+| #49 | `dee453c` | feat(prs): CI evidence quality summary bar on PR list page |
+| #50 | `03a32f2` | feat(ux): polish empty states and GitHub error messages |
+| #51 | `9f9f3db` | feat(projects): release readiness snapshot card |
+
+**main HEAD:** `9f9f3db`
