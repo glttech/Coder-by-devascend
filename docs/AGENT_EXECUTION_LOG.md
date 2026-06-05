@@ -899,3 +899,30 @@ DEV scenario `highRisk=1, failedCI=0, pendingCI=0, stale=0` now correctly → **
 | Rollback | Revert `healthSignal` function in `src/lib/projectHealth.ts` |
 | Repo-only | Yes |
 | DEV validation | Pending — project health widget should now show "Review suggested" instead of "Needs attention" for highRisk=1 scenario |
+
+---
+
+## Entry 014 — 2026-06-05 (continued)
+
+**Session goal:** Task 4 — GitHub evidence empty/error state polish.
+
+**HEAD at session start:** `da6247e`
+
+---
+
+### PR #50 — GitHub evidence empty/error state polish
+
+#### What
+
+Better copy and contextual error hints for first-time use and GitHub API error scenarios.
+
+#### Changes
+
+- `src/app/api/github-prs/route.ts`: Now uses `userSafeErrorMessage(code)` for GitHub errors instead of raw `result.error.message` — consistent with the refresh endpoint
+- `src/app/projects/[id]/prs/import/page.tsx`: Added `errorCode` state; shows a contextual hint below the error (e.g. "Ask admin to set GITHUB_TOKEN" for AUTH_REQUIRED, "Retry in a moment" for NETWORK_ERROR); improved info box copy (private repos, rate limits)
+- `src/app/projects/[id]/page.tsx`: Improved "no PRs" empty state — with repo shows actionable import instruction; without repo shows link to Edit project
+
+#### QA/Test Summary
+
+- 508 total tests pass (no new tests needed — logic changes are in API response formatting and UI copy only)
+- Build clean
