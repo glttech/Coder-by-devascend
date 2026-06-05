@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
+import RefreshPRButton from '@/components/RefreshPRButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,11 +68,14 @@ export default async function PRDetailPage({ params }: PageProps) {
           </span>
         }
         actions={
-          pr.prUrl ? (
-            <a href={pr.prUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
-              View on GitHub ↗
-            </a>
-          ) : undefined
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <RefreshPRButton prId={pr.id} />
+            {pr.prUrl && (
+              <a href={pr.prUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
+                View on GitHub ↗
+              </a>
+            )}
+          </div>
         }
       />
 
@@ -230,7 +234,13 @@ export default async function PRDetailPage({ params }: PageProps) {
       )}
 
       <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-        Imported {pr.importedAt.toLocaleString()} · {repoUrl ? <a href={repoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue)' }}>{pr.project.repoOwner}/{pr.project.repoName}</a> : null}
+        Imported {pr.importedAt.toLocaleString()}
+        {pr.updatedAt > pr.importedAt && (
+          <> · Last refreshed {pr.updatedAt.toLocaleString()}</>
+        )}
+        {repoUrl && (
+          <> · <a href={repoUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue)' }}>{pr.project.repoOwner}/{pr.project.repoName}</a></>
+        )}
       </div>
     </div>
   );

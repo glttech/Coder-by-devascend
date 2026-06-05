@@ -39,6 +39,46 @@ export type GithubPRResult =
 const GITHUB_API_BASE = 'https://api.github.com';
 
 /**
+ * Resolve owner/repo/prNumber for a stored GithubPR record.
+ * Prefers project.repoOwner + project.repoName; falls back to parsing prUrl.
+ * Returns null if neither source is usable.
+ */
+export function resolveGithubCoords(
+  repoOwner: string | null | undefined,
+  repoName: string | null | undefined,
+  prUrl: string | null | undefined,
+  prNumber: number,
+): { owner: string; repo: string; prNumber: number } | null {
+  if (repoOwner && repoName) {
+    return { owner: repoOwner, repo: repoName, prNumber };
+  }
+  if (prUrl) {
+    const parsed = parsePRUrl(prUrl);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+/**
+ * Map a GithubClientError code to a user-safe message.
+ * Token value is never included.
+ */
+export function userSafeErrorMessage(code: GithubClientError['code']): string {
+  switch (code) {
+    case 'RATE_LIMITED':
+      return 'GitHub API rate limit reached. Try again in an hour, or add a GITHUB_TOKEN to your server environment to increase limits.';
+    case 'NOT_FOUND':
+      return 'PR not found on GitHub. It may have been deleted or the repository made private.';
+    case 'AUTH_REQUIRED':
+      return 'GitHub API authentication required. Check that GITHUB_TOKEN is set and has repo access.';
+    case 'NETWORK_ERROR':
+      return 'Could not reach GitHub API. Check your network connection and try again.';
+    case 'PARSE_ERROR':
+      return 'GitHub returned an unexpected response. Try again later.';
+  }
+}
+
+/**
  * Parse a GitHub PR URL into owner/repo/prNumber.
  * Accepts: https://github.com/owner/repo/pull/123
  * or plain "owner/repo#123" shorthand.

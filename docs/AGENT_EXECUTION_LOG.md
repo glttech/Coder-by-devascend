@@ -575,3 +575,77 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
 - Migration execution: `prisma migrate deploy` required before server start (deferred to ops)
+
+---
+
+## Entry 007 — 2026-06-05
+
+**Session goal:** PR #43 — GitHub Evidence Refresh. Add ability to refresh an imported PR's metadata, CI status, and state from GitHub on demand.
+
+**HEAD at session start:** `674ac4ffeb574b5269db83b90e831e03f32b001f` (PR #42 merged — Dashboard GitHub Evidence Widgets; DEV validated)
+
+---
+
+### PR #43 — GitHub Evidence Refresh
+
+#### CEO/Product Gate
+
+- Imported PRs can go stale (CI finishes, PRs merge) — refresh closes this gap without re-importing
+- One-click refresh on the PR detail page; user-safe error messages for rate limit, not found, auth failures
+- No new models, no schema migration, no dependencies
+- Approved ✅
+
+#### CTO/Architecture Gate
+
+- `resolveGithubCoords()` exported from `githubClient.ts` — pure function; prefers `project.repoOwner/repoName`, falls back to parsing `prUrl`
+- `userSafeErrorMessage()` — pure function mapping error codes to operator-readable strings; no token values, no internal paths
+- `POST /api/github-prs/[id]/refresh` — looks up stored PR + project, resolves coords, calls `fetchGithubPR`, updates all mutable fields, emits `github_pr_refreshed` audit log
+- `RefreshPRButton` — minimal client component; calls refresh API, shows loading/success/error state, calls `router.refresh()` on success to re-render server component
+- "Last refreshed" shown in footer via `pr.updatedAt` (existing `@updatedAt` field, auto-updates on any write)
+- No schema migration required
+- Approved ✅
+
+#### CISO/Safety Gate
+
+- `GITHUB_TOKEN` accessed in API route only (`process.env.GITHUB_TOKEN`); never passed to `RefreshPRButton`
+- `userSafeErrorMessage` tested to never expose token values, internal paths, or stack traces
+- Audit log records `owner`, `repo`, `prNumber`, `newState`, `newCiStatus` only — no secrets, no body, no diff
+- Rate limit (429) returns user-readable message without token details
+- `RefreshPRButton` displays only the sanitised error string from the API response body
+- Risk: Low
+- Approved ✅
+
+#### Implementation Summary
+
+- `src/lib/githubClient.ts`: Added `resolveGithubCoords()` and `userSafeErrorMessage()` exports
+- `src/app/api/github-prs/[id]/refresh/route.ts`: `POST` refresh endpoint
+- `src/components/RefreshPRButton.tsx`: client refresh button with loading/error/success states
+- `src/app/projects/[id]/prs/[prId]/page.tsx`: wires in `RefreshPRButton`; shows "Last refreshed" when `updatedAt > importedAt`
+- `src/lib/__tests__/githubPRRefresh.test.ts`: 23 new tests
+
+#### QA/Test Summary
+
+- 414 total tests pass (was 391; +23 new across 4 suites: resolveGithubCoords with project coords, with prUrl fallback, null/missing, userSafeErrorMessage)
+- Build clean — `/api/github-prs/[id]/refresh` listed in build output
+
+| Field | Value |
+|-------|-------|
+| PR | #43 |
+| Branch | feat/github-pr-refresh |
+| Merge SHA | _pending_ |
+| Files changed | `src/lib/githubClient.ts`, `src/app/api/github-prs/[id]/refresh/route.ts`, `src/components/RefreshPRButton.tsx`, `src/app/projects/[id]/prs/[prId]/page.tsx`, `src/lib/__tests__/githubPRRefresh.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 414 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low |
+| Rollback | Delete `src/app/api/github-prs/[id]/refresh/`, `src/components/RefreshPRButton.tsx`; revert `githubClient.ts` (remove two exports); revert PR detail page |
+| Repo-only | Yes |
+| DEV validation | Pending — refresh button requires a live GitHub call; rate limit / auth error paths require DEV environment with or without GITHUB_TOKEN set |
+
+---
+
+### Blockers / Deferred
+
+- Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+- Migration execution: already applied on DEV for `20260603000001_add_project_github_fields_and_github_pr`
