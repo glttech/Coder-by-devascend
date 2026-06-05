@@ -84,6 +84,80 @@ export function healthSignal(h: ProjectHealth): 'critical' | 'warning' | 'clear'
   return 'clear';
 }
 
+export interface PRHealthInputFull extends PRHealthInputWithId {
+  githubMergedAt: Date | null;
+}
+
+export interface RecentMergedPR {
+  id: string;
+  prNumber: number;
+  title: string;
+  githubMergedAt: Date | null;
+}
+
+export interface ReleaseReadiness {
+  signal: 'ready' | 'caution' | 'blocked';
+  suggestedAction: string;
+  recentMergedPRs: RecentMergedPR[];
+  failedCICount: number;
+  pendingCICount: number;
+  staleCount: number;
+  highRiskCount: number;
+}
+
+/**
+ * Compute a release readiness snapshot from imported PR evidence.
+ * Pure function — no DB or network calls.
+ */
+export function computeReleaseReadiness(
+  prs: PRHealthInputFull[],
+  now: Date = new Date(),
+  recentLimit = 5,
+): ReleaseReadiness {
+  const h = computeProjectHealth(prs, now);
+
+  let signal: 'ready' | 'caution' | 'blocked';
+  let suggestedAction: string;
+
+  if (h.failedCICount > 0 || h.highRiskCount > 1) {
+    signal = 'blocked';
+    const parts: string[] = [];
+    if (h.failedCICount > 0) parts.push(`${h.failedCICount} CI failure${h.failedCICount > 1 ? 's' : ''}`);
+    if (h.highRiskCount > 1) parts.push(`${h.highRiskCount} high-risk PRs`);
+    suggestedAction = `Resolve ${parts.join(' and ')} before releasing.`;
+  } else if (h.highRiskCount === 1 || h.staleCount > 0 || h.pendingCICount > 0) {
+    signal = 'caution';
+    const parts: string[] = [];
+    if (h.highRiskCount === 1) parts.push('1 high-risk PR');
+    if (h.staleCount > 0) parts.push(`${h.staleCount} stale evidence item${h.staleCount > 1 ? 's' : ''}`);
+    if (h.pendingCICount > 0) parts.push(`${h.pendingCICount} pending CI result${h.pendingCICount > 1 ? 's' : ''}`);
+    suggestedAction = `Review ${parts.join(', ')} before releasing.`;
+  } else {
+    signal = 'ready';
+    suggestedAction = 'All evidence checks clear — safe to release.';
+  }
+
+  const recentMergedPRs = prs
+    .filter((pr) => pr.merged)
+    .sort((a, b) => {
+      const at = a.githubMergedAt?.getTime() ?? 0;
+      const bt = b.githubMergedAt?.getTime() ?? 0;
+      return bt !== at ? bt - at : b.prNumber - a.prNumber;
+    })
+    .slice(0, recentLimit)
+    .map((pr) => ({ id: pr.id, prNumber: pr.prNumber, title: pr.title, githubMergedAt: pr.githubMergedAt }));
+
+  return {
+    signal,
+    suggestedAction,
+    recentMergedPRs,
+    failedCICount: h.failedCICount,
+    pendingCICount: h.pendingCICount,
+    staleCount: h.staleCount,
+    highRiskCount: h.highRiskCount,
+  };
+}
+
 /**
  * Return open PRs that have not been refreshed in 7+ days, sorted oldest-first.
  * Pure function — no DB or network calls.

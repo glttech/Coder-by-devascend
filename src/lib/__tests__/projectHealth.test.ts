@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeProjectHealth, healthSignal, computeStalePRs } from '../projectHealth.js';
-import type { PRHealthInput, PRHealthInputWithId, ProjectHealth } from '../projectHealth.js';
+import { computeProjectHealth, healthSignal, computeStalePRs, computeReleaseReadiness } from '../projectHealth.js';
+import type { PRHealthInput, PRHealthInputWithId, PRHealthInputFull, ProjectHealth } from '../projectHealth.js';
 
 const NOW = new Date('2026-06-05T12:00:00Z');
 const RECENT = new Date('2026-06-04T12:00:00Z');    // 1 day ago — not stale
@@ -353,5 +353,131 @@ describe('computeStalePRs — stale open PRs', () => {
     ], NOW);
     assert.equal(result[0].id, 'older-stale');
     assert.equal(result[1].id, 'newer-stale');
+  });
+});
+
+// ── computeReleaseReadiness ────────────────────────────────────────────────
+
+const MERGED_AT = new Date('2026-06-03T12:00:00Z');
+
+function prFull(overrides: Partial<PRHealthInputFull> = {}): PRHealthInputFull {
+  return {
+    id: 'pr-id',
+    prNumber: 1,
+    title: 'feat: add button',
+    body: null,
+    state: 'open',
+    merged: false,
+    ciStatus: 'success',
+    importedAt: RECENT,
+    updatedAt: RECENT,
+    githubMergedAt: null,
+    ...overrides,
+  };
+}
+
+describe('computeReleaseReadiness — empty input', () => {
+  test('signal is ready with no PRs', () => {
+    const r = computeReleaseReadiness([], NOW);
+    assert.equal(r.signal, 'ready');
+    assert.equal(r.recentMergedPRs.length, 0);
+    assert.equal(r.failedCICount, 0);
+  });
+});
+
+describe('computeReleaseReadiness — blocked signal', () => {
+  test('blocked when CI failures present', () => {
+    const r = computeReleaseReadiness([
+      prFull({ ciStatus: 'failure', state: 'open' }),
+    ], NOW);
+    assert.equal(r.signal, 'blocked');
+    assert.match(r.suggestedAction, /CI failure/);
+  });
+
+  test('blocked when more than one high-risk PR', () => {
+    const r = computeReleaseReadiness([
+      prFull({ title: 'feat: rotate credentials in production' }),
+      prFull({ id: 'b', prNumber: 2, title: 'fix: migrate database schema changes' }),
+    ], NOW);
+    assert.equal(r.signal, 'blocked');
+    assert.match(r.suggestedAction, /high-risk/);
+  });
+
+  test('suggestedAction mentions both CI and high-risk when both present', () => {
+    const r = computeReleaseReadiness([
+      prFull({ ciStatus: 'failure', state: 'open' }),
+      prFull({ id: 'b', prNumber: 2, title: 'feat: rotate credentials in production' }),
+      prFull({ id: 'c', prNumber: 3, title: 'fix: migrate database schema changes' }),
+    ], NOW);
+    assert.equal(r.signal, 'blocked');
+    assert.match(r.suggestedAction, /CI failure/);
+    assert.match(r.suggestedAction, /high-risk/);
+  });
+});
+
+describe('computeReleaseReadiness — caution signal', () => {
+  test('caution for single high-risk PR', () => {
+    const r = computeReleaseReadiness([
+      prFull({ title: 'feat: rotate credentials in production' }),
+    ], NOW);
+    assert.equal(r.signal, 'caution');
+    assert.match(r.suggestedAction, /high-risk/);
+  });
+
+  test('caution for stale evidence', () => {
+    const r = computeReleaseReadiness([
+      prFull({ state: 'open', merged: false, updatedAt: STALE, importedAt: STALE }),
+    ], NOW);
+    assert.equal(r.signal, 'caution');
+    assert.match(r.suggestedAction, /stale/);
+  });
+
+  test('caution for pending CI', () => {
+    const r = computeReleaseReadiness([
+      prFull({ ciStatus: 'pending' }),
+    ], NOW);
+    assert.equal(r.signal, 'caution');
+    assert.match(r.suggestedAction, /pending CI/);
+  });
+});
+
+describe('computeReleaseReadiness — ready signal', () => {
+  test('ready when all PRs merged with success CI', () => {
+    const r = computeReleaseReadiness([
+      prFull({ merged: true, state: 'merged', ciStatus: 'success', githubMergedAt: MERGED_AT }),
+    ], NOW);
+    assert.equal(r.signal, 'ready');
+    assert.match(r.suggestedAction, /safe to release/);
+  });
+});
+
+describe('computeReleaseReadiness — recentMergedPRs', () => {
+  test('returns up to recentLimit merged PRs sorted by mergedAt desc', () => {
+    const older = new Date('2026-05-01T00:00:00Z');
+    const newer = new Date('2026-06-01T00:00:00Z');
+    const r = computeReleaseReadiness([
+      prFull({ id: 'a', prNumber: 1, merged: true, state: 'merged', githubMergedAt: older }),
+      prFull({ id: 'b', prNumber: 2, merged: true, state: 'merged', githubMergedAt: newer }),
+    ], NOW, 5);
+    assert.equal(r.recentMergedPRs.length, 2);
+    assert.equal(r.recentMergedPRs[0].id, 'b');
+    assert.equal(r.recentMergedPRs[1].id, 'a');
+  });
+
+  test('respects recentLimit', () => {
+    const prs = Array.from({ length: 8 }, (_, i) =>
+      prFull({ id: String(i), prNumber: i + 1, merged: true, state: 'merged', githubMergedAt: MERGED_AT }),
+    );
+    const r = computeReleaseReadiness(prs, NOW, 3);
+    assert.equal(r.recentMergedPRs.length, 3);
+  });
+
+  test('excludes open (unmerged) PRs from recentMergedPRs', () => {
+    const r = computeReleaseReadiness([
+      prFull({ id: 'open-pr', merged: false, state: 'open' }),
+      prFull({ id: 'merged-pr', prNumber: 2, merged: true, state: 'merged', githubMergedAt: MERGED_AT }),
+    ], NOW);
+    assert.equal(r.recentMergedPRs.length, 1);
+    assert.equal(r.recentMergedPRs[0].id, 'merged-pr');
   });
 });

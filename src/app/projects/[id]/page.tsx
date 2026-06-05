@@ -2,7 +2,8 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RiskBadge } from '@/components/ui/Badge';
-import { computeProjectHealth, computeStalePRs, healthSignal } from '@/lib/projectHealth';
+import { computeProjectHealth, computeStalePRs, computeReleaseReadiness, healthSignal } from '@/lib/projectHealth';
+import type { PRHealthInputFull } from '@/lib/projectHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,12 +46,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   // Fetch all PR health data (separate query — list page uses its own query with filters)
   const allPRsForHealth = await prisma.githubPR.findMany({
     where: { projectId: params.id },
-    select: { id: true, prNumber: true, title: true, body: true, state: true, merged: true, ciStatus: true, importedAt: true, updatedAt: true },
-  });
+    select: { id: true, prNumber: true, title: true, body: true, state: true, merged: true, ciStatus: true, importedAt: true, updatedAt: true, githubMergedAt: true },
+  }) as PRHealthInputFull[];
 
   const health = computeProjectHealth(allPRsForHealth);
   const signal = healthSignal(health);
   const stalePRs = computeStalePRs(allPRsForHealth);
+  const releaseReadiness = computeReleaseReadiness(allPRsForHealth);
 
   const repoUrl = project.repoOwner && project.repoName
     ? `https://github.com/${project.repoOwner}/${project.repoName}`
@@ -199,6 +201,47 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Release Readiness Snapshot */}
+      {health.total > 0 && (
+        <div className="section">
+          <div className="section-header">
+            <span className="section-title">Release Readiness</span>
+            <span className={`badge ${releaseReadiness.signal === 'ready' ? 'badge-success' : releaseReadiness.signal === 'caution' ? 'badge-warning' : 'badge-sev-high'}`}>
+              {releaseReadiness.signal === 'ready' ? 'Ready' : releaseReadiness.signal === 'caution' ? 'Caution' : 'Blocked'}
+            </span>
+          </div>
+          <div className="card">
+            <p style={{ fontSize: 13, margin: '0 0 12px', color: releaseReadiness.signal === 'ready' ? 'var(--green)' : releaseReadiness.signal === 'caution' ? 'var(--amber)' : 'var(--red)', fontWeight: 500 }}>
+              {releaseReadiness.suggestedAction}
+            </p>
+            {releaseReadiness.recentMergedPRs.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                  Recent merged PRs
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {releaseReadiness.recentMergedPRs.map((mpr) => (
+                    <li key={mpr.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                      <Link href={`/projects/${project.id}/prs/${mpr.id}`} style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--blue)', flexShrink: 0 }}>
+                        #{mpr.prNumber}
+                      </Link>
+                      <Link href={`/projects/${project.id}/prs/${mpr.id}`} style={{ color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {mpr.title.length > 70 ? mpr.title.slice(0, 70) + '…' : mpr.title}
+                      </Link>
+                      {mpr.githubMergedAt && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                          {mpr.githubMergedAt.toLocaleDateString()}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
