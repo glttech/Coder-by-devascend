@@ -899,3 +899,30 @@ DEV scenario `highRisk=1, failedCI=0, pendingCI=0, stale=0` now correctly → **
 | Rollback | Revert `healthSignal` function in `src/lib/projectHealth.ts` |
 | Repo-only | Yes |
 | DEV validation | Pending — project health widget should now show "Review suggested" instead of "Needs attention" for highRisk=1 scenario |
+
+---
+
+## Entry 013 — 2026-06-05 (continued)
+
+**Session goal:** Task 3 — CI evidence quality summary.
+
+**HEAD at session start:** `da6247e`
+
+---
+
+### PR #49 — CI evidence quality summary bar on PR list page
+
+#### What
+
+Compact CI summary bar at the top of the PR list page (`/projects/[id]/prs`) showing colored chip counts (failed/pending/unknown/passed). Each chip is a click-to-filter link. Bar is hidden when all PRs have success CI or the list is empty.
+
+#### Implementation
+
+- `src/lib/projectHealth.ts`: Added `CISummary` interface and `computeCISummary()` pure function — O(n) pass counting failure/pending/null/success statuses
+- `src/lib/__tests__/projectHealth.test.ts`: Added 9 new tests covering empty, per-status, mixed, all-success, all-unknown, total invariant
+- `src/app/projects/[id]/prs/page.tsx`: Imported `computeCISummary`; computed summary from fetched PRs; added CI summary bar above the PR table (hidden when all statuses clean)
+
+#### QA/Test Summary
+
+- 517 total tests pass (+9 new)
+- Build clean

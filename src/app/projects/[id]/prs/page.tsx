@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
 import { buildPRFilters, normaliseStateFilter, normaliseCIFilter } from '@/lib/prFilters';
+import { computeCISummary } from '@/lib/projectHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,7 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
   });
 
   const totalCount = project._count.githubPRs;
+  const ciSummary = computeCISummary(prs);
   const repoUrl = project.repoOwner && project.repoName
     ? `https://github.com/${project.repoOwner}/${project.repoName}`
     : null;
@@ -158,6 +160,33 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
           )}
         </form>
       </div>
+
+      {/* CI Summary Bar — shown when there are non-success statuses in the current view */}
+      {prs.length > 0 && (ciSummary.failed > 0 || ciSummary.pending > 0 || ciSummary.unknown > 0) && (
+        <div className="section" style={{ paddingTop: 0 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>CI</span>
+            {ciSummary.failed > 0 && (
+              <Link href={filterUrl({ ci: 'failure' })} className="badge badge-sev-high" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                {ciSummary.failed} failed
+              </Link>
+            )}
+            {ciSummary.pending > 0 && (
+              <Link href={filterUrl({ ci: 'pending' })} className="badge badge-warning" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                {ciSummary.pending} pending
+              </Link>
+            )}
+            {ciSummary.unknown > 0 && (
+              <Link href={filterUrl({ ci: 'unknown' })} className="badge badge-neutral" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                {ciSummary.unknown} unknown
+              </Link>
+            )}
+            {ciSummary.success > 0 && (
+              <span className="badge badge-success" style={{ opacity: 0.7 }}>{ciSummary.success} passed</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* PR Table */}
       <div className="section">
