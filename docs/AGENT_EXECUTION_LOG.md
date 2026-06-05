@@ -833,11 +833,11 @@ Two bugs in `src/lib/prSummary.ts`:
 |-------|-------|
 | PR | #46 |
 | Branch | fix/pr-risk-classifier |
-| Merge SHA | _pending_ |
+| Merge SHA | 9143f77c07abb74afe33a40cd1ce0dc8899b5f6d |
 | Files changed | `src/lib/prSummary.ts`, `src/lib/__tests__/prSummary.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 499 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | success |
 | Risk level | Low |
 | Rollback | Revert `src/lib/prSummary.ts` (restore original patterns, remove `stripNegatedClauses`) |
 | Repo-only | Yes |
