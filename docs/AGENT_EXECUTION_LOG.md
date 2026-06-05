@@ -705,11 +705,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #44 |
 | Branch | feat/project-pr-list |
-| Merge SHA | _pending_ |
+| Merge SHA | 3f2483554d69529838c8ff3d8efae94512a9ace2 |
 | Files changed | `src/lib/prFilters.ts`, `src/app/projects/[id]/prs/page.tsx`, `src/app/projects/[id]/page.tsx`, `src/lib/__tests__/prFilters.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 451 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | success |
 | Risk level | None |
 | Rollback | Delete `src/lib/prFilters.ts`, `src/app/projects/[id]/prs/page.tsx`; revert project detail page (restore 10 PRs, remove "View all" link) |
 | Repo-only | Yes |
