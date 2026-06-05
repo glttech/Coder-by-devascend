@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeProjectHealth, healthSignal } from '../projectHealth.js';
-import type { PRHealthInput, ProjectHealth } from '../projectHealth.js';
+import { computeProjectHealth, healthSignal, computeStalePRs } from '../projectHealth.js';
+import type { PRHealthInput, PRHealthInputWithId, ProjectHealth } from '../projectHealth.js';
 
 const NOW = new Date('2026-06-05T12:00:00Z');
 const RECENT = new Date('2026-06-04T12:00:00Z');    // 1 day ago — not stale
@@ -226,5 +226,89 @@ describe('healthSignal', () => {
 
   test('only mergedCount populated → clear', () => {
     assert.equal(healthSignal(h({ mergedCount: 10 })), 'clear');
+  });
+});
+
+// ── computeStalePRs ────────────────────────────────────────────────────────
+
+const STALE2 = new Date('2026-05-20T12:00:00Z'); // 16 days before NOW
+
+function prWithId(overrides: Partial<PRHealthInputWithId> = {}): PRHealthInputWithId {
+  return {
+    id: 'pr-1',
+    prNumber: 1,
+    title: 'feat: add button',
+    body: null,
+    state: 'open',
+    merged: false,
+    ciStatus: 'success',
+    importedAt: RECENT,
+    updatedAt: RECENT,
+    ...overrides,
+  };
+}
+
+describe('computeStalePRs — empty / no stale', () => {
+  test('empty array returns empty list', () => {
+    assert.deepEqual(computeStalePRs([], NOW), []);
+  });
+
+  test('recent open PR is not stale', () => {
+    assert.deepEqual(computeStalePRs([prWithId()], NOW), []);
+  });
+
+  test('merged stale PR is not included', () => {
+    const result = computeStalePRs([prWithId({ merged: true, state: 'merged', updatedAt: STALE2, importedAt: STALE2 })], NOW);
+    assert.deepEqual(result, []);
+  });
+
+  test('closed (not merged) stale PR is not included', () => {
+    const result = computeStalePRs([prWithId({ state: 'closed', merged: false, updatedAt: STALE2, importedAt: STALE2 })], NOW);
+    assert.deepEqual(result, []);
+  });
+});
+
+describe('computeStalePRs — stale open PRs', () => {
+  test('open stale PR is included with correct fields', () => {
+    const result = computeStalePRs([
+      prWithId({ id: 'abc', prNumber: 42, title: 'feat: big refactor', updatedAt: STALE2, importedAt: STALE2 }),
+    ], NOW);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, 'abc');
+    assert.equal(result[0].prNumber, 42);
+    assert.equal(result[0].title, 'feat: big refactor');
+    assert.equal(result[0].daysSinceRefresh, 16);
+  });
+
+  test('uses updatedAt when newer than importedAt', () => {
+    const result = computeStalePRs([
+      prWithId({ importedAt: STALE2, updatedAt: RECENT }),
+    ], NOW);
+    assert.deepEqual(result, []); // updatedAt is recent → not stale
+  });
+
+  test('falls back to importedAt when updatedAt equals importedAt', () => {
+    const result = computeStalePRs([prWithId({ importedAt: STALE2, updatedAt: STALE2 })], NOW);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].daysSinceRefresh, 16);
+  });
+
+  test('multiple stale PRs all returned', () => {
+    const result = computeStalePRs([
+      prWithId({ id: 'a', prNumber: 1, updatedAt: STALE2, importedAt: STALE2 }),
+      prWithId({ id: 'b', prNumber: 2, updatedAt: STALE2, importedAt: STALE2 }),
+      prWithId({ id: 'c', prNumber: 3 }), // recent — excluded
+    ], NOW);
+    assert.equal(result.length, 2);
+  });
+
+  test('results sorted oldest-first (highest daysSinceRefresh first)', () => {
+    const veryStale = new Date('2026-05-01T12:00:00Z'); // 35 days
+    const result = computeStalePRs([
+      prWithId({ id: 'newer-stale', prNumber: 10, updatedAt: STALE2, importedAt: STALE2 }),
+      prWithId({ id: 'older-stale', prNumber: 20, updatedAt: veryStale, importedAt: veryStale }),
+    ], NOW);
+    assert.equal(result[0].id, 'older-stale');
+    assert.equal(result[1].id, 'newer-stale');
   });
 });

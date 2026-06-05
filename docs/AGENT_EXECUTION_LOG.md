@@ -849,3 +849,30 @@ Two bugs in `src/lib/prSummary.ts`:
 
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+
+---
+
+## Entry 012 — 2026-06-05 (continued)
+
+**Session goal:** Task 2 — Stale evidence alerts / refresh-needed queue.
+
+**HEAD at session start:** `c925619`
+
+---
+
+### PR #48 — Stale evidence alerts on project page
+
+#### What
+
+Show a "Needs Refresh" table on the project detail page for any open PRs not refreshed in 7+ days. Each row links to the PR detail page where the Refresh button lives.
+
+#### Implementation
+
+- `src/lib/projectHealth.ts`: Added `PRHealthInputWithId`, `StalePR` interfaces and `computeStalePRs()` pure function — filters open+unmerged PRs stale for 7+ days, maps to `{ id, prNumber, title, daysSinceRefresh }`, sorted oldest-first
+- `src/lib/__tests__/projectHealth.test.ts`: Added 9 new tests across two suites covering empty/no-stale, stale detection, field mapping, fallback to importedAt, and sort order
+- `src/app/projects/[id]/page.tsx`: Extended health query to include `id`/`prNumber`; added `computeStalePRs` call; added "Needs Refresh" section with table (PR#, title, days stale, Refresh link) — hidden when no stale PRs
+
+#### QA/Test Summary
+
+- 508 total tests pass (+9 new)
+- Build clean
