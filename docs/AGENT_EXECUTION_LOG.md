@@ -849,3 +849,39 @@ Two bugs in `src/lib/prSummary.ts`:
 
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+
+---
+
+## Entry 011 — 2026-06-05
+
+**Session goal:** Overnight tasks. Task 1: PR health signal severity calibration. Fix "Needs attention/critical" badge showing for a single high-risk PR with no CI failures, pending CI, or stale evidence.
+
+**HEAD at session start:** `c925619` (docs: PR #46 merge SHA update)
+
+---
+
+### PR #47 — Calibrate health signal severity thresholds
+
+#### Problem
+
+DEV showed: total=6, merged=6, highRisk=1, failedCI=0, pendingCI=0, stale=0 → signal was `critical` / "Needs attention". A single high-risk merged PR with no active issues does not warrant the most severe signal.
+
+#### New Logic
+
+```
+critical → CI failures, OR 2+ high-risk PRs, OR 3+ stale PRs, OR any high-risk combined with stale/pending
+warning  → exactly 1 high-risk PR alone, OR 1–2 stale PRs, OR pending CI alone
+clear    → no actionable issues
+```
+
+DEV scenario `highRisk=1, failedCI=0, pendingCI=0, stale=0` now correctly → **warning / "Review suggested"**.
+
+#### Changes
+
+- `src/lib/projectHealth.ts`: Rewrote `healthSignal` with 4-condition critical tier, 3-condition warning tier
+- `src/lib/__tests__/projectHealth.test.ts`: Replaced 7 old signal tests with 15 targeted tests covering all clear/warning/critical paths including the DEV scenario fix
+
+#### QA/Test Summary
+
+- 508 total tests pass (was 499; +9 new signal tests)
+- Build clean
