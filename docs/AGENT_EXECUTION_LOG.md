@@ -555,11 +555,11 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 |-------|-------|
 | PR | #42 |
 | Branch | feat/dashboard-github-widgets |
-| Merge SHA | _pending_ |
+| Merge SHA | 142a27c6d9767d7704c19263a04bbe88a370a643 |
 | Files changed | `src/app/page.tsx`, `docs/AGENT_EXECUTION_LOG.md` |
 | Tests run | 391 pass |
 | Build | clean |
-| CI status | pending |
+| CI status | success |
 | Risk level | None |
 | Rollback | Revert page.tsx changes |
 | Repo-only | Yes |
