@@ -67,10 +67,20 @@ export function computeProjectHealth(prs: PRHealthInput[], now: Date = new Date(
 
 /**
  * Overall health signal derived from the computed metrics.
+ *
+ * critical — CI failures, multiple high-risk PRs, severe staleness (3+), or combined
+ *            signals (any high-risk alongside stale or pending evidence).
+ * warning  — a single high-risk PR, or minor stale/pending evidence in isolation.
+ * clear    — no actionable issues.
  */
 export function healthSignal(h: ProjectHealth): 'critical' | 'warning' | 'clear' {
-  if (h.failedCICount > 0 || h.highRiskCount > 0) return 'critical';
-  if (h.staleCount > 0 || h.pendingCICount > 0) return 'warning';
+  if (h.failedCICount > 0) return 'critical';
+  if (h.highRiskCount > 1) return 'critical';
+  if (h.staleCount >= 3) return 'critical';
+  if (h.highRiskCount > 0 && (h.staleCount > 0 || h.pendingCICount > 0)) return 'critical';
+
+  if (h.highRiskCount === 1 || h.staleCount > 0 || h.pendingCICount > 0) return 'warning';
+
   return 'clear';
 }
 

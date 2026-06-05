@@ -200,32 +200,75 @@ describe('healthSignal', () => {
     return { total: 5, mergedCount: 2, openCount: 1, failedCICount: 0, pendingCICount: 0, highRiskCount: 0, staleCount: 0, ...overrides };
   }
 
-  test('failedCICount > 0 → critical', () => {
-    assert.equal(healthSignal(h({ failedCICount: 1 })), 'critical');
-  });
-
-  test('highRiskCount > 0 → critical', () => {
-    assert.equal(healthSignal(h({ highRiskCount: 1 })), 'critical');
-  });
-
-  test('staleCount > 0 → warning', () => {
-    assert.equal(healthSignal(h({ staleCount: 1 })), 'warning');
-  });
-
-  test('pendingCICount > 0 → warning', () => {
-    assert.equal(healthSignal(h({ pendingCICount: 2 })), 'warning');
-  });
-
-  test('critical takes priority over warning', () => {
-    assert.equal(healthSignal(h({ failedCICount: 1, staleCount: 1 })), 'critical');
-  });
-
+  // ── clear ────────────────────────────────────────────────────────────────
   test('all zeros → clear', () => {
     assert.equal(healthSignal(h()), 'clear');
   });
 
   test('only mergedCount populated → clear', () => {
     assert.equal(healthSignal(h({ mergedCount: 10 })), 'clear');
+  });
+
+  // ── warning — single high-risk, minor stale/pending ──────────────────────
+  test('single high-risk PR → warning (not critical)', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 1 })), 'warning');
+  });
+
+  test('staleCount=1 alone → warning', () => {
+    assert.equal(healthSignal(h({ staleCount: 1 })), 'warning');
+  });
+
+  test('staleCount=2 alone → warning', () => {
+    assert.equal(healthSignal(h({ staleCount: 2 })), 'warning');
+  });
+
+  test('pendingCICount > 0 alone → warning', () => {
+    assert.equal(healthSignal(h({ pendingCICount: 2 })), 'warning');
+  });
+
+  // ── critical — CI failures ────────────────────────────────────────────────
+  test('failedCICount > 0 → critical', () => {
+    assert.equal(healthSignal(h({ failedCICount: 1 })), 'critical');
+  });
+
+  test('CI failures take priority over clean risk/stale', () => {
+    assert.equal(healthSignal(h({ failedCICount: 2, staleCount: 1 })), 'critical');
+  });
+
+  // ── critical — multiple high-risk PRs ─────────────────────────────────────
+  test('two high-risk PRs → critical', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 2 })), 'critical');
+  });
+
+  test('three high-risk PRs → critical', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 3 })), 'critical');
+  });
+
+  // ── critical — severe staleness ───────────────────────────────────────────
+  test('staleCount=3 → critical (severe)', () => {
+    assert.equal(healthSignal(h({ staleCount: 3 })), 'critical');
+  });
+
+  test('staleCount=5 → critical', () => {
+    assert.equal(healthSignal(h({ staleCount: 5 })), 'critical');
+  });
+
+  // ── critical — combined warning signals ───────────────────────────────────
+  test('highRisk=1 AND staleCount=1 → critical (combined)', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 1, staleCount: 1 })), 'critical');
+  });
+
+  test('highRisk=1 AND pendingCI=1 → critical (combined)', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 1, pendingCICount: 1 })), 'critical');
+  });
+
+  test('highRisk=1 AND staleCount=2 → critical (combined)', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 1, staleCount: 2 })), 'critical');
+  });
+
+  // ── DEV-observed scenario fix ─────────────────────────────────────────────
+  test('DEV scenario: highRisk=1, failedCI=0, pendingCI=0, stale=0 → warning', () => {
+    assert.equal(healthSignal(h({ highRiskCount: 1, failedCICount: 0, pendingCICount: 0, staleCount: 0 })), 'warning');
   });
 });
 

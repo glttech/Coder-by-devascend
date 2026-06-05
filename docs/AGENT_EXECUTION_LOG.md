@@ -852,6 +852,56 @@ Two bugs in `src/lib/prSummary.ts`:
 
 ---
 
+## Entry 011 — 2026-06-05
+
+**Session goal:** Overnight tasks. Task 1: PR health signal severity calibration. Fix "Needs attention/critical" badge showing for a single high-risk PR with no CI failures, pending CI, or stale evidence.
+
+**HEAD at session start:** `c925619` (docs: PR #46 merge SHA update)
+
+---
+
+### PR #47 — Calibrate health signal severity thresholds
+
+#### Problem
+
+DEV showed: total=6, merged=6, highRisk=1, failedCI=0, pendingCI=0, stale=0 → signal was `critical` / "Needs attention". A single high-risk merged PR with no active issues does not warrant the most severe signal.
+
+#### New Logic
+
+```
+critical → CI failures, OR 2+ high-risk PRs, OR 3+ stale PRs, OR any high-risk combined with stale/pending
+warning  → exactly 1 high-risk PR alone, OR 1–2 stale PRs, OR pending CI alone
+clear    → no actionable issues
+```
+
+DEV scenario `highRisk=1, failedCI=0, pendingCI=0, stale=0` now correctly → **warning / "Review suggested"**.
+
+#### Changes
+
+- `src/lib/projectHealth.ts`: Rewrote `healthSignal` with 4-condition critical tier, 3-condition warning tier
+- `src/lib/__tests__/projectHealth.test.ts`: Replaced 7 old signal tests with 15 targeted tests covering all clear/warning/critical paths including the DEV scenario fix
+
+#### QA/Test Summary
+
+- 508 total tests pass (was 499; +9 new signal tests)
+- Build clean
+
+| Field | Value |
+|-------|-------|
+| PR | #47 |
+| Branch | fix/health-signal-calibration |
+| Merge SHA | 46ae8fddd5a13796afa860563d426b883f7400c9 |
+| Files changed | `src/lib/projectHealth.ts`, `src/lib/__tests__/projectHealth.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 508 pass |
+| Build | clean |
+| CI status | success |
+| Risk level | Low |
+| Rollback | Revert `healthSignal` function in `src/lib/projectHealth.ts` |
+| Repo-only | Yes |
+| DEV validation | Pending — project health widget should now show "Review suggested" instead of "Needs attention" for highRisk=1 scenario |
+
+---
+
 ## Entry 012 — 2026-06-05 (continued)
 
 **Session goal:** Task 2 — Stale evidence alerts / refresh-needed queue.
