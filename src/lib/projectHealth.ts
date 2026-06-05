@@ -65,6 +65,29 @@ export function computeProjectHealth(prs: PRHealthInput[], now: Date = new Date(
   return { total: prs.length, mergedCount, openCount, failedCICount, pendingCICount, highRiskCount, staleCount };
 }
 
+export interface CISummary {
+  failed: number;
+  pending: number;
+  unknown: number;
+  success: number;
+  total: number;
+}
+
+/**
+ * Compute a per-status CI breakdown from a list of PR CI statuses.
+ * Pure function — no DB or network calls.
+ */
+export function computeCISummary(prs: { ciStatus: string | null }[]): CISummary {
+  let failed = 0, pending = 0, unknown = 0, success = 0;
+  for (const { ciStatus } of prs) {
+    if (ciStatus === 'failure') failed++;
+    else if (ciStatus === 'pending') pending++;
+    else if (ciStatus === null) unknown++;
+    else if (ciStatus === 'success') success++;
+  }
+  return { failed, pending, unknown, success, total: prs.length };
+}
+
 /**
  * Overall health signal derived from the computed metrics.
  *

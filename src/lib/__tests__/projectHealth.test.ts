@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeProjectHealth, healthSignal, computeStalePRs, computeReleaseReadiness } from '../projectHealth.js';
+import { computeProjectHealth, healthSignal, computeStalePRs, computeCISummary, computeReleaseReadiness } from '../projectHealth.js';
 import type { PRHealthInput, PRHealthInputWithId, PRHealthInputFull, ProjectHealth } from '../projectHealth.js';
 
 const NOW = new Date('2026-06-05T12:00:00Z');
@@ -353,6 +353,71 @@ describe('computeStalePRs — stale open PRs', () => {
     ], NOW);
     assert.equal(result[0].id, 'older-stale');
     assert.equal(result[1].id, 'newer-stale');
+  });
+});
+
+// ── computeCISummary ───────────────────────────────────────────────────────
+
+describe('computeCISummary — empty', () => {
+  test('empty array returns all zeros', () => {
+    const s = computeCISummary([]);
+    assert.deepEqual(s, { failed: 0, pending: 0, unknown: 0, success: 0, total: 0 });
+  });
+});
+
+describe('computeCISummary — per-status counts', () => {
+  test('counts failure correctly', () => {
+    const s = computeCISummary([{ ciStatus: 'failure' }, { ciStatus: 'success' }]);
+    assert.equal(s.failed, 1);
+    assert.equal(s.success, 1);
+    assert.equal(s.total, 2);
+  });
+
+  test('counts pending correctly', () => {
+    const s = computeCISummary([{ ciStatus: 'pending' }, { ciStatus: 'pending' }]);
+    assert.equal(s.pending, 2);
+  });
+
+  test('counts null as unknown', () => {
+    const s = computeCISummary([{ ciStatus: null }, { ciStatus: null }]);
+    assert.equal(s.unknown, 2);
+    assert.equal(s.pending, 0);
+  });
+
+  test('counts success correctly', () => {
+    const s = computeCISummary([{ ciStatus: 'success' }]);
+    assert.equal(s.success, 1);
+  });
+
+  test('mixed statuses all counted correctly', () => {
+    const s = computeCISummary([
+      { ciStatus: 'failure' },
+      { ciStatus: 'failure' },
+      { ciStatus: 'pending' },
+      { ciStatus: null },
+      { ciStatus: 'success' },
+      { ciStatus: 'success' },
+      { ciStatus: 'success' },
+    ]);
+    assert.deepEqual(s, { failed: 2, pending: 1, unknown: 1, success: 3, total: 7 });
+  });
+
+  test('all success', () => {
+    const s = computeCISummary([{ ciStatus: 'success' }, { ciStatus: 'success' }]);
+    assert.deepEqual(s, { failed: 0, pending: 0, unknown: 0, success: 2, total: 2 });
+  });
+
+  test('all unknown (null)', () => {
+    const s = computeCISummary([{ ciStatus: null }, { ciStatus: null }, { ciStatus: null }]);
+    assert.deepEqual(s, { failed: 0, pending: 0, unknown: 3, success: 0, total: 3 });
+  });
+
+  test('total equals input length', () => {
+    const prs = [
+      { ciStatus: 'failure' }, { ciStatus: 'success' }, { ciStatus: null },
+      { ciStatus: 'pending' }, { ciStatus: 'success' },
+    ];
+    assert.equal(computeCISummary(prs).total, prs.length);
   });
 });
 

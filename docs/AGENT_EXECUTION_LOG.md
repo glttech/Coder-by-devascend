@@ -929,6 +929,60 @@ Show a "Needs Refresh" table on the project detail page for any open PRs not ref
 
 ---
 
+## Entry 013 — 2026-06-05 (continued)
+
+**Session goal:** Task 3 — CI evidence quality summary.
+
+**HEAD at session start:** `da6247e`
+
+---
+
+### PR #49 — CI evidence quality summary bar on PR list page
+
+#### What
+
+Compact CI summary bar at the top of the PR list page (`/projects/[id]/prs`) showing colored chip counts (failed/pending/unknown/passed). Each chip is a click-to-filter link. Bar is hidden when all PRs have success CI or the list is empty.
+
+#### Implementation
+
+- `src/lib/projectHealth.ts`: Added `CISummary` interface and `computeCISummary()` pure function — O(n) pass counting failure/pending/null/success statuses
+- `src/lib/__tests__/projectHealth.test.ts`: Added 9 new tests covering empty, per-status, mixed, all-success, all-unknown, total invariant
+- `src/app/projects/[id]/prs/page.tsx`: Imported `computeCISummary`; computed summary from fetched PRs; added CI summary bar above the PR table (hidden when all statuses clean)
+
+#### QA/Test Summary
+
+- 517 total tests pass (+9 new)
+- Build clean
+
+---
+
+## Entry 014 — 2026-06-05 (continued)
+
+**Session goal:** Task 4 — GitHub evidence empty/error state polish.
+
+**HEAD at session start:** `da6247e`
+
+---
+
+### PR #50 — GitHub evidence empty/error state polish
+
+#### What
+
+Better copy and contextual error hints for first-time use and GitHub API error scenarios.
+
+#### Changes
+
+- `src/app/api/github-prs/route.ts`: Now uses `userSafeErrorMessage(code)` for GitHub errors instead of raw `result.error.message` — consistent with the refresh endpoint
+- `src/app/projects/[id]/prs/import/page.tsx`: Added `errorCode` state; shows a contextual hint below the error (e.g. "Ask admin to set GITHUB_TOKEN" for AUTH_REQUIRED, "Retry in a moment" for NETWORK_ERROR); improved info box copy (private repos, rate limits)
+- `src/app/projects/[id]/page.tsx`: Improved "no PRs" empty state — with repo shows actionable import instruction; without repo shows link to Edit project
+
+#### QA/Test Summary
+
+- 508 total tests pass (no new tests needed — logic changes are in API response formatting and UI copy only)
+- Build clean
+
+---
+
 ## Entry 015 — 2026-06-05 (continued)
 
 **Session goal:** Task 5 — Release readiness snapshot.
@@ -951,6 +1005,6 @@ Project-level "Release Readiness" card showing a signal (ready/caution/blocked),
 
 #### QA/Test Summary
 
-- 528 total tests pass (+12 new)
+- 538 total tests pass (+12 new over merged main)
 - Build clean
 - No schema, env, or secret changes
