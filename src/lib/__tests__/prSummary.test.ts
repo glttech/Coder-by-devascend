@@ -265,3 +265,130 @@ Operators need to see stuck tasks without manually checking dates.
     assert.ok(Array.isArray(s.missingEvidence));
   });
 });
+
+// ── stripNegatedClauses ────────────────────────────────────────────────────
+
+import { stripNegatedClauses } from '../prSummary.js';
+
+describe('stripNegatedClauses — removes negated risk clauses', () => {
+  test('"No schema changes" clause is stripped', () => {
+    const result = stripNegatedClauses('Some intro. No schema changes. Other content.');
+    assert.ok(!result.toLowerCase().includes('schema'), `expected "schema" stripped, got: ${result}`);
+    assert.ok(result.includes('Some intro'));
+    assert.ok(result.includes('Other content'));
+  });
+
+  test('"no token exposure" clause is stripped', () => {
+    const result = stripNegatedClauses('Adds a widget. No token exposure. Tests pass.');
+    assert.ok(!result.toLowerCase().includes('token'), `expected "token" stripped, got: ${result}`);
+  });
+
+  test('"auth token is never exposed to browser" clause is stripped', () => {
+    const result = stripNegatedClauses('The auth token is never exposed to browser.');
+    assert.ok(!result.toLowerCase().includes('token'), `expected "token" stripped, got: ${result}`);
+  });
+
+  test('"no secrets committed" clause is stripped', () => {
+    const result = stripNegatedClauses('No secrets committed. All safe.');
+    assert.ok(!result.toLowerCase().includes('secret'), `expected "secret" stripped, got: ${result}`);
+  });
+
+  test('"does not touch authentication" clause is stripped', () => {
+    const result = stripNegatedClauses('This PR does not touch authentication.');
+    assert.ok(!result.toLowerCase().includes('auth'), `expected "auth" stripped, got: ${result}`);
+  });
+
+  test('"no migration needed" is stripped', () => {
+    const result = stripNegatedClauses('No migration needed for this change.');
+    assert.ok(!result.toLowerCase().includes('migration'), `expected "migration" stripped, got: ${result}`);
+  });
+});
+
+describe('stripNegatedClauses — preserves genuinely risky clauses', () => {
+  test('positive risk statement is kept', () => {
+    const result = stripNegatedClauses('This PR modifies the authentication system.');
+    assert.ok(result.toLowerCase().includes('auth'), `expected "auth" preserved, got: ${result}`);
+  });
+
+  test('database migration statement without negation is kept', () => {
+    const result = stripNegatedClauses('Adds a database migration for the users table.');
+    assert.ok(result.toLowerCase().includes('migration'), `expected "migration" preserved, got: ${result}`);
+  });
+
+  test('token exposure statement without negation is kept', () => {
+    const result = stripNegatedClauses('Token is exposed in the client bundle — investigate.');
+    assert.ok(result.toLowerCase().includes('token'), `expected "token" preserved, got: ${result}`);
+  });
+
+  test('non-risk clause with negation is kept', () => {
+    const result = stripNegatedClauses('Not a big change. Small fix.');
+    assert.ok(result.includes('Not a big change') || result.includes('Small fix'));
+  });
+});
+
+// ── inferRiskLevel with negation stripping ────────────────────────────────
+
+describe('inferRiskLevel — negated safety statements do not trigger high risk', () => {
+  test('body "GITHUB_TOKEN server-side only, never exposed" → not high', () => {
+    const r = inferRiskLevel(
+      'feat: add GitHub import',
+      'GITHUB_TOKEN is server-side only, never exposed to browser. No secrets committed.',
+    );
+    assert.notEqual(r.level, 'high', `expected not-high, got: ${r.level} (${r.reason})`);
+  });
+
+  test('body "No schema changes" → not high', () => {
+    const r = inferRiskLevel(
+      'feat: add PR list filtering',
+      'No schema changes. Uses existing GithubPR fields only. Tests pass.',
+    );
+    assert.notEqual(r.level, 'high', `expected not-high, got: ${r.level} (${r.reason})`);
+  });
+
+  test('body with multiple safety confirmations → not high', () => {
+    const r = inferRiskLevel(
+      'feat: dashboard widgets',
+      'No schema changes. No token exposure. No secrets in repo. Build clean.',
+    );
+    assert.notEqual(r.level, 'high', `expected not-high, got: ${r.level} (${r.reason})`);
+  });
+
+  test('title "feat: add OAuth2 support" → not high (word boundary fix)', () => {
+    const r = inferRiskLevel('feat: add OAuth2 support', 'Integrates OAuth2 provider for social login.');
+    assert.notEqual(r.level, 'high', `expected not-high for OAuth2, got: ${r.level} (${r.reason})`);
+  });
+});
+
+describe('inferRiskLevel — genuinely risky PRs still score high', () => {
+  test('title mentions "authentication" → high', () => {
+    assert.equal(inferRiskLevel('feat: refactor authentication middleware', null).level, 'high');
+  });
+
+  test('title mentions "database migration" → high', () => {
+    assert.equal(inferRiskLevel('feat: add database migration for users', null).level, 'high');
+  });
+
+  test('title "fix security vulnerability" → high', () => {
+    assert.equal(inferRiskLevel('fix: security vulnerability in login', null).level, 'high');
+  });
+
+  test('body describes adding a token (positive statement) → high', () => {
+    const r = inferRiskLevel(
+      'feat: add GitHub integration',
+      'Adds a GitHub token to the client-side configuration for direct browser calls.',
+    );
+    assert.equal(r.level, 'high', `expected high, got: ${r.level}`);
+  });
+
+  test('body describes adding schema migration → high', () => {
+    const r = inferRiskLevel(
+      'feat: extend user model',
+      'Adds a database migration to add profile_image column to the users table.',
+    );
+    assert.equal(r.level, 'high', `expected high, got: ${r.level}`);
+  });
+
+  test('production deployment PR → high', () => {
+    assert.equal(inferRiskLevel('chore: deploy to production', null).level, 'high');
+  });
+});

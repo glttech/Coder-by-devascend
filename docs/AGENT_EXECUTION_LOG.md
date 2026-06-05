@@ -791,3 +791,61 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+
+---
+
+## Entry 010 — 2026-06-05
+
+**Session goal:** PR #46 — Fix PR risk classifier false positives. All 6 imported PRs scored HIGH risk on DEV because PR bodies with governance language ("No schema changes", "GITHUB_TOKEN is server-side only, never exposed") matched high-risk patterns literally.
+
+**HEAD at session start:** `6ed7d85` (PR #45 merged and DEV-validated — project health summary)
+
+---
+
+### PR #46 — Fix PR Risk Classifier False Positives
+
+#### Root Cause Analysis
+
+Two bugs in `src/lib/prSummary.ts`:
+
+1. **`HIGH_RISK_PATTERNS[0]`**: `/auth(?:entication|orization|)/i` — the trailing empty alternative makes this match "auth" anywhere as a bare substring, including inside words like "OAuth". Fixed with full word boundaries.
+
+2. **No negation stripping**: The scanner matched the entire body text, including safety-confirmation prose written by the governance tool itself: "No schema changes", "GITHUB_TOKEN is server-side only, never exposed to browser", "No secrets committed". These defensive statements contain the exact high-risk keywords ("schema", "token", "secret") in negating context.
+
+#### Fix
+
+- Added `stripNegatedClauses(text)`: exported pure function — splits body on sentence boundaries (`.`, `;`, `\n`), filters out clauses where a negation word (`no`, `not`, `never`, `without`, `does not`, etc.) co-occurs with a high-risk keyword. Applied to PR body only (title checked as-is).
+- Tightened patterns: `\bauth(...)\b` with explicit word boundaries; `secrets?`, `credentials?` to catch plurals; `\btoken\b` correctly does not match compound env-var names like `GITHUB_TOKEN`.
+- No change to medium-risk, evidence, or summary logic.
+
+#### Security Verdict
+
+- Legitimately risky PRs still score HIGH: "feat: refactor authentication middleware", "feat: add database migration", "fix: security vulnerability", "deploy to production", "token exposed in client bundle" ← all confirmed by tests.
+- Safety confirmations now correctly ignored: "No schema changes", "token is never exposed", "no secrets committed", "does not touch authentication".
+
+#### QA/Test Summary
+
+- 499 total tests pass (was 479; +20 new across `stripNegatedClauses` — removes negated risk clauses (6), preserves genuine risk (4), `inferRiskLevel` with negation stripping (3), genuinely risky still HIGH (6))
+- All 43 original prSummary tests still pass
+- Build clean
+
+| Field | Value |
+|-------|-------|
+| PR | #46 |
+| Branch | fix/pr-risk-classifier |
+| Merge SHA | _pending_ |
+| Files changed | `src/lib/prSummary.ts`, `src/lib/__tests__/prSummary.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 499 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | Low |
+| Rollback | Revert `src/lib/prSummary.ts` (restore original patterns, remove `stripNegatedClauses`) |
+| Repo-only | Yes |
+| DEV validation | Pending — re-check project health widget on DEV with 6 imported PRs to confirm highRisk drops from 6 to correct count |
+
+---
+
+### Blockers / Deferred
+
+- Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
