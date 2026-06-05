@@ -721,3 +721,73 @@ Added `src/lib/__tests__/riskAnalyzerFuzz.test.ts` — 46 adversarial tests acro
 
 - Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
 - Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
+
+---
+
+## Entry 009 — 2026-06-05
+
+**Session goal:** PR #45 — Project Health Summary. Compact health section on project detail page derived from existing imported PR evidence.
+
+**HEAD at session start:** `a0565659fdb0d3646150406dc45fd6050af4ac13` (PR #44 merged and DEV-validated — project PR list with filtering)
+
+---
+
+### PR #45 — Project Health Summary
+
+#### CEO/Product Gate
+
+- Project detail page previously showed counts but no health signal; operators had to open the full PR list to spot problems
+- New "PR Evidence Health" section shows 7 health metrics in a stat-card grid: Total, Merged, Open, CI Failures, Pending CI, High Risk, Stale (7d+)
+- Each metric links to the filtered PR list (e.g. CI Failures → `/prs?ci=failure`) for fast drill-down
+- Signal badge (All clear / Review suggested / Needs attention) at a glance
+- No schema change, no GitHub API call, no new routes
+- Approved ✅
+
+#### CTO/Architecture Gate
+
+- `src/lib/projectHealth.ts`: pure `computeProjectHealth(prs, now?)` + `healthSignal(health)` — no DB, no network, testable in isolation
+- Project detail page adds one extra `prisma.githubPR.findMany` (select 7 fields only) for all project PRs; inline PR table still uses the same 5-row query
+- High-risk detection delegates to existing `summarisePR` (no new logic)
+- Stale threshold: 7 days, matching the app's existing staleness convention
+- `healthSignal` priority: critical (failures/high-risk) > warning (pending/stale) > clear
+- Approved ✅
+
+#### CISO/Safety Gate
+
+- No GitHub API calls — purely DB reads from already-imported data
+- No secrets, no env changes
+- `body` fetched only for `summarisePR` risk derivation; not rendered on the health section
+- Risk: None
+- Approved ✅
+
+#### Implementation Summary
+
+- `src/lib/projectHealth.ts`: `computeProjectHealth`, `healthSignal`, types
+- `src/app/projects/[id]/page.tsx`: health section + `HealthStat` helper component
+- `src/lib/__tests__/projectHealth.test.ts`: 28 new tests
+
+#### QA/Test Summary
+
+- 479 total tests pass (was 451; +28 new across empty input, total, merged, open, failedCI, pendingCI, highRisk, stale, healthSignal)
+- Build clean — `/projects/[id]` still listed as dynamic server route
+
+| Field | Value |
+|-------|-------|
+| PR | #45 |
+| Branch | feat/project-health-summary |
+| Merge SHA | _pending_ |
+| Files changed | `src/lib/projectHealth.ts`, `src/app/projects/[id]/page.tsx`, `src/lib/__tests__/projectHealth.test.ts`, `docs/AGENT_EXECUTION_LOG.md` |
+| Tests run | 479 pass |
+| Build | clean |
+| CI status | pending |
+| Risk level | None |
+| Rollback | Delete `src/lib/projectHealth.ts`; revert project detail page (remove health section and HealthStat) |
+| Repo-only | Yes |
+| DEV validation | Pending — health signal and drill-down links should be verified on DEV with real imported PR data |
+
+---
+
+### Blockers / Deferred
+
+- Backlog #12 (Browser Auth): deferred — high risk, requires Rahul
+- Backlog #4 (GitHub Webhook): deferred — security-critical, requires Rahul sign-off
