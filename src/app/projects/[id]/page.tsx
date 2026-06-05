@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RiskBadge } from '@/components/ui/Badge';
-import { computeProjectHealth, healthSignal } from '@/lib/projectHealth';
+import { computeProjectHealth, computeStalePRs, healthSignal } from '@/lib/projectHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,11 +45,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   // Fetch all PR health data (separate query — list page uses its own query with filters)
   const allPRsForHealth = await prisma.githubPR.findMany({
     where: { projectId: params.id },
-    select: { title: true, body: true, state: true, merged: true, ciStatus: true, importedAt: true, updatedAt: true },
+    select: { id: true, prNumber: true, title: true, body: true, state: true, merged: true, ciStatus: true, importedAt: true, updatedAt: true },
   });
 
   const health = computeProjectHealth(allPRsForHealth);
   const signal = healthSignal(health);
+  const stalePRs = computeStalePRs(allPRsForHealth);
 
   const repoUrl = project.repoOwner && project.repoName
     ? `https://github.com/${project.repoOwner}/${project.repoName}`
@@ -153,6 +154,51 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               href={health.staleCount > 0 ? `/projects/${project.id}/prs?state=open` : undefined}
               tooltip="Open PRs not refreshed in 7+ days"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Stale Evidence Alert */}
+      {stalePRs.length > 0 && (
+        <div className="section">
+          <div className="section-header">
+            <span className="section-title" style={{ color: 'var(--amber)' }}>
+              Needs Refresh ({stalePRs.length})
+            </span>
+            <Link href={`/projects/${project.id}/prs?state=open`} style={{ fontSize: 12, color: 'var(--blue)' }}>
+              View open PRs →
+            </Link>
+          </div>
+          <div className="card" style={{ padding: 0 }}>
+            <table className="data-table" style={{ marginBottom: 0 }}>
+              <thead>
+                <tr><th>PR</th><th>Title</th><th>Stale for</th><th></th></tr>
+              </thead>
+              <tbody>
+                {stalePRs.map((sp) => (
+                  <tr key={sp.id}>
+                    <td>
+                      <Link href={`/projects/${project.id}/prs/${sp.id}`} style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--blue)' }}>
+                        #{sp.prNumber}
+                      </Link>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>
+                      <Link href={`/projects/${project.id}/prs/${sp.id}`} style={{ color: 'var(--text)', fontSize: 13 }}>
+                        {sp.title.length > 60 ? sp.title.slice(0, 60) + '…' : sp.title}
+                      </Link>
+                    </td>
+                    <td style={{ fontSize: 12, color: 'var(--amber)', fontWeight: 600 }}>
+                      {sp.daysSinceRefresh}d
+                    </td>
+                    <td>
+                      <Link href={`/projects/${project.id}/prs/${sp.id}`} className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>
+                        Refresh →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
