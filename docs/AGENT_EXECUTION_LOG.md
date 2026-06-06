@@ -1141,3 +1141,52 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 | Rollback | Delete `docs/AUTH_IDENTITY_DESIGN.md` |
 | Repo-only | Yes |
 | Next step | Rahul reviews and approves design; sets env vars; autonomous implementation begins at PR A |
+
+---
+
+## Entry 018 — 2026-06-06
+
+**Session goal:** Implement PR A — auth scaffold (iron-session + bcryptjs, login/logout/me routes, login page, tests). No global enforcement. No schema change.
+
+**HEAD at session start:** `62e3b49`
+
+**Approved defaults (from user Q&A):**
+- Q1: Rahul generates bcrypt hash offline; agent never sees password or hash.
+- Q2: 24-hour session duration.
+- Q3: Escape hatch ON — both vars unset = disabled; one without other = misconfigured (500).
+- Q4: Minimal login UI matching existing design system.
+- Q5: Governance API key retained for machine-to-machine; browser users use session cookie.
+
+---
+
+### PR A — feat: auth scaffold (iron-session, login/logout/me, login page)
+
+#### What
+
+- **Dependencies:** `iron-session@^8`, `bcryptjs@^2.4.3`, `@types/bcryptjs` (dev)
+- **`src/lib/session.ts`** — `AppSession` interface, `getAuthMode()` (env-injectable for tests), `isAuthEnabled()`, `getSessionOptions()` (24h default TTL, placeholder password when disabled, throws if enforced but `SESSION_SECRET` missing)
+- **`src/lib/loginRateLimit.ts`** — in-memory rate limiter, 5 attempts / 15-minute window per IP, `checkLoginRateLimit(ip, nowMs?)` + `resetLoginRateLimit(ip)`
+- **`src/app/login/page.tsx`** — client component, username + password form, matches design system, safe `next` redirect validation (must start with `/`, not `//`, no `://`)
+- **`src/app/api/auth/login/route.ts`** — POST; handles disabled/enforced/misconfigured; bcrypt always runs (timing-safe); sets iron-session cookie on success; clears rate-limit bucket on success
+- **`src/app/api/auth/logout/route.ts`** — POST; destroys session; returns `{ ok: true }`
+- **`src/app/api/auth/me/route.ts`** — GET; returns `{ authenticated, username, loginAt }` or 401
+- **`src/lib/__tests__/session.test.ts`** — 13 tests: `getAuthMode` (5), `isAuthEnabled` (2), `getSessionOptions` (6)
+- **`src/lib/__tests__/loginRateLimit.test.ts`** — 6 tests: window resets, blocked after 5, IP isolation, reset function
+- **`.env.example`** — added `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `SESSION_SECRET`, `SESSION_MAX_AGE_HOURS` (key names only, no values, with usage comment)
+
+#### Not changed
+
+- `src/middleware.ts` — enforcement deferred to PR B
+- Existing API routes — no auth checks added yet
+- Prisma schema — no migration
+
+| Field | Value |
+|-------|-------|
+| PR | A (feat/auth-scaffold) |
+| Files changed | 9 new files, 1 modified (.env.example) |
+| Tests run | 558 pass (537 prior + 21 new) |
+| Build | clean |
+| Risk level | Low — additive only, no enforcement |
+| Rollback | Delete new files, revert .env.example, uninstall iron-session + bcryptjs |
+| Repo-only | Yes |
+| DEV validation | Pending
