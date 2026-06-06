@@ -10,6 +10,10 @@ const EVENT_LABELS: Record<string, string> = {
   instruction_status_changed:   'Status Changed',
   operator_session_created:     'Session Submitted',
   operator_session_updated:     'Session Updated',
+  task_created:                 'Task Created',
+  agent_run_created:            'Agent Run Recorded',
+  task_approval_decided:        'Approval Decided',
+  task_status_changed:          'Task Status Changed',
 };
 
 const RISK_EVENTS = new Set(['operator_session_created', 'operator_session_updated']);
@@ -108,9 +112,11 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
   // Quick-filter links for common event types
   const EVENT_FILTERS = [
     { label: 'All',               event: null },
+    { label: 'Tasks',             event: 'task_created' },
+    { label: 'Runs',              event: 'agent_run_created' },
+    { label: 'Approvals',         event: 'task_approval_decided' },
     { label: 'Status Changes',    event: 'instruction_status_changed' },
     { label: 'Sessions',          event: 'operator_session_created' },
-    { label: 'Created',           event: 'instruction_created' },
   ];
 
   function filterHref(e: string | null): string {

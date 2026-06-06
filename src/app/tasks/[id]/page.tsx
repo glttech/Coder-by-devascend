@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
+import CloneTaskButton from '@/components/CloneTaskButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,9 +53,17 @@ export default async function TaskPage({ params }: TaskPageProps) {
         }
         badge={<RiskBadge level={task.riskLevel} />}
         actions={
-          <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
-            Evidence Report →
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!['completed', 'failed'].includes(task.status) && (
+              <Link href={`/tasks/${task.id}/edit`} className="btn btn-ghost btn-sm">
+                Edit
+              </Link>
+            )}
+            <CloneTaskButton taskId={task.id} />
+            <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
+              Evidence Report →
+            </Link>
+          </div>
         }
       />
 

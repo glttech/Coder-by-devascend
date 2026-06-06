@@ -25,6 +25,14 @@ export async function POST(request: Request) {
         endedAt: response ? now : undefined,
       },
     });
+    await prisma.auditLog.create({
+      data: {
+        taskId: run.taskId,
+        agentRunId: run.id,
+        event: 'agent_run_created',
+        details: JSON.stringify({ selectedTool, hasResponse: !!response, status: run.status, at: new Date().toISOString() }),
+      },
+    });
     // Create evaluation results if a response was supplied
     if (response) {
       const evaluations = evaluateResponse(generatedPrompt, response);

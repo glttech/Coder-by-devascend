@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, DecisionBadge, RiskBadge } from '@/components/ui/Badge';
+import { summarisePR } from '@/lib/prSummary';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +16,19 @@ export default async function Dashboard() {
   let pendingInstructions = 0;
   let blockedInstructions = 0;
   let staleInstructions = 0;
+  let staleTasks = 0;
   let sessionsNeedingAction = 0;
   let recentTasks: { id: string; title: string; status: string; riskLevel: string; environment: string; createdAt: Date }[] = [];
   let riskyDecisions: { id: string; taskId: string; taskTitle: string; recommendedAction: string; decisionReason: string | null; createdAt: Date }[] = [];
+  let totalImportedPRs = 0;
+  let failedCIPRs = 0;
+  let openPRs = 0;
+  let recentGithubPRs: {
+    id: string; projectId: string; projectName: string;
+    prNumber: number; title: string; body: string | null;
+    state: string; merged: boolean; ciStatus: string | null;
+    prUrl: string | null; importedAt: Date;
+  }[] = [];
 
   try {
     totalTasks = await prisma.task.count();
@@ -41,6 +52,9 @@ export default async function Dashboard() {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     staleInstructions = await prisma.instruction.count({
       where: { status: { in: ['approved', 'executing'] }, updatedAt: { lt: sevenDaysAgo } },
+    });
+    staleTasks = await prisma.task.count({
+      where: { status: { notIn: ['completed', 'failed'] }, updatedAt: { lt: sevenDaysAgo } },
     });
 
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
@@ -71,11 +85,33 @@ export default async function Dashboard() {
       decisionReason: s.decisionReason,
       createdAt: s.createdAt,
     }));
+
+    [totalImportedPRs, failedCIPRs, openPRs] = await Promise.all([
+      prisma.githubPR.count(),
+      prisma.githubPR.count({ where: { ciStatus: 'failure' } }),
+      prisma.githubPR.count({ where: { state: 'open' } }),
+    ]);
+
+    const rawPRs = await prisma.githubPR.findMany({
+      orderBy: { importedAt: 'desc' },
+      take: 6,
+      select: {
+        id: true, projectId: true, prNumber: true, title: true, body: true,
+        state: true, merged: true, ciStatus: true, prUrl: true, importedAt: true,
+        project: { select: { name: true } },
+      },
+    });
+    recentGithubPRs = rawPRs.map((p) => ({
+      id: p.id, projectId: p.projectId, projectName: p.project.name,
+      prNumber: p.prNumber, title: p.title, body: p.body,
+      state: p.state, merged: p.merged, ciStatus: p.ciStatus,
+      prUrl: p.prUrl, importedAt: p.importedAt,
+    }));
   } catch (err) {
     console.warn('Database not ready', err);
   }
 
-  const healthWarning = pendingInstructions > 0 || blockedInstructions > 0 || staleInstructions > 0 || sessionsNeedingAction > 0;
+  const healthWarning = pendingInstructions > 0 || blockedInstructions > 0 || staleInstructions > 0 || staleTasks > 0 || sessionsNeedingAction > 0;
 
   return (
     <div>
@@ -83,6 +119,31 @@ export default async function Dashboard() {
         title="Dashboard"
         subtitle="Governance overview for AI-assisted development"
       />
+
+      {/* How it works */}
+      <div className="section">
+        <div className="card">
+          <p className="explainer-tagline">
+            AI change control for AI-assisted development — every agent change is risk-checked, gated, and audited before it ships.
+          </p>
+          <div className="explainer-steps">
+            {[
+              { n: '1', title: 'Create a task', desc: 'Define the work, agent tool, risk level, and environment.' },
+              { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt with stop conditions and validation steps.' },
+              { n: '3', title: 'Record the agent response', desc: 'Paste what the AI agent did — files, commands, and output.' },
+              { n: '4', title: 'Get a risk decision', desc: 'The console flags risk, checks evidence, and recommends the safe next step with a full audit trail.' },
+            ].map(({ n, title, desc }) => (
+              <div key={n} className="explainer-step">
+                <div className="explainer-step-num">{n}</div>
+                <div>
+                  <div className="explainer-step-title">{title}</div>
+                  <div className="explainer-step-desc">{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Overview stats */}
       <div className="section">
@@ -110,6 +171,20 @@ export default async function Dashboard() {
             <div className="stat-card-label">Failed Evaluations</div>
             <div className="stat-card-value" style={{ color: failedEvaluations > 0 ? 'var(--red)' : 'var(--text)' }}>
               {failedEvaluations}
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-label">Imported PRs</div>
+            <div className="stat-card-value">{totalImportedPRs}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-label">Open PRs</div>
+            <div className="stat-card-value">{openPRs}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-label">CI Failures</div>
+            <div className="stat-card-value" style={{ color: failedCIPRs > 0 ? 'var(--red)' : 'var(--text)' }}>
+              {failedCIPRs}
             </div>
           </div>
         </div>
@@ -141,13 +216,22 @@ export default async function Dashboard() {
             warnBorder="#fca5a5"
           />
           <HealthCard
-            label="Stale (7d+)"
+            label="Stale Instructions (7d+)"
             value={staleInstructions}
             href="/tasks"
             warn={staleInstructions > 0}
             warnColor="var(--purple)"
             warnBorder="#c4b5fd"
             tooltip="Approved/executing instructions not updated in 7+ days"
+          />
+          <HealthCard
+            label="Stale Tasks (7d+)"
+            value={staleTasks}
+            href="/tasks"
+            warn={staleTasks > 0}
+            warnColor="var(--amber)"
+            warnBorder="#fde68a"
+            tooltip="Non-terminal tasks not updated in 7+ days"
           />
           <HealthCard
             label="Sessions Needing Action"
@@ -243,6 +327,77 @@ export default async function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* GitHub PR Evidence */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Recent GitHub PR Evidence</span>
+          <Link href="/projects" style={{ fontSize: 12, color: 'var(--blue)' }}>View projects →</Link>
+        </div>
+        {recentGithubPRs.length === 0 ? (
+          <EmptyState
+            icon="⬟"
+            title="No PRs imported yet"
+            description="Open a project and import a GitHub PR to see evidence here."
+            action={<Link href="/projects" className="btn btn-primary">Go to Projects</Link>}
+          />
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>PR</th>
+                  <th>Project</th>
+                  <th>Title</th>
+                  <th>State</th>
+                  <th>CI</th>
+                  <th>Risk</th>
+                  <th>Imported</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentGithubPRs.map((pr) => {
+                  const summary = summarisePR(pr.title, pr.body ?? null);
+                  const riskColor = ({ low: 'var(--green)', medium: 'var(--amber)', high: 'var(--red)' } as Record<string, string>)[summary.riskLevel] ?? 'var(--text-muted)';
+                  return (
+                    <tr key={pr.id}>
+                      <td>
+                        <Link href={`/projects/${pr.projectId}/prs/${pr.id}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 12 }}>
+                          #{pr.prNumber}
+                        </Link>
+                      </td>
+                      <td>
+                        <Link href={`/projects/${pr.projectId}`} style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+                          {pr.projectName}
+                        </Link>
+                      </td>
+                      <td style={{ maxWidth: 240 }}>
+                        <Link href={`/projects/${pr.projectId}/prs/${pr.id}`} style={{ color: 'var(--text)', fontSize: 13, fontWeight: 500 }}>
+                          {pr.title.length > 60 ? pr.title.slice(0, 60) + '…' : pr.title}
+                        </Link>
+                      </td>
+                      <td>
+                        <span className={`badge badge-${pr.merged ? 'success' : pr.state === 'open' ? 'pending_approval' : 'neutral'}`}>
+                          {pr.merged ? 'merged' : pr.state}
+                        </span>
+                      </td>
+                      <td>
+                        {pr.ciStatus ? (
+                          <span className={`badge ${pr.ciStatus === 'success' ? 'badge-success' : pr.ciStatus === 'failure' ? 'badge-sev-high' : 'badge-neutral'}`}>
+                            {pr.ciStatus}
+                          </span>
+                        ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                      </td>
+                      <td style={{ fontSize: 12, fontWeight: 600, color: riskColor }}>{summary.riskLevel.toUpperCase()}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pr.importedAt.toLocaleDateString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Recent runs */}
       <div className="section">

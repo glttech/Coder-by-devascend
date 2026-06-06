@@ -81,6 +81,13 @@ export async function POST(request: Request) {
         approvalRequired,
       },
     });
+    await prisma.auditLog.create({
+      data: {
+        taskId: task.id,
+        event: 'task_created',
+        details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
+      },
+    });
     return NextResponse.json(task, { status: 201 });
   } catch (err) {
     console.error(err);
