@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 function isSafeNext(next: string | null): boolean {
@@ -13,10 +13,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const next = params?.get('next') ?? null;
   const redirectTo = isSafeNext(next) ? next! : '/';
+
+  // Redirect already-authenticated users away from the login page.
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean }) => {
+        if (data.authenticated) {
+          router.replace(redirectTo);
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => setChecking(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +55,14 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-1)' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading…</div>
+      </div>
+    );
   }
 
   return (
