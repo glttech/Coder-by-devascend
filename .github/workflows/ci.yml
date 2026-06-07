@@ -30,13 +30,14 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
+      - name: Type check
+        run: npm run typecheck
+
       - name: Lint
-        run: |
-          if npm ls eslint --depth=0 2>/dev/null | grep -q eslint; then
-            npm run lint
-          else
-            echo "ESLint not installed; skipping lint."
-          fi
+        run: npm run lint
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
