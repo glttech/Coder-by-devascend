@@ -1190,3 +1190,48 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 | Rollback | Delete new files, revert .env.example, uninstall iron-session + bcryptjs |
 | Repo-only | Yes |
 | DEV validation | Pending
+
+---
+
+## Entry 019 — 2026-06-07
+
+**Session goal:** Overnight autonomous prod-readiness — PR B auth enforcement, PR C UI polish, PR D config validation, PR E CI hardening.
+
+**HEAD at session start:** `9535d7c`
+
+---
+
+### PR B — feat: auth enforcement (middleware + authGuard)
+
+#### What
+
+- **`src/lib/authGuard.ts`** (new) — pure, testable helpers: `isPublicPath()`, `resolveAuthDecision()`. No external deps beyond the `AuthMode` type.
+- **`src/middleware.ts`** — major update:
+  - Matcher expanded from `/api/:path*` to all paths (excluding `_next/static`, `_next/image`, `favicon.ico`)
+  - In **disabled mode**: preserves existing governance key enforcement for API routes
+  - In **enforced mode**: reads iron-session cookie via `unsealData`; governance key OR valid session allows API routes; unauthenticated page routes redirect to `/login?next=<path>`; unauthenticated API routes return 401 JSON
+  - In **misconfigured mode**: returns 500 for all non-public routes
+  - Public paths (always open): `/login`, `/favicon.ico`, `/_next/*`, `/api/auth/*`
+  - No redirect loop: `/login` is in the public set so it always returns `allow`
+  - Rate limiting retained, now API-only (unchanged behavior)
+- **`src/lib/session.ts`** — changed `env` param type from `NodeJS.ProcessEnv` to `Record<string, string | undefined>` to fix strict TypeScript compatibility with test objects
+- **`src/lib/__tests__/authGuard.test.ts`** (new) — 30 tests covering all decision branches
+
+#### Pre-merge checks
+
+- Tests: 588 pass, 0 fail
+- Build: clean
+- Typecheck: clean (tsc --noEmit)
+- No schema changes
+- No env file changes
+- No secrets
+- Rollback: revert middleware.ts, delete authGuard.ts, revert session.ts env param type
+
+| Field | Value |
+|-------|-------|
+| Branch | feat/auth-enforcement |
+| Files changed | src/middleware.ts, src/lib/authGuard.ts (new), src/lib/session.ts, src/lib/__tests__/authGuard.test.ts (new) |
+| Tests | 588 pass |
+| Build | clean |
+| Typecheck | clean |
+| Risk | Medium — middleware affects all requests; disabled-mode path unchanged |
