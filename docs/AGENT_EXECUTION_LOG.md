@@ -1217,21 +1217,40 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 - **`src/lib/session.ts`** — changed `env` param type from `NodeJS.ProcessEnv` to `Record<string, string | undefined>` to fix strict TypeScript compatibility with test objects
 - **`src/lib/__tests__/authGuard.test.ts`** (new) — 30 tests covering all decision branches
 
-#### Pre-merge checks
-
-- Tests: 588 pass, 0 fail
-- Build: clean
-- Typecheck: clean (tsc --noEmit)
-- No schema changes
-- No env file changes
-- No secrets
-- Rollback: revert middleware.ts, delete authGuard.ts, revert session.ts env param type
-
 | Field | Value |
 |-------|-------|
 | Branch | feat/auth-enforcement |
-| Files changed | src/middleware.ts, src/lib/authGuard.ts (new), src/lib/session.ts, src/lib/__tests__/authGuard.test.ts (new) |
+| PR | #57 |
+| Merge SHA | `c431f817` |
 | Tests | 588 pass |
 | Build | clean |
 | Typecheck | clean |
 | Risk | Medium — middleware affects all requests; disabled-mode path unchanged |
+
+---
+
+### PR D — feat: config validation (SESSION_SECRET length, auth config check, max-age parsing)
+
+#### What
+
+- **`src/lib/session.ts`** — additions:
+  1. `SESSION_SECRET_MIN_LENGTH = 32` — exported constant
+  2. `validateAuthConfig(env)` — pure function returning `{ ok: true }` or `{ ok: false, error: string }` without exposing any env values; covers disabled/enforced/misconfigured cases
+  3. `parseSessionMaxAge(raw)` — returns `{ hours, warning? }` with explicit warning when the value is invalid rather than silently defaulting
+  4. `getSessionOptions()` now validates SESSION_SECRET length (throws if < 32 chars) and logs a console.warn via parseSessionMaxAge when max-age is unparseable
+
+- **`src/lib/__tests__/session.test.ts`** — 16 new tests: validateAuthConfig (8), parseSessionMaxAge (6), getSessionOptions secret length (2)
+
+#### Security notes
+
+- Error messages name which key is missing/invalid, never the value
+- `parseSessionMaxAge` warning does not echo back the raw value
+
+| Field | Value |
+|-------|-------|
+| Branch | feat/config-validation |
+| PR | #59 |
+| Tests | 574 pass on branch (588 after merge with PR B) |
+| Build | clean |
+| Typecheck | clean |
+| Risk | Low — additive only; getSessionOptions throws earlier on short secret |
