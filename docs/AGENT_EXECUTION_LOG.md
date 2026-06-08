@@ -1254,3 +1254,30 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 | Build | clean |
 | Typecheck | clean |
 | Risk | Low — additive only; getSessionOptions throws earlier on short secret |
+
+---
+
+### PR E — ci: add typecheck, test, and unconditional lint steps
+
+#### What
+
+- **`.github/workflows/ci.yml`** — three changes:
+  1. Added `npm run typecheck` step (before lint) — catches TypeScript errors that the build step can miss in some edge cases
+  2. Added `npm run test` step — runs the full `tsx --test` suite in CI (was never run in CI before)
+  3. Replaced conditional ESLint check with unconditional `npm run lint` — ESLint is installed; the guard was masking whether it actually ran
+
+#### Pre-merge checks
+
+- `npm run typecheck` locally: clean
+- `npm run lint` locally: ✔ No ESLint warnings or errors
+- `npm test` locally: 604 pass
+- No product logic changes
+- No env/schema changes
+- Rollback: revert ci.yml
+
+| Field | Value |
+|-------|-------|
+| Branch | feat/ci-hardening |
+| PR | #60 |
+| Files changed | .github/workflows/ci.yml |
+| Risk | Low — CI config only |
