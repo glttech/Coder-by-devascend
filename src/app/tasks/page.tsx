@@ -61,6 +61,10 @@ export default async function TaskList() {
           action={<Link href="/tasks/new" className="btn btn-primary">Create your first task</Link>}
         />
       ) : (
+        <>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+          Risk levels: Low · Medium · High — hover for details
+        </p>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -121,6 +125,7 @@ export default async function TaskList() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

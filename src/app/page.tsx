@@ -120,6 +120,58 @@ export default async function Dashboard() {
         subtitle="Overview of AI-assisted development"
       />
 
+      {/* Getting Started — shown only when no tasks exist */}
+      {totalTasks === 0 && (
+        <div className="section">
+          <div className="card" style={{ background: 'var(--blue-bg, rgba(59,130,246,0.06))', border: '1px solid var(--blue-border, rgba(59,130,246,0.25))' }}>
+            <div className="card-header" style={{ marginBottom: 12 }}>
+              <span className="card-title" style={{ fontSize: 16 }}>Getting Started</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                {
+                  n: '1',
+                  title: 'Create a project',
+                  desc: 'Connect a GitHub repository so the tool can track pull requests.',
+                  href: '/projects/new',
+                  label: '→ New Project',
+                },
+                {
+                  n: '2',
+                  title: 'Create a task',
+                  desc: 'Describe what you want the AI to work on.',
+                  href: '/tasks/new',
+                  label: '→ New Task',
+                },
+                {
+                  n: '3',
+                  title: 'Review suggestions',
+                  desc: 'When the AI responds, approve or block its suggestion here.',
+                  href: '/instructions/pending',
+                  label: '→ Review Queue',
+                },
+              ].map(({ n, title, desc, href, label }) => (
+                <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'var(--blue)', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 13, flexShrink: 0,
+                  }}>{n}</div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{title}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}> — {desc}</span>
+                  </div>
+                  <Link href={href} style={{ color: 'var(--blue)', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    {label}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* How it works */}
       <div className="section">
         <div className="card">

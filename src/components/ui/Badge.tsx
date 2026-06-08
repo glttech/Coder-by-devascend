@@ -50,9 +50,10 @@ interface BadgeProps {
   text: string;
   variant?: 'status' | 'risk' | 'severity' | 'decision' | 'event' | 'env' | 'neutral' | 'info' | 'warning' | 'danger' | 'success' | 'purple';
   className?: string;
+  title?: string;
 }
 
-export function Badge({ text, variant, className }: BadgeProps) {
+export function Badge({ text, variant, className, title }: BadgeProps) {
   let variantClass = 'badge-neutral';
 
   if (variant === 'status')   variantClass = STATUS_CLASS[text]   ?? 'badge-neutral';
@@ -74,7 +75,7 @@ export function Badge({ text, variant, className }: BadgeProps) {
     ? STATUS_DISPLAY[text]
     : text.replace(/_/g, ' ');
   return (
-    <span className={`badge ${variantClass}${className ? ` ${className}` : ''}`}>
+    <span className={`badge ${variantClass}${className ? ` ${className}` : ''}`} title={title}>
       {label}
     </span>
   );
@@ -85,8 +86,15 @@ export function StatusBadge({ status }: { status: string }) {
   return <Badge text={status} variant="status" />;
 }
 
+const RISK_TITLE: Record<string, string> = {
+  low:      'Low risk — AI suggestion appears safe to approve',
+  medium:   'Medium risk — Review carefully before approving',
+  high:     'High risk — This suggestion needs close attention',
+  critical: 'Critical risk — Do not approve without senior review',
+};
+
 export function RiskBadge({ level }: { level: string }) {
-  return <Badge text={level} variant="risk" />;
+  return <Badge text={level} variant="risk" title={RISK_TITLE[level.toLowerCase()]} />;
 }
 
 export function SeverityBadge({ severity }: { severity: string }) {
