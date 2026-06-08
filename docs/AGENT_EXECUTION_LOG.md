@@ -1206,20 +1206,12 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 #### What
 
 - **`src/lib/authGuard.ts`** (new) — pure, testable helpers: `isPublicPath()`, `resolveAuthDecision()`. No external deps beyond the `AuthMode` type.
-- **`src/middleware.ts`** — major update:
-  - Matcher expanded from `/api/:path*` to all paths (excluding `_next/static`, `_next/image`, `favicon.ico`)
-  - In **disabled mode**: preserves existing governance key enforcement for API routes
-  - In **enforced mode**: reads iron-session cookie via `unsealData`; governance key OR valid session allows API routes; unauthenticated page routes redirect to `/login?next=<path>`; unauthenticated API routes return 401 JSON
-  - In **misconfigured mode**: returns 500 for all non-public routes
-  - Public paths (always open): `/login`, `/favicon.ico`, `/_next/*`, `/api/auth/*`
-  - No redirect loop: `/login` is in the public set so it always returns `allow`
-  - Rate limiting retained, now API-only (unchanged behavior)
-- **`src/lib/session.ts`** — changed `env` param type from `NodeJS.ProcessEnv` to `Record<string, string | undefined>` to fix strict TypeScript compatibility with test objects
-- **`src/lib/__tests__/authGuard.test.ts`** (new) — 30 tests covering all decision branches
+- **`src/middleware.ts`** — major update: matcher expanded to all paths; enforced/disabled/misconfigured branches; governance key OR session for API routes; page redirects to `/login?next=<path>`; `/login` and `/api/auth/*` always public
+- **`src/lib/session.ts`** — `env` param type changed from `NodeJS.ProcessEnv` to `Record<string, string | undefined>`
+- **`src/lib/__tests__/authGuard.test.ts`** (new) — 30 tests
 
 | Field | Value |
 |-------|-------|
-| Branch | feat/auth-enforcement |
 | PR | #57 |
 | Merge SHA | `c431f817` |
 | Tests | 588 pass |
@@ -1233,24 +1225,14 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 
 #### What
 
-- **`src/lib/session.ts`** — additions:
-  1. `SESSION_SECRET_MIN_LENGTH = 32` — exported constant
-  2. `validateAuthConfig(env)` — pure function returning `{ ok: true }` or `{ ok: false, error: string }` without exposing any env values; covers disabled/enforced/misconfigured cases
-  3. `parseSessionMaxAge(raw)` — returns `{ hours, warning? }` with explicit warning when the value is invalid rather than silently defaulting
-  4. `getSessionOptions()` now validates SESSION_SECRET length (throws if < 32 chars) and logs a console.warn via parseSessionMaxAge when max-age is unparseable
-
-- **`src/lib/__tests__/session.test.ts`** — 16 new tests: validateAuthConfig (8), parseSessionMaxAge (6), getSessionOptions secret length (2)
-
-#### Security notes
-
-- Error messages name which key is missing/invalid, never the value
-- `parseSessionMaxAge` warning does not echo back the raw value
+- **`src/lib/session.ts`** — `SESSION_SECRET_MIN_LENGTH = 32`, `validateAuthConfig(env)`, `parseSessionMaxAge(raw)`, `getSessionOptions()` secret-length enforcement
+- **`src/lib/__tests__/session.test.ts`** — 16 new tests
 
 | Field | Value |
 |-------|-------|
-| Branch | feat/config-validation |
 | PR | #59 |
-| Tests | 574 pass on branch (588 after merge with PR B) |
+| Merge SHA | `424bf3fb` |
+| Tests | 604 pass |
 | Build | clean |
 | Typecheck | clean |
 | Risk | Low — additive only; getSessionOptions throws earlier on short secret |
@@ -1281,3 +1263,23 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 | PR | #60 |
 | Files changed | .github/workflows/ci.yml |
 | Risk | Low — CI config only |
+
+---
+
+### PR C — feat: auth UI polish (sidebar hide on /login, logout button, already-auth redirect)
+
+#### What
+
+- **`src/components/AppShell.tsx`** (new) — client component; hides sidebar on `/login`, full shell elsewhere
+- **`src/app/layout.tsx`** — delegates shell to `<AppShell>`
+- **`src/components/SidebarNav.tsx`** — `UserBadge`: shows username + "Sign out" button when session active; sign-out POSTs `/api/auth/logout` then redirects to `/login`
+- **`src/app/login/page.tsx`** — on mount: checks `/api/auth/me`; redirects away if already authenticated; spinner during check
+
+| Field | Value |
+|-------|-------|
+| PR | #58 |
+| Files | layout.tsx, AppShell.tsx (new), SidebarNav.tsx, login/page.tsx |
+| Tests | 604 pass |
+| Build | clean |
+| Typecheck | clean |
+| Risk | Low — UI only |
