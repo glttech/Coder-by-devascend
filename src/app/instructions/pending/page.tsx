@@ -44,9 +44,9 @@ export default async function PendingApprovalsPage() {
 
       {pending.length === 0 ? (
         <EmptyState
-          icon="◉"
-          title="No AI suggestions awaiting review"
-          description="When AI suggestions are submitted for review they appear here. Approve or block them directly from this page."
+          icon="🔍"
+          title="Nothing to review"
+          description="When an AI suggestion is submitted for a task, it will appear here for you to approve or block."
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
