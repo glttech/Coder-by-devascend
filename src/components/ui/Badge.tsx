@@ -63,7 +63,16 @@ export function Badge({ text, variant, className }: BadgeProps) {
   else if (variant === 'env')       variantClass = ENV_CLASS[text]      ?? 'badge-neutral';
   else if (variant)                 variantClass = `badge-${variant}`;
 
-  const label = text.replace(/_/g, ' ');
+  const STATUS_DISPLAY: Record<string, string> = {
+    pending_approval: 'Waiting for Review',
+    awaiting_approval: 'Awaiting Review',
+    approved: 'Approved',
+    blocked: 'Blocked',
+    rejected: 'Rejected',
+  };
+  const label = variant === 'status' && STATUS_DISPLAY[text]
+    ? STATUS_DISPLAY[text]
+    : text.replace(/_/g, ' ');
   return (
     <span className={`badge ${variantClass}${className ? ` ${className}` : ''}`}>
       {label}

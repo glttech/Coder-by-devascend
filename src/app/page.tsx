@@ -117,7 +117,7 @@ export default async function Dashboard() {
     <div>
       <PageHeader
         title="Dashboard"
-        subtitle="Governance overview for AI-assisted development"
+        subtitle="Overview of AI-assisted development"
       />
 
       {/* How it works */}
@@ -162,7 +162,7 @@ export default async function Dashboard() {
             </div>
           ))}
           <div className="stat-card">
-            <div className="stat-card-label">Pending Approvals</div>
+            <div className="stat-card-label">Review Queue</div>
             <div className="stat-card-value" style={{ color: pendingApprovals > 0 ? 'var(--amber)' : 'var(--text)' }}>
               {pendingApprovals}
             </div>
@@ -190,17 +190,17 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {/* Governance Health */}
+      {/* Review Health */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Governance Health</span>
+          <span className="section-title">Review Health</span>
           <span className={`badge ${healthWarning ? 'badge-warning' : 'badge-success'}`}>
             {healthWarning ? 'Needs attention' : 'All clear'}
           </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <HealthCard
-            label="Pending Approvals"
+            label="Review Queue"
             value={pendingInstructions}
             href="/instructions/pending"
             warn={pendingInstructions > 0}
@@ -208,7 +208,7 @@ export default async function Dashboard() {
             warnBorder="#fde68a"
           />
           <HealthCard
-            label="Blocked Instructions"
+            label="Blocked AI Suggestions"
             value={blockedInstructions}
             href="/tasks"
             warn={blockedInstructions > 0}
@@ -216,13 +216,13 @@ export default async function Dashboard() {
             warnBorder="#fca5a5"
           />
           <HealthCard
-            label="Stale Instructions (7d+)"
+            label="Stale AI Suggestions (7d+)"
             value={staleInstructions}
             href="/tasks"
             warn={staleInstructions > 0}
             warnColor="var(--purple)"
             warnBorder="#c4b5fd"
-            tooltip="Approved/executing instructions not updated in 7+ days"
+            tooltip="Approved/executing AI suggestions not updated in 7+ days"
           />
           <HealthCard
             label="Stale Tasks (7d+)"
@@ -245,7 +245,7 @@ export default async function Dashboard() {
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
           <Link href="/audit" style={{ color: 'var(--blue)' }}>View audit log →</Link>
-          <Link href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review pending instructions →</Link>
+          <Link href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review AI suggestions →</Link>
         </div>
       </div>
 
@@ -270,7 +270,7 @@ export default async function Dashboard() {
                   <th>Title</th>
                   <th>Status</th>
                   <th>Risk</th>
-                  <th>Env</th>
+                  <th>Environment</th>
                   <th>Created</th>
                 </tr>
               </thead>
@@ -402,13 +402,13 @@ export default async function Dashboard() {
       {/* Recent runs */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Recent Agent Runs</span>
+          <span className="section-title">Recent AI Responses</span>
         </div>
         {recentRuns.length === 0 ? (
           <EmptyState
             icon="◎"
-            title="No agent runs recorded yet"
-            description="Run a prompt from a task detail page to record agent runs and evaluation results here."
+            title="No AI responses recorded yet"
+            description="Run a prompt from a task detail page to record AI responses and evaluation results here."
           />
         ) : (
           <div className="table-wrap">

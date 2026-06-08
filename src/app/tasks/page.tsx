@@ -69,7 +69,7 @@ export default async function TaskList() {
                 <th>Title</th>
                 <th>Status</th>
                 <th>Risk</th>
-                <th>Env</th>
+                <th>Environment</th>
                 <th>Agent</th>
                 <th>Last activity</th>
                 <th>Pending</th>
