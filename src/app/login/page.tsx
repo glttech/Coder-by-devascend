@@ -69,7 +69,7 @@ export default function LoginPage() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-1)' }}>
       <div className="card" style={{ width: '100%', maxWidth: 400 }}>
         <h1 className="page-title" style={{ marginBottom: 4 }}>Sign in</h1>
-        <p className="page-subtitle" style={{ marginBottom: 24 }}>Coder by DevAscend governance console</p>
+        <p className="page-subtitle" style={{ marginBottom: 24 }}>Coder by DevAscend — Internal Tool</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>

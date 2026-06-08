@@ -119,21 +119,21 @@ export default async function TaskPage({ params }: TaskPageProps) {
       {/* New Agent Run */}
       <div className="section">
         <Card>
-          <CardHeader title="Record Agent Run" subtitle="Submit the agent response to evaluate and track the run" />
+          <CardHeader title="Record AI Response" subtitle="Submit the AI response to evaluate and track the run" />
           <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
         </Card>
       </div>
 
-      {/* Instructions lifecycle */}
+      {/* AI Suggestions lifecycle */}
       <div className="section" id="instructions">
         <div className="section-header">
-          <span className="section-title">Instructions ({task.instructions.length})</span>
+          <span className="section-title">AI Suggestions ({task.instructions.length})</span>
         </div>
         {task.instructions.length === 0 ? (
           <EmptyState
             icon="◉"
-            title="No instructions linked"
-            description="Instructions track discrete work items through the approval → execution → completion lifecycle. Create one via the API to start."
+            title="No AI suggestions linked"
+            description="AI suggestions track discrete work items through the review → execution → completion lifecycle. Create one via the API to start."
           />
         ) : (
           <div className="table-wrap">
@@ -143,7 +143,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                   <th>ID</th>
                   <th>Title</th>
                   <th>Status</th>
-                  <th>State Version</th>
+                  <th>Version</th>
                   <th>Created</th>
                   <th>Actions</th>
                 </tr>

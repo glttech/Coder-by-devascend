@@ -31,8 +31,8 @@ export default async function PendingApprovalsPage() {
   return (
     <div>
       <PageHeader
-        title="Pending Approvals"
-        subtitle="Instructions awaiting review before execution"
+        title="Review Queue"
+        subtitle="AI suggestions awaiting review before execution"
         badge={
           pending.length > 0 ? (
             <span className="badge badge-warning">{pending.length} waiting</span>
@@ -45,8 +45,8 @@ export default async function PendingApprovalsPage() {
       {pending.length === 0 ? (
         <EmptyState
           icon="◉"
-          title="No instructions awaiting approval"
-          description="When instructions are submitted for approval they appear here. Approve or block them directly from this page."
+          title="No AI suggestions awaiting review"
+          description="When AI suggestions are submitted for review they appear here. Approve or block them directly from this page."
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -63,7 +63,7 @@ export default async function PendingApprovalsPage() {
                 <RiskBadge level={task.riskLevel} />
                 <EnvBadge env={task.environment} />
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
-                  {instructions.length} instruction{instructions.length !== 1 ? 's' : ''} pending
+                  {instructions.length} suggestion{instructions.length !== 1 ? 's' : ''} pending
                 </span>
               </div>
 
@@ -71,7 +71,7 @@ export default async function PendingApprovalsPage() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Instruction</th>
+                      <th>AI Suggestion</th>
                       <th>Submitted</th>
                       <th style={{ minWidth: 260 }}>Actions</th>
                     </tr>
