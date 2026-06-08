@@ -159,11 +159,11 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
 
       {logs.length === 0 ? (
         <EmptyState
-          icon="◎"
-          title="No audit entries"
+          icon="🔍"
+          title={hasFilter ? 'No matching activity' : 'No activity yet'}
           description={hasFilter
             ? 'No entries match the current filters.'
-            : 'Audit entries are recorded automatically when instructions are created, status-changed, or operator sessions are submitted.'}
+            : 'Every action in the system is recorded here — task creation, approvals, AI responses, and more.'}
           action={hasFilter ? <Link href="/audit" className="btn btn-ghost btn-sm">Clear filters</Link> : undefined}
         />
       ) : (

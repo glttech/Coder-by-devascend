@@ -131,9 +131,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
         </div>
         {task.instructions.length === 0 ? (
           <EmptyState
-            icon="◉"
-            title="No AI suggestions linked"
-            description="AI suggestions track discrete work items through the review → execution → completion lifecycle. Create one via the API to start."
+            icon="💡"
+            title="No AI suggestions yet"
+            description="Use the prompt below to get a response from your AI tool, then paste it back here."
           />
         ) : (
           <div className="table-wrap">

@@ -55,10 +55,10 @@ export default async function TaskList() {
 
       {tasks.length === 0 ? (
         <EmptyState
-          icon="◈"
+          icon="✅"
           title="No tasks yet"
-          description="Tasks represent units of AI-assisted development work. Create your first task to begin generating prompts and tracking agent runs."
-          action={<Link href="/tasks/new" className="btn btn-primary">Create first task</Link>}
+          description="Tasks describe what you want the AI to help with. Create a task, generate a prompt, and review the AI's suggestion before approving it."
+          action={<Link href="/tasks/new" className="btn btn-primary">Create your first task</Link>}
         />
       ) : (
         <div className="table-wrap">
