@@ -48,7 +48,7 @@ export default function NewProjectPage() {
         <div className="page-header-row">
           <div>
             <h1 className="page-title">New Project</h1>
-            <p className="page-subtitle">Register a GitHub repository to track tasks and PR evidence</p>
+            <p className="page-subtitle">Register a GitHub repository to track tasks and pull requests</p>
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ const LABELS: Record<string, string> = {
   BLOCKED:                  'Blocked — Do Not Proceed',
   SENIOR_APPROVAL_REQUIRED: 'Senior Approval Required',
   RUN_VALIDATION:           'Run Validation',
-  ASK_AGENT_FOR_EVIDENCE:   'Ask Agent for Evidence',
+  ASK_AGENT_FOR_EVIDENCE:   'Ask Agent for More Information',
 };
 
 interface DecisionBannerProps {

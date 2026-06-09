@@ -82,7 +82,7 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
   return (
     <div>
       <PageHeader
-        title="PR Evidence"
+        title="Pull Request History"
         subtitle={
           <Link href={`/projects/${params.id}`} style={{ fontSize: 12, color: 'var(--blue)' }}>
             ← {project.name}
@@ -194,7 +194,7 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
           <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '24px 0' }}>
             {activeFilters
               ? 'No PRs match the current filters.'
-              : 'No PRs imported yet. Use "+ Import PR" to fetch evidence from a GitHub PR URL.'}
+              : 'No pull requests imported yet. Use "+ Import PR" to add a GitHub pull request.'}
           </div>
         ) : (
           <div className="table-wrap">
