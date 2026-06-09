@@ -15,6 +15,20 @@ import CloneTaskButton from '@/components/CloneTaskButton';
 
 export const dynamic = 'force-dynamic';
 
+const TOOL_DISPLAY: Record<string, string> = {
+  'claude-code-manual': 'Claude Code',
+  'codex-manual': 'Codex',
+  'openclaw-manual': 'OpenClaw',
+  'open-swe': 'Open SWE',
+};
+
+const ENV_DISPLAY: Record<string, string> = {
+  'local': 'Local',
+  'dev': 'Development',
+  'staging': 'Staging',
+  'production': 'Production',
+};
+
 interface TaskPageProps {
   params: { id: string };
 }
@@ -67,6 +81,29 @@ export default async function TaskPage({ params }: TaskPageProps) {
         }
       />
 
+      {/* What to do next — status-based guidance */}
+      {task.status === 'pending' && !task.approvalRequired && (
+        <div className="section">
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--blue)' }}>Next step:</strong> Copy the generated prompt below, run it in your AI tool, then paste the response back in the &ldquo;Submit AI Response&rdquo; section.
+          </div>
+        </div>
+      )}
+      {task.status === 'completed' && (
+        <div className="section">
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: '#16a34a' }}>Task complete.</strong> View the full summary in the <a href={`/tasks/${task.id}/report`} style={{ color: 'var(--blue)' }}>Summary Report</a>.
+          </div>
+        </div>
+      )}
+      {task.status === 'failed' && (
+        <div className="section">
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: '#dc2626' }}>Task failed.</strong> Check the AI responses and audit log below for details. You can <a href={`/tasks/${task.id}/edit`} style={{ color: 'var(--blue)' }}>edit the task</a> and retry.
+          </div>
+        </div>
+      )}
+
       {/* Approval callout — shown when task is awaiting human review */}
       {task.approvalRequired &&
         (task.status === 'pending_approval' || task.status === 'awaiting_approval') && (
@@ -100,7 +137,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <span className="card-title">Task Details</span>
             <div style={{ display: 'flex', gap: 6 }}>
               <EnvBadge env={task.environment} />
-              <span className="badge badge-neutral">{task.agentTool}</span>
+              <span className="badge badge-neutral">{TOOL_DISPLAY[task.agentTool] ?? task.agentTool}</span>
             </div>
           </div>
           <div className="meta-grid" style={{ marginTop: 12 }}>
@@ -111,6 +148,10 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <div className="meta-row">
               <span className="meta-label">Status</span>
               <span className="meta-value">{task.status}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Environment</span>
+              <span className="meta-value">{ENV_DISPLAY[task.environment] ?? task.environment}</span>
             </div>
             <div className="meta-row">
               <span className="meta-label">Approval required</span>
@@ -133,6 +174,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
 
       {/* Generated Prompt */}
       <div className="section">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 1 — Copy the prompt
+        </div>
         <Card>
           <CardHeader title="Generated Prompt" subtitle="Structured execution prompt ready to paste into your AI agent" />
           <pre className="prompt-block prompt-block-scrollable">{prompt}</pre>
@@ -142,16 +186,26 @@ export default async function TaskPage({ params }: TaskPageProps) {
         </Card>
       </div>
 
-      {/* New Agent Run */}
+      {/* Submit AI Response */}
       <div className="section">
-        <Card>
-          <CardHeader title="Record AI Response" subtitle="Submit the AI response to evaluate and track the run" />
-          <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
-        </Card>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 2 — Submit the AI response
+        </div>
+        <div className="section-header">
+          <span className="section-title">Submit AI Response</span>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          After using the AI tool with the prompt above, paste its response here. The system will
+          check it for safety and tell you what to do next.
+        </p>
+        <OperatorPanel taskId={task.id} taskTitle={task.title} />
       </div>
 
       {/* AI Suggestions lifecycle */}
       <div className="section" id="instructions">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 3 — Review suggestions
+        </div>
         <div className="section-header">
           <span className="section-title">AI Suggestions ({task.instructions.length})</span>
         </div>
@@ -205,22 +259,21 @@ export default async function TaskPage({ params }: TaskPageProps) {
         )}
       </div>
 
-      {/* Submit AI Response */}
+      {/* New Agent Run */}
       <div className="section">
-        <div className="section-header">
-          <span className="section-title">Submit AI Response</span>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Track AI responses
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-          After using the AI tool with the prompt above, paste its response here. The system will
-          check it for safety and tell you what to do next.
-        </p>
-        <OperatorPanel taskId={task.id} taskTitle={task.title} />
+        <Card>
+          <CardHeader title="Record AI Response" subtitle="Submit the AI response to evaluate and track the run" />
+          <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
+        </Card>
       </div>
 
-      {/* Previous Runs */}
+      {/* AI Response History */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Previous Runs ({task.agentRuns.length})</span>
+          <span className="section-title">AI Response History ({task.agentRuns.length})</span>
         </div>
         {task.agentRuns.length === 0 ? (
           <EmptyState
