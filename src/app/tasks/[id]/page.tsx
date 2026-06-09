@@ -67,6 +67,32 @@ export default async function TaskPage({ params }: TaskPageProps) {
         }
       />
 
+      {/* Approval callout — shown when task is awaiting human review */}
+      {task.approvalRequired &&
+        (task.status === 'pending_approval' || task.status === 'awaiting_approval') && (
+        <div className="section">
+          <div style={{
+            background: 'var(--amber-bg, rgba(251,191,36,0.08))',
+            border: '1px solid var(--amber-border, rgba(251,191,36,0.4))',
+            borderRadius: 8,
+            padding: '14px 18px',
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1.3 }}>⏳</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                This task is waiting for your review.
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                The AI has submitted a suggestion. Look at the <strong>AI Suggestions</strong> section below and click <strong>Approve</strong> to accept it, or <strong>Block</strong> to reject it.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Metadata */}
       <div className="section">
         <Card>
