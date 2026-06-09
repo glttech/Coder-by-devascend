@@ -11,7 +11,8 @@
     "migrate": "prisma migrate dev",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "./node_modules/.bin/tsx --test src/lib/__tests__/*.test.ts"
+    "test": "./node_modules/.bin/tsx --test src/lib/__tests__/*.test.ts",
+    "seed:demo": "tsx prisma/seed-demo.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
@@ -30,6 +31,7 @@
     "@types/react": "^18.2.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.35",
+    "tsx": "^4.7.0",
     "typescript": "^5.2.2"
   }
 }
