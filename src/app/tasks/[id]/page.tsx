@@ -205,14 +205,14 @@ export default async function TaskPage({ params }: TaskPageProps) {
         )}
       </div>
 
-      {/* Operator Console */}
+      {/* Submit AI Response */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Operator Console</span>
+          <span className="section-title">Submit AI Response</span>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-          After running the prompt in an AI coding agent, paste the response here. The system will
-          analyze risk, check for missing evidence, and generate a safe next step.
+          After using the AI tool with the prompt above, paste its response here. The system will
+          check it for safety and tell you what to do next.
         </p>
         <OperatorPanel taskId={task.id} taskTitle={task.title} />
       </div>

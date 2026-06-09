@@ -286,13 +286,13 @@ export default async function Dashboard() {
             tooltip="Non-terminal tasks not updated in 7+ days"
           />
           <HealthCard
-            label="Sessions Needing Action"
+            label="AI Reviews Needing Action"
             value={sessionsNeedingAction}
             href="/tasks"
             warn={sessionsNeedingAction > 0}
             warnColor="var(--orange)"
             warnBorder="#fdba74"
-            tooltip="Operator sessions from last 48h with non-CONTINUE decision"
+            tooltip="AI sessions from the last 48 hours that need follow-up"
           />
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
