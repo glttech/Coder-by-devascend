@@ -181,7 +181,7 @@ export default function NewTaskPage() {
         <div className="page-header-row">
           <div>
             <h1 className="page-title">New Task</h1>
-            <p className="page-subtitle">Define the work unit, agent tool, and risk parameters</p>
+            <p className="page-subtitle">Describe what you want the AI to work on</p>
           </div>
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function NewTaskPage() {
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" htmlFor="instruction">
-              Raw Instruction
+              Task Description
               <span style={{ color: 'var(--red)', marginLeft: 3 }}>*</span>
             </label>
             <textarea
@@ -240,16 +240,16 @@ export default function NewTaskPage() {
               rows={8}
               placeholder="Describe exactly what the agent should do. Be precise about scope, constraints, and expected output."
             />
-            <div className="form-hint">This becomes the Objective section of the generated prompt.</div>
+            <div className="form-hint">Describe exactly what you want the AI to do — what to change, create, or fix.</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" htmlFor="agentTool">Agent / Tool</label>
+              <label className="form-label" htmlFor="agentTool">AI Tool</label>
               <select id="agentTool" value={agentTool} onChange={(e) => setAgentTool(e.target.value)}>
-                <option value="claude-code-manual">Claude Code (manual)</option>
-                <option value="codex-manual">Codex (manual)</option>
-                <option value="openclaw-manual">OpenClaw (manual)</option>
+                <option value="claude-code-manual">Claude Code</option>
+                <option value="codex-manual">Codex</option>
+                <option value="openclaw-manual">OpenClaw</option>
                 <option value="open-swe">Open SWE</option>
               </select>
             </div>
