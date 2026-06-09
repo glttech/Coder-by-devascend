@@ -118,7 +118,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {health.total > 0 && (
         <div className="section">
           <div className="section-header">
-            <span className="section-title">PR Evidence Health</span>
+            <span className="section-title">Code Review Health</span>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span className={`badge ${SIGNAL_BADGE[signal]}`}>{SIGNAL_LABEL[signal]}</span>
               <Link href={`/projects/${project.id}/prs`} style={{ fontSize: 12, color: 'var(--blue)' }}>
@@ -160,7 +160,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </div>
       )}
 
-      {/* Stale Evidence Alert */}
+      {/* Stale PR Alert */}
       {stalePRs.length > 0 && (
         <div className="section">
           <div className="section-header">
@@ -295,7 +295,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         {project.githubPRs.length === 0 ? (
           <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
             {repoUrl
-              ? <>No PRs imported yet. Click <strong>+ Import PR</strong> and paste any GitHub PR URL to fetch its evidence for governance review.</>
+              ? <>No pull requests imported yet. Click <strong>+ Import PR</strong> to fetch a GitHub pull request.</>
+
               : <>No GitHub repo linked. <Link href={`/projects/${project.id}/edit`} style={{ color: 'var(--blue)' }}>Edit this project</Link> to add a repo, then import PRs.</>
             }
           </div>

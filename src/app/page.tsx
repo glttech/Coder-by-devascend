@@ -183,7 +183,7 @@ export default async function Dashboard() {
               { n: '1', title: 'Create a task', desc: 'Define the work, agent tool, risk level, and environment.' },
               { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt with stop conditions and validation steps.' },
               { n: '3', title: 'Record the agent response', desc: 'Paste what the AI agent did — files, commands, and output.' },
-              { n: '4', title: 'Get a risk decision', desc: 'The console flags risk, checks evidence, and recommends the safe next step with a full audit trail.' },
+              { n: '4', title: 'Get a risk decision', desc: 'The console flags risk, checks completeness, and recommends the safe next step with a full audit trail.' },
             ].map(({ n, title, desc }) => (
               <div key={n} className="explainer-step">
                 <div className="explainer-step-num">{n}</div>
@@ -380,17 +380,17 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* GitHub PR Evidence */}
+      {/* Recent Pull Requests */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Recent GitHub PR Evidence</span>
+          <span className="section-title">Recent Pull Requests</span>
           <Link href="/projects" style={{ fontSize: 12, color: 'var(--blue)' }}>View projects →</Link>
         </div>
         {recentGithubPRs.length === 0 ? (
           <EmptyState
             icon="⬟"
             title="No PRs imported yet"
-            description="Open a project and import a GitHub PR to see evidence here."
+            description="No pull requests imported yet. Open a project and import a GitHub pull request to track code reviews here."
             action={<Link href="/projects" className="btn btn-primary">Go to Projects</Link>}
           />
         ) : (

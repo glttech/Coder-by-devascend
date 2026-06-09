@@ -104,7 +104,7 @@ function DecisionFactors({ session, action }: { session: EnrichedSession; action
       )}
       {missing.length > 0 && (
         <div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber-text)' }}>Missing evidence:</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber-text)' }}>Missing information:</span>
           <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
             {missing.map((e) => <li key={e.key}>{e.label} — {e.description}</li>)}
           </ul>
@@ -158,10 +158,10 @@ function AnalysisPanel({ session }: { session: EnrichedSession }) {
 
         <div className="card card-sm">
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 10 }}>
-            Missing Evidence {session.missingEvidenceDetails.length > 0 && <span style={{ fontWeight: 400 }}>({session.missingEvidenceDetails.length})</span>}
+            Missing Information {session.missingEvidenceDetails.length > 0 && <span style={{ fontWeight: 400 }}>({session.missingEvidenceDetails.length})</span>}
           </div>
           {session.missingEvidenceDetails.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--green-text)' }}>✓ All required evidence provided</p>
+            <p style={{ fontSize: 13, color: 'var(--green-text)' }}>✓ All required information provided</p>
           ) : (
             session.missingEvidenceDetails.map((e) => (
               <div key={e.key} className="evidence-item">
@@ -246,7 +246,7 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -6 }}>
           After running a prompt, paste the agent response here. The system will analyze risk,
-          identify missing evidence, and determine the safest next step.
+          identify missing information, and determine the safest next step.
         </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>

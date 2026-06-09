@@ -54,7 +54,7 @@ export default function ImportPRPage({ params }: PageProps) {
           <div>
             <h1 className="page-title">Import GitHub PR</h1>
             <p className="page-subtitle">
-              Fetch PR evidence from GitHub and store it for governance review.{' '}
+              Fetch a pull request from GitHub and store it for governance review.{' '}
               <Link href={`/projects/${params.id}`} style={{ fontSize: 12, color: 'var(--blue)' }}>
                 ← Back to project
               </Link>

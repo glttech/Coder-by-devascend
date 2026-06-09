@@ -71,7 +71,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
     <div>
       <PageHeader
         title={task.title}
-        subtitle="Evidence Report"
+        subtitle="Task Summary Report"
         badge={
           <div style={{ display: 'flex', gap: 6 }}>
             <RiskBadge level={task.riskLevel} />
@@ -225,7 +225,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
                   <th style={{ width: 50 }}>Step</th>
                   <th>Decision</th>
                   <th>Risk Flags</th>
-                  <th>Missing Evidence</th>
+                  <th>Missing Info</th>
                   <th style={{ width: 130 }}>When</th>
                 </tr>
               </thead>
