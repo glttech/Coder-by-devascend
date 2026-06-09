@@ -13,6 +13,7 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved }: Pr
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   if (!approvalRequired) return null;
   const statusLabel = approved === null || approved === undefined ? 'Pending' : approved ? 'Approved' : 'Rejected';
   async function submitApproval(value: boolean) {
@@ -28,6 +29,8 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved }: Pr
         const { error } = await res.json();
         throw new Error(error || 'Failed to update approval');
       }
+      setSuccess(value ? '✓ Task approved' : '✓ Task rejected');
+      setTimeout(() => setSuccess(null), 3000);
       router.refresh();
     } catch (err: any) {
       setError(err.message);
@@ -59,6 +62,20 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved }: Pr
           ✕ Reject
         </button>
       </div>
+      {success && (
+        <div style={{
+          padding: '8px 12px',
+          borderRadius: 6,
+          background: 'rgba(34,197,94,0.1)',
+          border: '1px solid rgba(34,197,94,0.3)',
+          color: '#16a34a',
+          fontSize: 13,
+          fontWeight: 500,
+          marginTop: 8,
+        }}>
+          {success}
+        </div>
+      )}
       <p className="approval-panel-note">
         This approval governs actions inside the orchestrator only. External coding agents
         (Claude Code, Codex) are run manually via the Operator Console.

@@ -139,6 +139,7 @@ export default function NewTaskPage() {
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   function applyPreset(preset: Preset) {
     setActivePreset(preset.id);
@@ -167,6 +168,8 @@ export default function NewTaskPage() {
         throw new Error(error || 'Failed to create task');
       }
       const task = await res.json();
+      setSuccess('✓ Task created! Loading...');
+      await new Promise(r => setTimeout(r, 600));
       router.push(`/tasks/${task.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
@@ -288,6 +291,20 @@ export default function NewTaskPage() {
           {error && (
             <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 13 }}>
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              color: '#16a34a',
+              fontSize: 13,
+              fontWeight: 500,
+            }}>
+              {success}
             </div>
           )}
 
