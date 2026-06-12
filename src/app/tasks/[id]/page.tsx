@@ -58,6 +58,14 @@ export default async function TaskPage({ params }: TaskPageProps) {
 
   const prompt = buildPrompt(task);
 
+  const approverId = task.approval?.approverId;
+  const approver = approverId
+    ? await prisma.user.findUnique({
+        where: { id: approverId },
+        select: { name: true, email: true },
+      })
+    : null;
+
   return (
     <div>
       <PageHeader
@@ -170,6 +178,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
             taskId={task.id}
             approvalRequired={task.approvalRequired}
             approved={task.approval?.approved}
+            approverName={approver?.name ?? approver?.email ?? undefined}
           />
         </div>
       )}

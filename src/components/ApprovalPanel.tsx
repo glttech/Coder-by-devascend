@@ -7,9 +7,10 @@ interface Props {
   taskId: string;
   approvalRequired: boolean;
   approved: boolean | null | undefined;
+  approverName?: string;
 }
 
-export default function ApprovalPanel({ taskId, approvalRequired, approved }: Props) {
+export default function ApprovalPanel({ taskId, approvalRequired, approved, approverName }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,11 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved }: Pr
           {statusLabel}
         </strong>
       </div>
+      {approverName && (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+          Reviewed by {approverName}
+        </div>
+      )}
       {error && (
         <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', fontSize: 13, marginBottom: 10 }}>
           {error}
