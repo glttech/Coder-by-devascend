@@ -1,4 +1,4 @@
-import type { AgentProviderAdapter } from './types.js';
+import type { AgentProviderAdapter } from './types';
 
 // Singleton registry map: type → adapter instance
 const registry = new Map<string, AgentProviderAdapter>();
