@@ -50,10 +50,12 @@ export async function POST(request: Request) {
       error: 'An approval decision has already been recorded for this task and cannot be changed',
     };
 
+    const approverId = currentUser?.userId ?? null;
+
     let approval;
     try {
       // First decision: create relies on the unique constraint on taskId.
-      approval = await prisma.approval.create({ data: { taskId, approved } });
+      approval = await prisma.approval.create({ data: { taskId, approved, approverId } });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         // A row already exists. Flip it only if it is still undecided; the
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
         // most one concurrent request matches.
         const updated = await prisma.approval.updateMany({
           where: { taskId, approved: null },
-          data: { approved },
+          data: { approved, approverId },
         });
         if (updated.count === 0) {
           return NextResponse.json(ALREADY_DECIDED, { status: 409 });

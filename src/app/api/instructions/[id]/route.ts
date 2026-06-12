@@ -65,7 +65,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { status: nextStatus, approvedBy, approvalNote, blockedReason, completedNotes } =
+  const { status: nextStatus, approvalNote, blockedReason, completedNotes } =
     body as Record<string, string | undefined>;
 
   if (!nextStatus || typeof nextStatus !== 'string') {
@@ -118,13 +118,14 @@ export async function PATCH(
     }
 
     const now = new Date();
+    const approvedBy = currentUser?.userId ?? null;
 
     // Build update payload — only set timestamp/metadata fields on the relevant transition.
     const updateData: Record<string, unknown> = { status: nextStatus };
 
     if (nextStatus === 'approved') {
       updateData.approvedAt = now;
-      if (approvedBy) updateData.approvedBy = approvedBy.trim();
+      updateData.approvedBy = approvedBy;
       if (approvalNote) updateData.approvalNote = approvalNote.trim();
     }
 
@@ -150,7 +151,7 @@ export async function PATCH(
       title: instruction.title,
       body: instruction.body,
       status: nextStatus,
-      approvedBy: (updateData.approvedBy as string | undefined) ?? instruction.approvedBy,
+      approvedBy: (updateData.approvedBy as string | null | undefined) ?? instruction.approvedBy,
       approvalNote: (updateData.approvalNote as string | undefined) ?? instruction.approvalNote,
       blockedReason: (updateData.blockedReason as string | undefined) ?? instruction.blockedReason,
       completedNotes: (updateData.completedNotes as string | undefined) ?? instruction.completedNotes,
