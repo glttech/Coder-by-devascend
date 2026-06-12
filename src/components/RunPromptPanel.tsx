@@ -15,6 +15,7 @@ export default function RunPromptPanel({ taskId, prompt, defaultTool }: Props) {
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +31,8 @@ export default function RunPromptPanel({ taskId, prompt, defaultTool }: Props) {
         const { error } = await res.json();
         throw new Error(error || 'Failed to submit run');
       }
+      setSuccess('✓ Response recorded — scroll down to see results');
+      setTimeout(() => setSuccess(null), 4000);
       router.refresh();
       setResponse('');
     } catch (err: any) {
@@ -66,6 +69,20 @@ export default function RunPromptPanel({ taskId, prompt, defaultTool }: Props) {
       {error && (
         <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', fontSize: 13 }}>
           {error}
+        </div>
+      )}
+      {success && (
+        <div style={{
+          padding: '8px 12px',
+          borderRadius: 6,
+          background: 'rgba(34,197,94,0.1)',
+          border: '1px solid rgba(34,197,94,0.3)',
+          color: '#16a34a',
+          fontSize: 13,
+          fontWeight: 500,
+          marginTop: 8,
+        }}>
+          {success}
         </div>
       )}
       <div>

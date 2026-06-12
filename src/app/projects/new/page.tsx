@@ -12,6 +12,7 @@ export default function NewProjectPage() {
   const [defaultBranch, setDefaultBranch] = useState('main');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +35,8 @@ export default function NewProjectPage() {
         throw new Error(body.error || 'Failed to create project');
       }
       const project = await res.json();
+      setSuccess('✓ Project created! Loading...');
+      await new Promise(r => setTimeout(r, 600));
       router.push(`/projects/${project.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -124,6 +127,20 @@ export default function NewProjectPage() {
           {error && (
             <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 13 }}>
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              color: '#16a34a',
+              fontSize: 13,
+              fontWeight: 500,
+            }}>
+              {success}
             </div>
           )}
 

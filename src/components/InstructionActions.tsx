@@ -37,6 +37,7 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [blockedReason, setBlockedReason] = useState('');
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [approvalNote, setApprovalNote] = useState('');
@@ -61,6 +62,14 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
       if (!res.ok) {
         setError(data.error ?? 'Transition failed');
       } else {
+        const messages: Record<string, string> = {
+          approved:   '✓ Approved — suggestion accepted',
+          blocked:    '✓ Blocked — suggestion rejected',
+          executing:  '✓ Marked as executing',
+          completed:  '✓ Marked as completed',
+        };
+        setSuccess(messages[nextStatus] ?? '✓ Updated');
+        setTimeout(() => setSuccess(null), 3000);
         router.refresh();
       }
     } catch {
@@ -157,6 +166,20 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
       )}
 
       {error && <p style={{ color: 'var(--red)', fontSize: 11, marginTop: 4 }}>{error}</p>}
+      {success && (
+        <div style={{
+          padding: '8px 12px',
+          borderRadius: 6,
+          background: 'rgba(34,197,94,0.1)',
+          border: '1px solid rgba(34,197,94,0.3)',
+          color: '#16a34a',
+          fontSize: 13,
+          fontWeight: 500,
+          marginTop: 8,
+        }}>
+          {success}
+        </div>
+      )}
     </div>
   );
 }

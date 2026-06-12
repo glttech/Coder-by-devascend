@@ -192,6 +192,7 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   const [agentTool, setAgentTool] = useState('claude-code-manual');
@@ -228,6 +229,8 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
       setSessions((prev) => [newSession, ...prev]);
       setActiveSessionId(newSession.id);
       setAgentResponse(''); setFilesMentioned(''); setCommandsMentioned(''); setValidationOutput(''); setReviewerNotes('');
+      setSubmitSuccess('✓ Response analyzed — see results below');
+      setTimeout(() => setSubmitSuccess(null), 4000);
       router.refresh();
     } catch {
       setSubmitError('Network error — please try again.');
@@ -327,6 +330,20 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
           {submitError && (
             <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: 13 }}>
               {submitError}
+            </div>
+          )}
+
+          {submitSuccess && (
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              color: '#16a34a',
+              fontSize: 13,
+              fontWeight: 500,
+            }}>
+              {submitSuccess}
             </div>
           )}
 
