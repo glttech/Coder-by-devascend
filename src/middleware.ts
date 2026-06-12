@@ -12,21 +12,28 @@ import {
 import { getAuthMode, getSessionOptions } from '@/lib/session';
 import type { AppSession } from '@/lib/session';
 import { isPublicPath, resolveAuthDecision } from '@/lib/authGuard';
+import { validateCsrfToken } from '@/lib/csrf';
 
 const GOVERNANCE_KEY = process.env.GOVERNANCE_API_KEY;
 
 // Module-level store — persists across requests within the same server process.
 const rlStore = new Map<string, Bucket>();
 
-async function readSession(request: NextRequest): Promise<boolean> {
+interface SessionReadResult {
+  authenticated: boolean;
+  csrfToken?: string;
+}
+
+async function readSession(request: NextRequest): Promise<SessionReadResult> {
   try {
     const opts = getSessionOptions();
     const cookieValue = request.cookies.get(opts.cookieName)?.value;
-    if (!cookieValue) return false;
+    if (!cookieValue) return { authenticated: false };
     const data = await unsealData<AppSession>(cookieValue, { password: opts.password });
-    return Boolean(data?.userId);
+    if (!data?.userId) return { authenticated: false };
+    return { authenticated: true, csrfToken: data.csrfToken };
   } catch {
-    return false;
+    return { authenticated: false };
   }
 }
 
@@ -53,8 +60,9 @@ export async function middleware(request: NextRequest) {
     !GOVERNANCE_KEY || request.headers.get('x-governance-key') === GOVERNANCE_KEY;
 
   // Read session only when auth is enforced and path is not public (avoids decrypt overhead).
-  const isAuthenticated =
-    mode === 'enforced' && !isPublic ? await readSession(request) : false;
+  const sessionResult =
+    mode === 'enforced' && !isPublic ? await readSession(request) : { authenticated: false };
+  const isAuthenticated = sessionResult.authenticated;
 
   const decision = resolveAuthDecision({
     mode,
@@ -84,6 +92,20 @@ export async function middleware(request: NextRequest) {
       { error: 'Server auth configuration error. Contact the server admin.', code: 'MISCONFIGURED' },
       { status: 500 },
     );
+  }
+
+  // CSRF check for browser mutations (not governance-key, not safe methods, not public, not auth-disabled).
+  const isMutation = ['POST', 'PATCH', 'DELETE', 'PUT'].includes(request.method);
+  const hasGovernanceKey =
+    Boolean(GOVERNANCE_KEY) && request.headers.get('x-governance-key') === GOVERNANCE_KEY;
+  if (isMutation && !isPublic && mode === 'enforced' && !hasGovernanceKey) {
+    const csrfHeader = request.headers.get('x-csrf-token');
+    if (!validateCsrfToken(csrfHeader, sessionResult.csrfToken)) {
+      return NextResponse.json(
+        { error: 'CSRF token missing or invalid', code: 'CSRF_INVALID' },
+        { status: 403 },
+      );
+    }
   }
 
   // Rate limiting — only for API routes.

@@ -9,6 +9,8 @@ export interface AppSession {
   /** Role of the user — 'admin' | 'reviewer'. */
   role: UserRole;
   loginAt: string;
+  /** CSRF token for double-submit cookie validation. Optional so existing sessions remain valid. */
+  csrfToken?: string;
 }
 
 export type AuthMode = 'disabled' | 'enforced' | 'misconfigured';
