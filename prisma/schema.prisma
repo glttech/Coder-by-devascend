@@ -61,22 +61,48 @@ model PromptTemplate {
   updatedAt DateTime @updatedAt
 }
 
+model AgentProvider {
+  id        String     @id @default(uuid())
+  name      String     // "mock", "claude-code", "codex", "open-swe"
+  type      String     // "mock" | "claude" | "codex" | "open-swe"
+  enabled   Boolean    @default(false) // all disabled by default
+  config    Json?      // non-secret config only (model name, endpoint, etc.)
+  agentRuns AgentRun[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
 model AgentRun {
-  id             String      @id @default(uuid())
-  taskId         String
-  task           Task        @relation(fields: [taskId], references: [id])
+  id              String         @id @default(uuid())
+  taskId          String
+  task            Task           @relation(fields: [taskId], references: [id])
+  providerId      String?
+  provider        AgentProvider? @relation(fields: [providerId], references: [id])
   generatedPrompt String
-  selectedTool   String
-  response       String?
-  filesChanged   String?
-  commandsRun    String?
-  testResult     String?
-  commitHash     String?
-  status         String      @default("pending") // "pending", "running", "succeeded", "failed"
-  startedAt      DateTime    @default(now())
-  endedAt        DateTime?
-  evaluations    Evaluation[]
-  audits         AuditLog[]
+  selectedTool    String
+  response        String?
+  filesChanged    String?
+  commandsRun     String?
+  testResult      String?
+  commitHash      String?
+  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled
+  status          String         @default("pending") // "pending", "running", "succeeded", "failed"
+  startedAt       DateTime       @default(now())
+  endedAt         DateTime?
+  evaluations     Evaluation[]
+  audits          AuditLog[]
+  steps           AgentStep[]
+}
+
+model AgentStep {
+  id         String   @id @default(uuid())
+  agentRunId String
+  agentRun   AgentRun @relation(fields: [agentRunId], references: [id])
+  stepIndex  Int
+  type       String   // "prompt", "tool_call", "tool_result", "text", "error"
+  content    String
+  metadata   Json?
+  createdAt  DateTime @default(now())
 }
 
 model Evaluation {
