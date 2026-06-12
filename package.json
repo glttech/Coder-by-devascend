@@ -11,8 +11,9 @@
     "migrate": "prisma migrate dev",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "./node_modules/.bin/tsx --test src/lib/__tests__/*.test.ts",
-    "seed:demo": "tsx prisma/seed-demo.ts"
+    "test": "tsx --test src/lib/__tests__/*.test.ts",
+    "seed:demo": "tsx prisma/seed-demo.ts",
+    "seed:admin": "tsx prisma/seed-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
