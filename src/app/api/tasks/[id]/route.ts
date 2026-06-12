@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
@@ -33,6 +34,11 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'admin');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();

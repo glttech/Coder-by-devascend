@@ -2,12 +2,18 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 export async function POST(
   _request: Request,
   { params }: { params: { id: string } },
 ) {
   const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'admin');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   const { id } = params;
 
   try {
