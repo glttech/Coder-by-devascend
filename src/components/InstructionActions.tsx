@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCsrfToken } from '@/hooks/useCsrfToken';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   draft:            ['pending_approval'],
@@ -35,6 +36,7 @@ interface Props {
 
 export default function InstructionActions({ instructionId, currentStatus }: Props) {
   const router = useRouter();
+  const csrfToken = useCsrfToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -50,12 +52,13 @@ export default function InstructionActions({ instructionId, currentStatus }: Pro
   if (allowed.length === 0) return null;
 
   async function transition(nextStatus: string, extra: Record<string, string> = {}) {
+    if (!csrfToken) { setError('Session error — refresh the page'); return; }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/instructions/${instructionId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ status: nextStatus, ...extra }),
       });
       const data = await res.json();

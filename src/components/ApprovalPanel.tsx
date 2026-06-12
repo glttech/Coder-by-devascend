@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCsrfToken } from '@/hooks/useCsrfToken';
 
 interface Props {
   taskId: string;
@@ -12,18 +13,20 @@ interface Props {
 
 export default function ApprovalPanel({ taskId, approvalRequired, approved, approverName }: Props) {
   const router = useRouter();
+  const csrfToken = useCsrfToken();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   if (!approvalRequired) return null;
   const statusLabel = approved === null || approved === undefined ? 'Pending' : approved ? 'Approved' : 'Rejected';
   async function submitApproval(value: boolean) {
+    if (!csrfToken) { setError('Session error — refresh the page'); return; }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/approvals', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ taskId, approved: value }),
       });
       if (!res.ok) {

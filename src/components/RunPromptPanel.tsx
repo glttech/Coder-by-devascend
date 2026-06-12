@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCsrfToken } from '@/hooks/useCsrfToken';
 
 interface Props {
   taskId: string;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function RunPromptPanel({ taskId, prompt, defaultTool }: Props) {
   const router = useRouter();
+  const csrfToken = useCsrfToken();
   const [selectedTool, setSelectedTool] = useState(defaultTool);
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,12 +21,13 @@ export default function RunPromptPanel({ taskId, prompt, defaultTool }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!csrfToken) { setError('Session error — refresh the page'); return; }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/runs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ taskId, generatedPrompt: prompt, selectedTool, response }),
       });
       if (!res.ok) {

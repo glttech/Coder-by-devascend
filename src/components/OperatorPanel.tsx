@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DecisionBanner } from '@/components/ui/DecisionBanner';
+import { useCsrfToken } from '@/hooks/useCsrfToken';
 
 interface RiskFlagDetail {
   key: string;
@@ -188,6 +189,7 @@ function AnalysisPanel({ session }: { session: EnrichedSession }) {
 
 export default function OperatorPanel({ taskId, taskTitle }: Props) {
   const router = useRouter();
+  const csrfToken = useCsrfToken();
   const [sessions, setSessions] = useState<EnrichedSession[]>([]);
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -215,12 +217,13 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!csrfToken) { setSubmitError('Session error — refresh the page'); return; }
     setSubmitting(true);
     setSubmitError('');
     try {
       const res = await fetch('/api/operator-sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ taskId, agentTool, agentResponse, filesMentioned, commandsMentioned, validationOutput, reviewerNotes }),
       });
       const data = await res.json();
