@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { evaluateResponse } from '@/lib/promptEvaluator';
 import { createTrace, logObservation } from '@/lib/langfuse';
+import { writeAudit } from '@/lib/audit';
 
 // POST /api/runs – record an agent run.  Expects JSON with taskId,
 // generatedPrompt, selectedTool, and response.  Performs basic evaluation
@@ -25,13 +26,12 @@ export async function POST(request: Request) {
         endedAt: response ? now : undefined,
       },
     });
-    await prisma.auditLog.create({
-      data: {
-        taskId: run.taskId,
-        agentRunId: run.id,
-        event: 'agent_run_created',
-        details: JSON.stringify({ selectedTool, hasResponse: !!response, status: run.status, at: new Date().toISOString() }),
-      },
+    await writeAudit({
+      taskId: run.taskId,
+      agentRunId: run.id,
+      event: 'agent_run_created',
+      details: JSON.stringify({ selectedTool, hasResponse: !!response, status: run.status, at: new Date().toISOString() }),
+      userId: null,
     });
     // Create evaluation results if a response was supplied
     if (response) {

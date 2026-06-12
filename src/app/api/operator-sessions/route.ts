@@ -5,6 +5,8 @@ import { checkMissingEvidence } from '@/lib/evidenceChecker';
 import { computeDecision } from '@/lib/decisionEngine';
 import { generateNextPrompt } from '@/lib/nextPromptGenerator';
 import { parseLines, enrichSession } from '@/lib/sessionHelpers';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +31,7 @@ export async function GET(request: Request) {
 
 // POST /api/operator-sessions
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -113,19 +116,18 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        taskId,
-        operatorSessionId: session.id,
-        event: 'operator_session_created',
-        details: JSON.stringify({
-          sessionId: session.id,
-          recommendedAction: decision.code,
-          seniorApprovalRequired: decision.seniorApprovalRequired,
-          riskFlagCount: riskFlags.length,
-          missingEvidenceCount: missingEvidence.length,
-        }),
-      },
+    await writeAudit({
+      taskId,
+      operatorSessionId: session.id,
+      event: 'operator_session_created',
+      details: JSON.stringify({
+        sessionId: session.id,
+        recommendedAction: decision.code,
+        seniorApprovalRequired: decision.seniorApprovalRequired,
+        riskFlagCount: riskFlags.length,
+        missingEvidenceCount: missingEvidence.length,
+      }),
+      userId: currentUser?.userId ?? null,
     });
 
     return NextResponse.json({ session: enrichSession(session) }, { status: 201 });

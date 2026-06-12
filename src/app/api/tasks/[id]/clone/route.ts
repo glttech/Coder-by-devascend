@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 export async function POST(
   _request: Request,
   { params }: { params: { id: string } },
 ) {
+  const currentUser = await getCurrentUser();
   const { id } = params;
 
   try {
@@ -25,12 +28,11 @@ export async function POST(
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        taskId: clone.id,
-        event: 'task_cloned',
-        details: JSON.stringify({ sourceTaskId: id, at: new Date().toISOString() }),
-      },
+    await writeAudit({
+      taskId: clone.id,
+      event: 'task_cloned',
+      details: JSON.stringify({ sourceTaskId: id, at: new Date().toISOString() }),
+      userId: currentUser?.userId ?? null,
     });
 
     return NextResponse.json(clone, { status: 201 });

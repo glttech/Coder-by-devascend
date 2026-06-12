@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { checkApprovalAllowed } from '@/lib/approvalGuard';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 // POST /api/approvals – record an approval decision for a task.
 // Body: { taskId: string, approved: boolean }
@@ -21,6 +23,7 @@ export async function POST(request: Request) {
   if (!taskId || typeof approved !== 'boolean') {
     return new NextResponse(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
   }
+  const currentUser = await getCurrentUser();
   try {
     // Load the target task and any existing approval decision.
     const task = await prisma.task.findUnique({
@@ -70,28 +73,26 @@ export async function POST(request: Request) {
     }
 
     // Record the decision in the audit trail — only after a decision was written.
-    await prisma.auditLog.create({
-      data: {
+    await writeAudit({
+      taskId,
+      event: 'task_approval_decided',
+      details: JSON.stringify({
         taskId,
-        event: 'task_approval_decided',
-        details: JSON.stringify({
-          taskId,
-          approved,
-          at: new Date().toISOString(),
-        }),
-      },
+        approved,
+        at: new Date().toISOString(),
+      }),
+      userId: currentUser?.userId ?? null,
     });
 
     // Advance task status: an accepted approval means work can begin.
     // Only move forward from 'pending' — do not overwrite 'running'/'completed'/'failed'.
     if (approved === true && task?.status === 'pending') {
       await prisma.task.update({ where: { id: taskId }, data: { status: 'running' } });
-      await prisma.auditLog.create({
-        data: {
-          taskId,
-          event: 'task_status_changed',
-          details: JSON.stringify({ from: 'pending', to: 'running', reason: 'approval_accepted', at: new Date().toISOString() }),
-        },
+      await writeAudit({
+        taskId,
+        event: 'task_status_changed',
+        details: JSON.stringify({ from: 'pending', to: 'running', reason: 'approval_accepted', at: new Date().toISOString() }),
+        userId: currentUser?.userId ?? null,
       });
     }
 

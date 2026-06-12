@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchGithubPR } from '@/lib/githubClient';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 
@@ -71,6 +73,7 @@ export async function POST(
   _request: Request,
   { params }: { params: { id: string } },
 ) {
+  const currentUser = await getCurrentUser();
   const projectId = params.id;
 
   // Load project and verify it has repo coords
@@ -167,19 +170,18 @@ export async function POST(
 
   // Write audit log
   try {
-    await prisma.auditLog.create({
-      data: {
-        event: 'github_prs_discovered',
-        details: JSON.stringify({
-          projectId,
-          imported,
-          skipped,
-          importErrors,
-          repoOwner,
-          repoName,
-          at: new Date().toISOString(),
-        }),
-      },
+    await writeAudit({
+      event: 'github_prs_discovered',
+      details: JSON.stringify({
+        projectId,
+        imported,
+        skipped,
+        importErrors,
+        repoOwner,
+        repoName,
+        at: new Date().toISOString(),
+      }),
+      userId: currentUser?.userId ?? null,
     });
   } catch {
     // Audit log failure should not fail the response

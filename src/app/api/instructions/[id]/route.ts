@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { computeStateVersion } from '@/lib/stateVersion';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +57,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const currentUser = await getCurrentUser();
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -159,38 +162,36 @@ export async function PATCH(
       data: updateData,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        taskId: instruction.taskId,
+    await writeAudit({
+      taskId: instruction.taskId,
+      instructionId: instruction.id,
+      event: 'instruction_status_changed',
+      details: JSON.stringify({
         instructionId: instruction.id,
-        event: 'instruction_status_changed',
-        details: JSON.stringify({
-          instructionId: instruction.id,
-          taskId: instruction.taskId,
-          previousStatus: currentStatus,
-          nextStatus,
-          previousStateVersion: previousStateVersion ?? null,
-          nextStateVersion,
-          ...(approvedBy ? { approvedBy } : {}),
-          ...(approvalNote ? { approvalNote } : {}),
-          ...(blockedReason ? { blockedReason } : {}),
-          ...(completedNotes ? { completedNotes } : {}),
-          at: now.toISOString(),
-        }),
-      },
+        taskId: instruction.taskId,
+        previousStatus: currentStatus,
+        nextStatus,
+        previousStateVersion: previousStateVersion ?? null,
+        nextStateVersion,
+        ...(approvedBy ? { approvedBy } : {}),
+        ...(approvalNote ? { approvalNote } : {}),
+        ...(blockedReason ? { blockedReason } : {}),
+        ...(completedNotes ? { completedNotes } : {}),
+        at: now.toISOString(),
+      }),
+      userId: currentUser?.userId ?? null,
     });
 
     // Propagate instruction outcomes to the parent task status.
     if (nextStatus === 'blocked') {
       // Any blocked instruction means the task cannot complete cleanly.
       await prisma.task.update({ where: { id: instruction.taskId }, data: { status: 'failed' } });
-      await prisma.auditLog.create({
-        data: {
-          taskId: instruction.taskId,
-          instructionId: instruction.id,
-          event: 'task_status_changed',
-          details: JSON.stringify({ from: null, to: 'failed', reason: 'instruction_blocked', instructionId: instruction.id, at: now.toISOString() }),
-        },
+      await writeAudit({
+        taskId: instruction.taskId,
+        instructionId: instruction.id,
+        event: 'task_status_changed',
+        details: JSON.stringify({ from: null, to: 'failed', reason: 'instruction_blocked', instructionId: instruction.id, at: now.toISOString() }),
+        userId: currentUser?.userId ?? null,
       });
     } else if (nextStatus === 'completed') {
       // Check whether every instruction for this task is now completed.
@@ -199,13 +200,12 @@ export async function PATCH(
       });
       if (remaining === 0) {
         await prisma.task.update({ where: { id: instruction.taskId }, data: { status: 'completed' } });
-        await prisma.auditLog.create({
-          data: {
-            taskId: instruction.taskId,
-            instructionId: instruction.id,
-            event: 'task_status_changed',
-            details: JSON.stringify({ from: null, to: 'completed', reason: 'all_instructions_completed', at: now.toISOString() }),
-          },
+        await writeAudit({
+          taskId: instruction.taskId,
+          instructionId: instruction.id,
+          event: 'task_status_changed',
+          details: JSON.stringify({ from: null, to: 'completed', reason: 'all_instructions_completed', at: now.toISOString() }),
+          userId: currentUser?.userId ?? null,
         });
       }
     }

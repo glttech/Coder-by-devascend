@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchGithubPR, resolveGithubCoords, userSafeErrorMessage } from '@/lib/githubClient';
+import { writeAudit } from '@/lib/audit';
 
 interface RouteContext {
   params: { id: string };
@@ -88,20 +89,19 @@ export async function POST(_request: Request, { params }: RouteContext) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        event: 'github_pr_refreshed',
-        details: JSON.stringify({
-          prId: id,
-          projectId: pr.projectId,
-          prNumber: d.prNumber,
-          owner: coords.owner,
-          repo: coords.repo,
-          newState: d.state,
-          newCiStatus: d.ciStatus,
-          refreshedAt: updated.updatedAt.toISOString(),
-        }),
-      },
+    await writeAudit({
+      event: 'github_pr_refreshed',
+      details: JSON.stringify({
+        prId: id,
+        projectId: pr.projectId,
+        prNumber: d.prNumber,
+        owner: coords.owner,
+        repo: coords.repo,
+        newState: d.state,
+        newCiStatus: d.ciStatus,
+        refreshedAt: updated.updatedAt.toISOString(),
+      }),
+      userId: null,
     });
 
     return NextResponse.json({ pr: updated, refreshedAt: updated.updatedAt });
