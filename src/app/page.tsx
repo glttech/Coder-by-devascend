@@ -18,6 +18,9 @@ export default async function Dashboard() {
   let staleInstructions = 0;
   let staleTasks = 0;
   let sessionsNeedingAction = 0;
+  let prCIFailed = 0;
+  let prMergeConflict = 0;
+  let prStale = 0;
   let recentTasks: { id: string; title: string; status: string; riskLevel: string; environment: string; createdAt: Date }[] = [];
   let riskyDecisions: { id: string; taskId: string; taskTitle: string; recommendedAction: string; decisionReason: string | null; createdAt: Date }[] = [];
   let totalImportedPRs = 0;
@@ -56,6 +59,12 @@ export default async function Dashboard() {
     staleTasks = await prisma.task.count({
       where: { status: { notIn: ['completed', 'failed'] }, updatedAt: { lt: sevenDaysAgo } },
     });
+
+    [prCIFailed, prMergeConflict, prStale] = await Promise.all([
+      prisma.githubPR.count({ where: { ciStatus: 'failure' } }),
+      prisma.githubPR.count({ where: { state: 'open', ciStatus: 'error' } }),
+      prisma.githubPR.count({ where: { state: 'open', updatedAt: { lt: sevenDaysAgo } } }),
+    ]);
 
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     sessionsNeedingAction = await prisma.operatorSession.count({
@@ -322,12 +331,13 @@ export default async function Dashboard() {
           />
           <HealthCard
             label="AI Reviews Needing Action"
-            value={sessionsNeedingAction}
-            href="/tasks"
-            warn={sessionsNeedingAction > 0}
+            value={sessionsNeedingAction + pendingInstructions + prCIFailed + prMergeConflict + prStale}
+            href="/instructions/pending"
+            warn={sessionsNeedingAction > 0 || pendingInstructions > 0 || prCIFailed > 0 || prMergeConflict > 0 || prStale > 0}
             warnColor="var(--orange)"
             warnBorder="#fdba74"
-            tooltip="AI sessions from the last 48 hours that need follow-up"
+            tooltip={`${pendingInstructions} suggestions + ${prCIFailed} CI failures + ${prMergeConflict} conflicts + ${prStale} stale PRs + ${sessionsNeedingAction} sessions`}
+            subLabel={`${pendingInstructions} suggestions · ${prCIFailed + prMergeConflict + prStale} PRs`}
           />
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
@@ -539,10 +549,10 @@ export default async function Dashboard() {
 }
 
 function HealthCard({
-  label, value, href, warn, warnColor, warnBorder, tooltip,
+  label, value, href, warn, warnColor, warnBorder, tooltip, subLabel,
 }: {
   label: string; value: number; href: string;
-  warn: boolean; warnColor: string; warnBorder: string; tooltip?: string;
+  warn: boolean; warnColor: string; warnBorder: string; tooltip?: string; subLabel?: string;
 }) {
   return (
     <Link
@@ -555,6 +565,9 @@ function HealthCard({
       <div className="health-card-value" style={{ color: warn ? warnColor : 'var(--text)' }}>
         {value}
       </div>
+      {subLabel && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{subLabel}</div>
+      )}
     </Link>
   );
 }
