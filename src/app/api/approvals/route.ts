@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { checkApprovalAllowed } from '@/lib/approvalGuard';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 // POST /api/approvals – record an approval decision for a task.
 // Body: { taskId: string, approved: boolean }
@@ -18,12 +19,17 @@ import { getCurrentUser } from '@/lib/session';
 // create, and the conditional updateMany (where approved is still null) admits
 // only one decision on an undecided row. The loser receives a 409.
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'admin');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   const data = await request.json();
   const { taskId, approved } = data;
   if (!taskId || typeof approved !== 'boolean') {
     return new NextResponse(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
   }
-  const currentUser = await getCurrentUser();
   try {
     // Load the target task and any existing approval decision.
     const task = await prisma.task.findUnique({

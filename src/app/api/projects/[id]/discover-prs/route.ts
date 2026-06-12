@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { fetchGithubPR } from '@/lib/githubClient';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 
@@ -74,6 +75,11 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'admin');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   const projectId = params.id;
 
   // Load project and verify it has repo coords
