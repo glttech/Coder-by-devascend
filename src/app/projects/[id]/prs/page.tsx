@@ -8,6 +8,9 @@ import DiscoverPRsButton from '@/components/DiscoverPRsButton';
 
 export const dynamic = 'force-dynamic';
 
+/** PRs open for longer than this without a refresh are considered stale. */
+const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 interface PageProps {
   params: { id: string };
   searchParams: { state?: string; ci?: string; q?: string };
@@ -218,6 +221,9 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                 {prs.map((pr) => {
                   const summary = summarisePR(pr.title, pr.body ?? null);
                   const lastRefreshed = pr.updatedAt > pr.importedAt ? pr.updatedAt : pr.importedAt;
+                  const isStale =
+                    pr.state === 'open' &&
+                    Date.now() - lastRefreshed.getTime() > STALE_THRESHOLD_MS;
                   return (
                     <tr key={pr.id}>
                       <td>
@@ -229,12 +235,23 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                         </Link>
                       </td>
                       <td style={{ maxWidth: 300 }}>
-                        <Link
-                          href={`/projects/${params.id}/prs/${pr.id}`}
-                          style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}
-                        >
-                          {pr.title.length > 72 ? pr.title.slice(0, 72) + '…' : pr.title}
-                        </Link>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Link
+                            href={`/projects/${params.id}/prs/${pr.id}`}
+                            style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}
+                          >
+                            {pr.title.length > 72 ? pr.title.slice(0, 72) + '…' : pr.title}
+                          </Link>
+                          {isStale && (
+                            <span
+                              className="badge badge-warning"
+                              style={{ fontSize: 10, whiteSpace: 'nowrap' }}
+                              title="This open PR has not been refreshed in over 2 hours"
+                            >
+                              ⚠ Stale
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <span className={`badge badge-${pr.merged ? 'success' : pr.state === 'open' ? 'pending_approval' : 'neutral'}`}>
