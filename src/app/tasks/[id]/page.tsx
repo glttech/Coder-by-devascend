@@ -66,6 +66,14 @@ export default async function TaskPage({ params }: TaskPageProps) {
       })
     : null;
 
+  const creatorLog = await prisma.auditLog.findFirst({
+    where: { taskId: task.id, event: 'task_created' },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  const requesterLabel = creatorLog?.user
+    ? (creatorLog.user.name ?? creatorLog.user.email)
+    : 'System';
+
   return (
     <div>
       <PageHeader
@@ -166,6 +174,10 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <div className="meta-row">
               <span className="meta-label">Approval required</span>
               <span className="meta-value">{task.approvalRequired ? 'Yes' : 'No'}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Requested by</span>
+              <span className="meta-value">{requesterLabel}</span>
             </div>
           </div>
         </Card>

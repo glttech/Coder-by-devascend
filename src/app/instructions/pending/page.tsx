@@ -16,6 +16,11 @@ export default async function PendingApprovalsPage() {
       orderBy: { createdAt: 'asc' },
       include: {
         task: { select: { id: true, title: true, riskLevel: true, environment: true } },
+        auditLogs: {
+          where: { event: 'instruction_submitted' },
+          include: { user: { select: { name: true, email: true } } },
+          take: 1,
+        },
       },
     }),
     prisma.githubPR.findMany({
@@ -128,6 +133,11 @@ export default async function PendingApprovalsPage() {
                               <span className="id-chip" style={{ marginTop: 3, display: 'inline-block' }}>
                                 {instr.id.slice(0, 8)}
                               </span>
+                              {instr.auditLogs[0]?.user && (
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                                  Submitted by {instr.auditLogs[0].user.name ?? instr.auditLogs[0].user.email}
+                                </div>
+                              )}
                             </td>
                             <td style={{ color: 'var(--text-muted)', fontSize: 12, paddingTop: 12 }}>
                               {instr.createdAt.toISOString().split('T')[0]}

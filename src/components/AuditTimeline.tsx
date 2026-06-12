@@ -33,11 +33,18 @@ interface AuditTimelineProps {
   taskId: string;
 }
 
+// Events that are considered automated / system-initiated when userId is null.
+const SYSTEM_EVENTS = new Set([
+  'github_pr_refreshed',
+  'agent_run_created',
+]);
+
 export default async function AuditTimeline({ taskId }: AuditTimelineProps) {
   const logs = await prisma.auditLog.findMany({
     where: { taskId },
     orderBy: { createdAt: 'asc' },
     take: 100,
+    include: { user: { select: { name: true, email: true } } },
   });
 
   if (logs.length === 0) {
@@ -104,6 +111,16 @@ export default async function AuditTimeline({ taskId }: AuditTimelineProps) {
             <div style={{ paddingTop: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
                 {label}
+                {log.user && (
+                  <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                    — by {log.user.name ?? log.user.email}
+                  </span>
+                )}
+                {!log.user && SYSTEM_EVENTS.has(log.event) && (
+                  <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                    (system)
+                  </span>
+                )}
               </div>
               <div
                 title={absolute}

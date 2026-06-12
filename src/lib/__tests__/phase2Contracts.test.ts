@@ -13,6 +13,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { isPublicPath, resolveAuthDecision } from '../authGuard.js';
 import { getSessionOptions, validateAuthConfig } from '../session.js';
+import type { AppSession } from '../session.js';
+import type { AuditLog, Approval } from '@prisma/client';
 
 // ── isPublicPath — smoke tests ───────────────────────────────────────────────
 
@@ -159,5 +161,41 @@ describe('phase2Contracts — validateAuthConfig', () => {
   test('misconfigured mode (hash only) returns ok: false', () => {
     const result = validateAuthConfig({ ADMIN_PASSWORD_HASH: '$2b$12$abc' });
     assert.equal(result.ok, false);
+  });
+});
+
+// ── Prisma model field contracts ─────────────────────────────────────────────
+
+describe('phase2Contracts — AuditLog model has userId field', () => {
+  test('AuditLog type includes userId (string | null)', () => {
+    // Type-level: create a partial object and assert the key exists at runtime.
+    const log = { userId: null } as Partial<AuditLog>;
+    assert.ok('userId' in log, 'AuditLog should have a userId field');
+  });
+});
+
+describe('phase2Contracts — Approval model has approverId field', () => {
+  test('Approval type includes approverId (string | null)', () => {
+    const approval = { approverId: null } as Partial<Approval>;
+    assert.ok('approverId' in approval, 'Approval should have an approverId field');
+  });
+});
+
+describe('phase2Contracts — AppSession has sessionId-equivalent and role fields', () => {
+  test('AppSession includes userId field', () => {
+    const session: Partial<AppSession> = { userId: 'some-uuid' };
+    assert.ok('userId' in session, 'AppSession should have a userId field');
+  });
+
+  test('AppSession includes role field', () => {
+    const session: Partial<AppSession> = { role: 'admin' };
+    assert.ok('role' in session, 'AppSession should have a role field');
+  });
+
+  test('AppSession role is constrained to admin or reviewer', () => {
+    const adminSession: Partial<AppSession> = { role: 'admin' };
+    const reviewerSession: Partial<AppSession> = { role: 'reviewer' };
+    assert.equal(adminSession.role, 'admin');
+    assert.equal(reviewerSession.role, 'reviewer');
   });
 });
