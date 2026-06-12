@@ -8,6 +8,8 @@ export interface AppSession {
 
 export type AuthMode = 'disabled' | 'enforced' | 'misconfigured';
 
+export type UserRole = 'admin' | 'reviewer';
+
 type Env = Record<string, string | undefined>;
 
 /**
