@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
 import CloneTaskButton from '@/components/CloneTaskButton';
 import TranscriptParser from '@/components/TranscriptParser';
+import AuditTimeline from '@/components/AuditTimeline';
 
 export const dynamic = 'force-dynamic';
 
@@ -313,6 +314,25 @@ export default async function TaskPage({ params }: TaskPageProps) {
             ))}
           </div>
         )}
+      </div>
+      {/* Activity Log */}
+      <div className="section">
+        <details>
+          <summary style={{
+            cursor: 'pointer',
+            userSelect: 'none',
+            listStyle: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <span className="section-title" style={{ pointerEvents: 'none' }}>Activity Log</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>▸ expand</span>
+          </summary>
+          <div style={{ marginTop: 16, position: 'relative' }}>
+            <AuditTimeline taskId={task.id} />
+          </div>
+        </details>
       </div>
     </div>
   );
