@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
@@ -22,6 +24,7 @@ export async function GET() {
 // Task model fields (except id, status and timestamps).  Returns the
 // created task.
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
   const data = await request.json();
   const { title, instruction, projectId, agentTool, riskLevel, environment, approvalRequired } = data;
 
@@ -81,12 +84,11 @@ export async function POST(request: Request) {
         approvalRequired,
       },
     });
-    await prisma.auditLog.create({
-      data: {
-        taskId: task.id,
-        event: 'task_created',
-        details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
-      },
+    await writeAudit({
+      taskId: task.id,
+      event: 'task_created',
+      details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
+      userId: currentUser?.userId ?? null,
     });
     return NextResponse.json(task, { status: 201 });
   } catch (err) {

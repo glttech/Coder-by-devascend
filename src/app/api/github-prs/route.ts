@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchGithubPR, parsePRUrl, userSafeErrorMessage } from '@/lib/githubClient';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 // GET /api/github-prs?projectId=... — list imported PRs for a project
 export async function GET(request: Request) {
@@ -24,6 +26,7 @@ export async function GET(request: Request) {
 
 // POST /api/github-prs — import PR by URL or owner/repo/prNumber
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
   const data = await request.json().catch(() => null);
   if (!data) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
 
@@ -138,18 +141,17 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        event: 'github_pr_imported',
-        details: JSON.stringify({
-          projectId,
-          prNumber: d.prNumber,
-          title: d.title,
-          owner: resolvedOwner,
-          repo: resolvedRepo,
-          at: new Date().toISOString(),
-        }),
-      },
+    await writeAudit({
+      event: 'github_pr_imported',
+      details: JSON.stringify({
+        projectId,
+        prNumber: d.prNumber,
+        title: d.title,
+        owner: resolvedOwner,
+        repo: resolvedRepo,
+        at: new Date().toISOString(),
+      }),
+      userId: currentUser?.userId ?? null,
     });
 
     return NextResponse.json(pr, { status: 201 });

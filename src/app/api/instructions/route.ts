@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import prisma from '@/lib/prisma';
 import { computeStateVersion } from '@/lib/stateVersion';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +24,7 @@ function isValidStatus(value: string): value is InstructionStatus {
 
 // POST /api/instructions — create a new instruction linked to a task.
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -86,18 +89,17 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        taskId: task.id,
+    await writeAudit({
+      taskId: task.id,
+      instructionId: withVersion.id,
+      event: 'instruction_created',
+      details: JSON.stringify({
         instructionId: withVersion.id,
-        event: 'instruction_created',
-        details: JSON.stringify({
-          instructionId: withVersion.id,
-          title: withVersion.title,
-          status: withVersion.status,
-          stateVersion,
-        }),
-      },
+        title: withVersion.title,
+        status: withVersion.status,
+        stateVersion,
+      }),
+      userId: currentUser?.userId ?? null,
     });
 
     return NextResponse.json({ instruction: withVersion }, { status: 201 });

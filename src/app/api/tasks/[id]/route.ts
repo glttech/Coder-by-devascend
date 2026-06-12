@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
@@ -30,6 +32,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const currentUser = await getCurrentUser();
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -100,12 +103,11 @@ export async function PATCH(
       data: updateData,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        taskId: params.id,
-        event: 'task_edited',
-        details: JSON.stringify({ fields: Object.keys(updateData), at: new Date().toISOString() }),
-      },
+    await writeAudit({
+      taskId: params.id,
+      event: 'task_edited',
+      details: JSON.stringify({ fields: Object.keys(updateData), at: new Date().toISOString() }),
+      userId: currentUser?.userId ?? null,
     });
 
     return NextResponse.json(updated);

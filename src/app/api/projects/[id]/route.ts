@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
 
 export async function GET(
   _request: Request,
@@ -25,6 +27,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const currentUser = await getCurrentUser();
   const data = await request.json().catch(() => null);
   if (!data) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
 
@@ -64,11 +67,10 @@ export async function PATCH(
     if (defaultBranch !== undefined) updateData.defaultBranch = defaultBranch?.trim() || 'main';
 
     const project = await prisma.project.update({ where: { id: params.id }, data: updateData });
-    await prisma.auditLog.create({
-      data: {
-        event: 'project_updated',
-        details: JSON.stringify({ projectId: params.id, fields: Object.keys(updateData), at: new Date().toISOString() }),
-      },
+    await writeAudit({
+      event: 'project_updated',
+      details: JSON.stringify({ projectId: params.id, fields: Object.keys(updateData), at: new Date().toISOString() }),
+      userId: currentUser?.userId ?? null,
     });
     return NextResponse.json(project);
   } catch {
