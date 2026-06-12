@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
-import { getAuthMode, getSessionOptions } from '@/lib/session';
+import { randomUUID } from 'crypto';
+import { getAuthMode, getSessionOptions, parseSessionMaxAge } from '@/lib/session';
 import type { AppSession, UserRole } from '@/lib/session';
 import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/loginRateLimit';
 import prisma from '@/lib/prisma';
+import { createActiveSession } from '@/lib/sessionStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,11 +75,26 @@ export async function POST(req: NextRequest) {
     // DB unavailable or not migrated yet — continue with fallback values.
   }
 
-  const session = await getIronSession<AppSession>(await cookies(), getSessionOptions());
+  const sessionId = randomUUID();
+  const opts = getSessionOptions();
+  const { hours: ttlHours } = parseSessionMaxAge(process.env.SESSION_MAX_AGE_HOURS);
+
+  // Persist session to DB allowlist so logout and revocation actually work.
+  // If DB is unavailable, skip silently — the iron-session cookie is still set.
+  try {
+    await createActiveSession(userId, sessionId, ttlHours);
+  } catch {
+    // DB unavailable or not yet migrated — continue without DB-backed session.
+    // Sessions created without a DB row will fail validateActiveSession checks
+    // but the middleware cookie check will still pass.
+  }
+
+  const session = await getIronSession<AppSession>(await cookies(), opts);
   session.userId = userId;
   session.username = expectedUsername;
   session.role = role;
   session.loginAt = new Date().toISOString();
+  session.sessionId = sessionId;
   await session.save();
 
   return NextResponse.json({ ok: true });

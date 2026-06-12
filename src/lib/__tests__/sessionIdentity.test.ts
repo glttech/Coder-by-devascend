@@ -54,6 +54,7 @@ describe('AppSession auth check — real UUID userId', () => {
       username: 'admin@example.com',
       role: 'admin',
       loginAt: new Date().toISOString(),
+      sessionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     };
     assert.equal(authCheck(session), true);
   });
@@ -65,6 +66,7 @@ describe('AppSession auth check — real UUID userId', () => {
       username: 'admin@example.com',
       role: 'admin',
       loginAt: new Date().toISOString(),
+      sessionId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
     };
     assert.equal(session.userId, uuid);
   });
@@ -80,6 +82,7 @@ describe('AppSession auth check — admin-unseed fallback', () => {
       username: 'admin@example.com',
       role: 'admin',
       loginAt: new Date().toISOString(),
+      sessionId: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
     };
     assert.equal(authCheck(session), true);
   });
@@ -90,6 +93,7 @@ describe('AppSession auth check — admin-unseed fallback', () => {
       username: 'admin@example.com',
       role: 'admin',
       loginAt: new Date().toISOString(),
+      sessionId: 'd4e5f6a7-b8c9-0123-defa-234567890123',
     };
     assert.equal(session.role, 'admin');
   });
@@ -146,6 +150,7 @@ describe('AppSession role field', () => {
       username: 'admin@example.com',
       role: 'admin',
       loginAt: '2026-01-01T00:00:00.000Z',
+      sessionId: 'e5f6a7b8-c9d0-1234-efab-345678901234',
     };
     // Compile-time check: if role weren't UserRole this wouldn't typecheck.
     const role: UserRole = session.role;
@@ -158,6 +163,7 @@ describe('AppSession role field', () => {
       username: 'reviewer@example.com',
       role: 'reviewer',
       loginAt: '2026-01-01T00:00:00.000Z',
+      sessionId: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
     };
     const role: UserRole = session.role;
     assert.equal(role, 'reviewer');
@@ -170,6 +176,7 @@ describe('AppSession role field', () => {
       username: 'user@example.com',
       role: 'admin',
       loginAt: now,
+      sessionId: 'a7b8c9d0-e1f2-3456-abcd-567890123456',
     };
     assert.equal(typeof session.loginAt, 'string');
     assert.equal(session.loginAt, now);
