@@ -11,6 +11,13 @@ export interface AppSession {
   loginAt: string;
   /** CSRF token for double-submit cookie validation. Optional so existing sessions remain valid. */
   csrfToken?: string;
+  /**
+   * UUID that ties this cookie to an `ActiveSession` DB row.
+   * Generated at login, stored inside the sealed cookie.
+   * Sessions created before this field was added will not have it;
+   * those are treated as unauthenticated (forces re-login after deploy).
+   */
+  sessionId: string;
 }
 
 export type AuthMode = 'disabled' | 'enforced' | 'misconfigured';
