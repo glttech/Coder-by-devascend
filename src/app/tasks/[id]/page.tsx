@@ -12,6 +12,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
 import CloneTaskButton from '@/components/CloneTaskButton';
+import TranscriptParser from '@/components/TranscriptParser';
 
 export const dynamic = 'force-dynamic';
 
@@ -199,6 +200,14 @@ export default async function TaskPage({ params }: TaskPageProps) {
           check it for safety and tell you what to do next.
         </p>
         <OperatorPanel taskId={task.id} taskTitle={task.title} />
+      </div>
+
+      {/* Parse AI Transcript */}
+      <div className="section">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 2b — Parse AI Transcript
+        </div>
+        <TranscriptParser taskId={task.id} />
       </div>
 
       {/* AI Suggestions lifecycle */}
