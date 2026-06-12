@@ -1148,3 +1148,84 @@ tbody tr:hover { background-color: #f8fafc; }
 @media (max-width: 400px) {
   .explainer-steps { grid-template-columns: 1fr; }
 }
+
+/* ── Mobile bottom navigation bar ───────────────────────────────────────── */
+.mobile-nav {
+  display: none; /* hidden by default; shown only on small screens */
+}
+
+@media (max-width: 767px) {
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0); /* iPhone home bar */
+  }
+
+  /* Give the main content area breathing room so it isn't hidden behind the nav */
+  .main-content {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0));
+  }
+}
+
+.mobile-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  min-height: 56px; /* at least 44px touch target */
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.mobile-nav-item:hover { color: var(--brand); text-decoration: none; }
+.mobile-nav-item.active { color: var(--brand); }
+
+.mobile-nav-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mobile-nav-label {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* ── Reviewer: approval panel responsive buttons ─────────────────────────── */
+.approval-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.approval-panel-btn {
+  min-height: 44px; /* 44px touch target */
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+@media (max-width: 767px) {
+  .approval-panel-btn {
+    flex: 1 1 100%; /* full-width on mobile */
+    justify-content: center;
+  }
+}
+
+/* ── Task table: hide non-essential columns on mobile ───────────────────── */
+@media (max-width: 767px) {
+  .col-hide-mobile {
+    display: none;
+  }
+}

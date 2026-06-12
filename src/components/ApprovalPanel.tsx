@@ -63,11 +63,11 @@ export default function ApprovalPanel({ taskId, approvalRequired, approved, appr
           {error}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => submitApproval(true)} disabled={loading || approved === true} className="btn btn-success btn-sm">
+      <div className="approval-panel-actions">
+        <button onClick={() => submitApproval(true)} disabled={loading || approved === true} className="btn btn-success approval-panel-btn">
           ✓ Approve
         </button>
-        <button onClick={() => submitApproval(false)} disabled={loading || approved === false} className="btn btn-danger btn-sm">
+        <button onClick={() => submitApproval(false)} disabled={loading || approved === false} className="btn btn-danger approval-panel-btn">
           ✕ Reject
         </button>
       </div>

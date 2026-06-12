@@ -108,8 +108,8 @@ export default async function AuditTimeline({ taskId }: AuditTimelineProps) {
             </div>
 
             {/* Content */}
-            <div style={{ paddingTop: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+            <div style={{ paddingTop: 8, minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4, wordBreak: 'break-word' }}>
                 {label}
                 {log.user && (
                   <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
@@ -124,7 +124,7 @@ export default async function AuditTimeline({ taskId }: AuditTimelineProps) {
               </div>
               <div
                 title={absolute}
-                style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, cursor: 'default' }}
+                style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, cursor: 'default', wordBreak: 'break-all' }}
               >
                 {relative}
               </div>

@@ -69,13 +69,13 @@ export default async function TaskList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th className="col-hide-mobile">ID</th>
                 <th>Title</th>
                 <th>Status</th>
-                <th>Risk</th>
-                <th>Environment</th>
-                <th>Agent</th>
-                <th>Last activity</th>
+                <th className="col-hide-mobile">Risk</th>
+                <th className="col-hide-mobile">Environment</th>
+                <th className="col-hide-mobile">Agent</th>
+                <th className="col-hide-mobile">Last activity</th>
                 <th>Pending</th>
               </tr>
             </thead>
@@ -84,7 +84,7 @@ export default async function TaskList() {
                 const stale = !TERMINAL_STATUSES.has(task.status) && task.updatedAt < sevenDaysAgo;
                 return (
                   <tr key={task.id} style={stale ? { background: 'var(--amber-bg, rgba(251,191,36,0.05))' } : undefined}>
-                    <td>
+                    <td className="col-hide-mobile">
                       <Link href={`/tasks/${task.id}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 11 }}>
                         {task.id.slice(0, 8)}
                       </Link>
@@ -95,10 +95,10 @@ export default async function TaskList() {
                       </Link>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{task.status}</td>
-                    <td><RiskBadge level={task.riskLevel} /></td>
-                    <td><EnvBadge env={task.environment} /></td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="col-hide-mobile"><RiskBadge level={task.riskLevel} /></td>
+                    <td className="col-hide-mobile"><EnvBadge env={task.environment} /></td>
+                    <td className="col-hide-mobile" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
+                    <td className="col-hide-mobile" style={{ fontSize: 12 }}>
                       <span style={{ color: stale ? 'var(--amber)' : 'var(--text-muted)' }}>
                         {relativeTime(task.updatedAt)}
                       </span>
