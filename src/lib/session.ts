@@ -1,8 +1,13 @@
 import type { SessionOptions } from 'iron-session';
+import { getIronSession } from 'iron-session';
 
 export interface AppSession {
-  userId: 'admin';
+  /** Real User.id UUID from DB, or 'admin-unseed' as fallback when seed not yet run. */
+  userId: string;
+  /** Display name / email for the logged-in user. */
   username: string;
+  /** Role of the user — 'admin' | 'reviewer'. */
+  role: UserRole;
   loginAt: string;
 }
 
@@ -118,4 +123,24 @@ export function getSessionOptions(env: Env = process.env): SessionOptions {
       sameSite: 'lax',
     },
   };
+}
+
+/**
+ * Server-side helper to retrieve the current user's session.
+ *
+ * IMPORTANT: This uses `cookies()` from `next/headers` and MUST NOT be called
+ * from middleware or the Edge Runtime — only from Route Handlers and Server Components.
+ *
+ * Returns the session object if a valid authenticated session exists, or null otherwise.
+ */
+export async function getCurrentUser(): Promise<AppSession | null> {
+  try {
+    // Dynamic import avoids bundling next/headers in edge/middleware contexts.
+    const { cookies } = await import('next/headers');
+    const session = await getIronSession<AppSession>(await cookies(), getSessionOptions());
+    if (!session.userId) return null;
+    return session;
+  } catch {
+    return null;
+  }
 }

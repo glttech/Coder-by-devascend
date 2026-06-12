@@ -3,8 +3,9 @@ import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { getAuthMode, getSessionOptions } from '@/lib/session';
-import type { AppSession } from '@/lib/session';
+import type { AppSession, UserRole } from '@/lib/session';
 import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/loginRateLimit';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,9 +58,25 @@ export async function POST(req: NextRequest) {
 
   resetLoginRateLimit(ip);
 
-  const session = await getIronSession<AppSession>(cookies(), getSessionOptions());
-  session.userId = 'admin';
+  // Look up the User record by email to get the real UUID and role.
+  // Fall back to 'admin-unseed' / 'admin' when the DB hasn't been seeded yet,
+  // so login still works even before `npm run seed:admin` has been run.
+  let userId = 'admin-unseed';
+  let role: UserRole = 'admin';
+  try {
+    const user = await prisma.user.findUnique({ where: { email: expectedUsername } });
+    if (user) {
+      userId = user.id;
+      role = (user.role as UserRole) ?? 'admin';
+    }
+  } catch {
+    // DB unavailable or not migrated yet — continue with fallback values.
+  }
+
+  const session = await getIronSession<AppSession>(await cookies(), getSessionOptions());
+  session.userId = userId;
   session.username = expectedUsername;
+  session.role = role;
   session.loginAt = new Date().toISOString();
   await session.save();
 

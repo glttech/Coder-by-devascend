@@ -24,7 +24,7 @@ async function readSession(request: NextRequest): Promise<boolean> {
     const cookieValue = request.cookies.get(opts.cookieName)?.value;
     if (!cookieValue) return false;
     const data = await unsealData<AppSession>(cookieValue, { password: opts.password });
-    return Boolean((data as { userId?: unknown }).userId);
+    return Boolean(data?.userId);
   } catch {
     return false;
   }
