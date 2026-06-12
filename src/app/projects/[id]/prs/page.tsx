@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
 import { buildPRFilters, normaliseStateFilter, normaliseCIFilter } from '@/lib/prFilters';
 import { computeCISummary } from '@/lib/projectHealth';
+import DiscoverPRsButton from '@/components/DiscoverPRsButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,9 +94,12 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
         }
         actions={
           repoUrl ? (
-            <Link href={`/projects/${params.id}/prs/import`} className="btn btn-primary btn-sm">
-              + Import PR
-            </Link>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <DiscoverPRsButton projectId={params.id} />
+              <Link href={`/projects/${params.id}/prs/import`} className="btn btn-primary btn-sm">
+                + Import PR
+              </Link>
+            </div>
           ) : undefined
         }
       />
