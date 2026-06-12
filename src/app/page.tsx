@@ -120,12 +120,37 @@ export default async function Dashboard() {
         subtitle="Overview of AI-assisted development"
       />
 
+      {/* Demo data notice — shown when sample data is detected */}
+      {totalTasks === 1 && pendingApprovals > 0 && (
+        <div style={{
+          padding: '12px 16px',
+          borderRadius: 8,
+          background: 'rgba(59,130,246,0.06)',
+          border: '1px solid rgba(59,130,246,0.2)',
+          fontSize: 13,
+          color: 'var(--text-secondary)',
+          marginBottom: 16,
+        }}>
+          <strong style={{ color: 'var(--blue)' }}>Looks like you have sample data!</strong>
+          {' '}Follow these steps to explore:{' '}
+          <a href="/tasks" style={{ color: 'var(--blue)' }}>Open the task →</a>
+          {' · '}
+          <a href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review the AI suggestion →</a>
+          {' · '}
+          <a href="/audit" style={{ color: 'var(--blue)' }}>View the audit log →</a>
+        </div>
+      )}
+
       {/* Getting Started — shown only when no tasks exist */}
       {totalTasks === 0 && (
         <div className="section">
-          <div className="card" style={{ background: 'var(--blue-bg, rgba(59,130,246,0.06))', border: '1px solid var(--blue-border, rgba(59,130,246,0.25))' }}>
+          <div className="card" style={{
+            background: 'var(--blue-bg, rgba(59,130,246,0.08))',
+            border: '1px solid var(--blue-border, rgba(59,130,246,0.25))',
+            borderBottom: '3px solid var(--blue, rgba(59,130,246,0.6))',
+          }}>
             <div className="card-header" style={{ marginBottom: 12 }}>
-              <span className="card-title" style={{ fontSize: 16 }}>Getting Started</span>
+              <span className="card-title" style={{ fontSize: 16 }}>Welcome to Coder by DevAscend</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
@@ -150,6 +175,13 @@ export default async function Dashboard() {
                   href: '/instructions/pending',
                   label: '→ Review Queue',
                 },
+                {
+                  n: '4',
+                  title: 'Import a pull request',
+                  desc: 'Once code is merged, import the GitHub PR here to see a code review summary.',
+                  href: '/projects',
+                  label: '→ Go to Projects',
+                },
               ].map(({ n, title, desc, href, label }) => (
                 <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{
@@ -168,6 +200,9 @@ export default async function Dashboard() {
                 </div>
               ))}
             </div>
+            <p style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              New here? Run <code style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.06)', padding: '1px 4px', borderRadius: 3 }}>npm run seed:demo</code> in your terminal to create sample data you can explore right away.
+            </p>
           </div>
         </div>
       )}
@@ -180,10 +215,10 @@ export default async function Dashboard() {
           </p>
           <div className="explainer-steps">
             {[
-              { n: '1', title: 'Create a task', desc: 'Define the work, agent tool, risk level, and environment.' },
-              { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt with stop conditions and validation steps.' },
-              { n: '3', title: 'Record the agent response', desc: 'Paste what the AI agent did — files, commands, and output.' },
-              { n: '4', title: 'Get a risk decision', desc: 'The console flags risk, checks completeness, and recommends the safe next step with a full audit trail.' },
+              { n: '1', title: 'Create a task', desc: 'Describe what you want the AI to do — choose a template or write your own instruction.' },
+              { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt you can paste into Claude, Codex, or any AI tool.' },
+              { n: '3', title: 'Record the AI response', desc: 'Paste what the AI did back here. The system checks it for risks before anything is approved.' },
+              { n: '4', title: 'Get a safety decision', desc: 'See a clear recommendation — safe to continue, needs review, or blocked — with a full audit trail.' },
             ].map(({ n, title, desc }) => (
               <div key={n} className="explainer-step">
                 <div className="explainer-step-num">{n}</div>

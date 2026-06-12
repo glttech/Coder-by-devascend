@@ -79,13 +79,21 @@ async function main() {
   });
 
   // ── Summary ───────────────────────────────────────────────────────────────
-  console.log("✓ Demo data created successfully.");
+  console.log("✓ Demo data created successfully!");
   console.log("");
-  console.log("Visit these pages to explore:");
-  console.log("  Tasks list        →  /tasks");
-  console.log(`  Task detail       →  /tasks/${task.id}`);
-  console.log("  Pending approvals →  /instructions/pending");
-  console.log(`  Instruction       →  /instructions/${instruction.id}`);
+  console.log("What was created:");
+  console.log('  - 1 project: "Demo Project"');
+  console.log(`  - 1 task: "Review AI-generated auth middleware" (medium risk, approval required)`);
+  console.log("  - 1 pending AI suggestion awaiting your review");
+  console.log("");
+  console.log("What to do next:");
+  console.log("  1. Visit the dashboard:        http://localhost:3000/");
+  console.log(`  2. Open the task:              http://localhost:3000/tasks/${task.id}`);
+  console.log("  3. Review the AI suggestion:   http://localhost:3000/instructions/pending");
+  console.log("  4. View the audit log:         http://localhost:3000/audit");
+  console.log("");
+  console.log("Tip: The task has approvalRequired=true and a pending AI suggestion.");
+  console.log("     Visit the Review Queue to approve or block it.");
 }
 
 main()
