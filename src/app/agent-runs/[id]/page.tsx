@@ -1,152 +1,208 @@
-import prisma from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
-import { getAuthMode } from '@/lib/session';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
+import prisma from '@/lib/prisma';
+import { getCurrentUser, isAuthEnabled } from '@/lib/session';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { Card, CardHeader } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import AgentRunActions from '@/components/AgentRunActions';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  queued: { label: 'Queued', bg: 'rgba(234,179,8,0.12)', color: '#a16207' },
-  awaiting_approval: { label: 'Awaiting Approval', bg: 'rgba(249,115,22,0.12)', color: '#c2410c' },
-  running: { label: 'Running', bg: 'rgba(59,130,246,0.12)', color: '#1d4ed8' },
-  succeeded: { label: 'Succeeded', bg: 'rgba(34,197,94,0.12)', color: '#15803d' },
-  failed: { label: 'Failed', bg: 'rgba(239,68,68,0.12)', color: '#b91c1c' },
-  pending: { label: 'Pending', bg: 'rgba(100,116,139,0.12)', color: '#475569' },
-  blocked: { label: 'Blocked', bg: 'rgba(239,68,68,0.12)', color: '#b91c1c' },
-  cancelled: { label: 'Cancelled', bg: 'rgba(100,116,139,0.12)', color: '#475569' },
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_BADGE[status] ?? { label: status, bg: 'rgba(100,116,139,0.12)', color: '#475569' };
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '3px 10px',
-        borderRadius: 4,
-        fontSize: 13,
-        fontWeight: 600,
-        background: s.bg,
-        color: s.color,
-      }}
-    >
-      {s.label}
-    </span>
-  );
-}
 
 interface AgentRunPageProps {
   params: { id: string };
 }
 
+const STEP_TYPE_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'purple'> = {
+  thought:     'neutral',
+  tool_call:   'info',
+  tool_result: 'success',
+  message:     'purple',
+};
+
+function formatDuration(startedAt: Date, endedAt: Date | null): string {
+  if (!endedAt) return '—';
+  const ms = endedAt.getTime() - startedAt.getTime();
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  const rem = secs % 60;
+  return `${mins}m ${rem}s`;
+}
+
 export default async function AgentRunPage({ params }: AgentRunPageProps) {
-  const authMode = getAuthMode();
-  if (authMode === 'enforced') {
+  // Auth guard
+  if (isAuthEnabled()) {
     const user = await getCurrentUser();
     if (!user) {
       redirect('/login');
     }
   }
 
-  const run = await prisma.agentRun.findUnique({
+  const agentRun = await prisma.agentRun.findUnique({
     where: { id: params.id },
     include: {
-      task: { select: { id: true, title: true } },
-      evaluations: true,
       steps: { orderBy: { stepIndex: 'asc' } },
+      evaluations: true,
+      task: { select: { id: true, title: true } },
     },
   });
 
-  if (!run) {
-    return (
-      <div className="empty-state" style={{ maxWidth: 420 }}>
-        <div className="empty-state-icon">✕</div>
-        <div className="empty-state-title">Agent run not found</div>
-        <p className="empty-state-description">This agent run ID does not exist or has been removed.</p>
-        <Link href="/agent-runs" className="btn btn-ghost btn-sm" style={{ marginTop: 12 }}>
-          ← Back to Agent Runs
-        </Link>
-      </div>
-    );
+  if (!agentRun) {
+    notFound();
   }
+
+  // Get user role for actions
+  const currentUser = await getCurrentUser();
+  const userRole = currentUser?.role ?? 'reviewer';
+
+  const duration = formatDuration(agentRun.startedAt, agentRun.endedAt);
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <Link href="/agent-runs" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>
-          ← Agent Runs
-        </Link>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Agent Run</h1>
-        <span className="id-chip">{run.id.slice(0, 8)}</span>
-        <StatusBadge status={run.status} />
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header" style={{ marginBottom: 0, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-          <span className="card-title">Details</span>
-        </div>
-        <div className="meta-grid" style={{ marginTop: 12 }}>
-          <div className="meta-row">
-            <span className="meta-label">Task</span>
-            <span className="meta-value">
-              <Link href={`/tasks/${run.task.id}`} style={{ color: 'var(--blue)' }}>
-                {run.task.title}
-              </Link>
+      <PageHeader
+        title="Agent Run"
+        subtitle={
+          <span>
+            <Link href={`/tasks/${agentRun.task.id}`} style={{ color: 'var(--blue)', textDecoration: 'none' }}>
+              {agentRun.task.title}
+            </Link>
+            <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>
+              {agentRun.id}
             </span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">Status</span>
-            <span className="meta-value"><StatusBadge status={run.status} /></span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">Tool</span>
-            <span className="meta-value">{run.selectedTool || '—'}</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">Started</span>
-            <span className="meta-value" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              {run.startedAt.toISOString().replace('T', ' ').slice(0, 19)} UTC
-            </span>
-          </div>
-          {run.endedAt && (
+          </span>
+        }
+        badge={
+          <Badge
+            text={agentRun.status}
+            variant="status"
+          />
+        }
+      />
+
+      {/* Timing metadata */}
+      <div className="section">
+        <Card size="sm">
+          <div className="meta-grid">
+            <div className="meta-row">
+              <span className="meta-label">Tool</span>
+              <span className="meta-value">{agentRun.selectedTool}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Started</span>
+              <span className="meta-value">{agentRun.startedAt.toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
+            </div>
             <div className="meta-row">
               <span className="meta-label">Ended</span>
-              <span className="meta-value" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {run.endedAt.toISOString().replace('T', ' ').slice(0, 19)} UTC
-              </span>
-            </div>
-          )}
-          {run.commitHash && (
-            <div className="meta-row">
-              <span className="meta-label">Commit</span>
               <span className="meta-value">
-                <span className="id-chip">{run.commitHash.slice(0, 12)}</span>
+                {agentRun.endedAt
+                  ? `${agentRun.endedAt.toISOString().replace('T', ' ').slice(0, 19)} UTC`
+                  : '—'}
               </span>
             </div>
-          )}
-        </div>
+            <div className="meta-row">
+              <span className="meta-label">Duration</span>
+              <span className="meta-value">{duration}</span>
+            </div>
+            {agentRun.commitHash && (
+              <div className="meta-row">
+                <span className="meta-label">Commit</span>
+                <span className="meta-value">
+                  <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{agentRun.commitHash}</span>
+                </span>
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
 
-      {run.response && (
+      {/* Generated Prompt */}
+      <div className="section">
+        <Card>
+          <CardHeader title="Generated Prompt" subtitle="The prompt sent to the agent" />
+          <pre className="prompt-block prompt-block-scrollable">{agentRun.generatedPrompt}</pre>
+        </Card>
+      </div>
+
+      {/* Response */}
+      {agentRun.response && (
         <div className="section">
-          <div className="section-header">
-            <span className="section-title">Response</span>
-          </div>
-          <pre className="prompt-block prompt-block-scrollable" style={{ maxHeight: 300 }}>
-            {run.response}
-          </pre>
+          <Card>
+            <CardHeader title="Agent Response" />
+            <pre className="prompt-block prompt-block-scrollable" style={{ fontSize: 12 }}>
+              {agentRun.response}
+            </pre>
+            {(agentRun.filesChanged || agentRun.commandsRun || agentRun.testResult) && (
+              <div className="meta-grid" style={{ marginTop: 12 }}>
+                {agentRun.filesChanged && (
+                  <div className="meta-row">
+                    <span className="meta-label">Files changed</span>
+                    <span className="meta-value" style={{ fontFamily: 'monospace', fontSize: 12 }}>{agentRun.filesChanged}</span>
+                  </div>
+                )}
+                {agentRun.commandsRun && (
+                  <div className="meta-row">
+                    <span className="meta-label">Commands run</span>
+                    <span className="meta-value" style={{ fontFamily: 'monospace', fontSize: 12 }}>{agentRun.commandsRun}</span>
+                  </div>
+                )}
+                {agentRun.testResult && (
+                  <div className="meta-row">
+                    <span className="meta-label">Test result</span>
+                    <span className="meta-value">{agentRun.testResult}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
         </div>
       )}
 
-      {run.evaluations.length > 0 && (
+      {/* Steps Timeline */}
+      {agentRun.steps.length > 0 && (
         <div className="section">
           <div className="section-header">
-            <span className="section-title">Evaluations ({run.evaluations.length})</span>
+            <span className="section-title">Steps ({agentRun.steps.length})</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {agentRun.steps.map((step) => {
+              const variant = STEP_TYPE_VARIANT[step.type] ?? 'neutral';
+              return (
+                <Card key={step.id} size="sm">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', minWidth: 24 }}>
+                      {step.stepIndex}
+                    </span>
+                    <Badge text={step.type} variant={variant} />
+                  </div>
+                  <pre
+                    className="prompt-block"
+                    style={{ maxHeight: 200, overflowY: 'auto', fontSize: 11, margin: 0 }}
+                  >
+                    {step.content}
+                  </pre>
+                  {step.metadata && (
+                    <details style={{ marginTop: 6 }}>
+                      <summary style={{ fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
+                        metadata
+                      </summary>
+                      <pre style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, overflow: 'auto' }}>
+                        {JSON.stringify(step.metadata, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Evaluations */}
+      {agentRun.evaluations.length > 0 && (
+        <div className="section">
+          <div className="section-header">
+            <span className="section-title">Evaluations ({agentRun.evaluations.length})</span>
           </div>
           <div className="table-wrap">
             <table className="data-table">
@@ -159,18 +215,22 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {run.evaluations.map((ev) => (
+                {agentRun.evaluations.map((ev) => (
                   <tr key={ev.id}>
                     <td style={{ fontWeight: 500 }}>{ev.name}</td>
                     <td>
-                      <span style={{ color: ev.passed ? '#15803d' : '#b91c1c', fontWeight: 600 }}>
-                        {ev.passed ? 'Yes' : 'No'}
+                      <span style={{ color: ev.passed ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                        {ev.passed ? '✓' : '✗'}
                       </span>
                     </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>
-                      {ev.score != null ? ev.score.toFixed(2) : '—'}
+                    <td>
+                      {ev.score != null
+                        ? `${Math.round(ev.score * 100)}%`
+                        : '—'}
                     </td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{ev.reason ?? '—'}</td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                      {ev.reason ?? '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -179,29 +239,14 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
         </div>
       )}
 
-      {run.steps.length > 0 && (
-        <div className="section">
-          <details>
-            <summary style={{ cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="section-title">Steps ({run.steps.length})</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>▸ expand</span>
-            </summary>
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {run.steps.map((step) => (
-                <div key={step.id} className="card" style={{ padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                    <span className="id-chip">#{step.stepIndex}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{step.type}</span>
-                  </div>
-                  <pre style={{ fontSize: 11, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {step.content}
-                  </pre>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-      )}
+      {/* Actions */}
+      <div className="section">
+        <AgentRunActions
+          agentRunId={agentRun.id}
+          status={agentRun.status}
+          userRole={userRole}
+        />
+      </div>
     </div>
   );
 }
