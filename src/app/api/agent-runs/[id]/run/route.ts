@@ -5,7 +5,8 @@ import { requireRole } from '@/lib/rbac';
 import { canTransitionTo } from '@/lib/orchestration';
 import { getProvider, MockAgentProvider } from '@/lib/providers';
 import { writeAudit } from '@/lib/audit';
-import type { AgentRunInput } from '@/lib/providers';
+import { ingestRunResult } from '@/lib/runIngestion';
+import type { AgentRunInput, AgentStepEvent } from '@/lib/providers';
 
 // POST /api/agent-runs/[id]/run
 // Auth: admin only
@@ -70,9 +71,15 @@ export async function POST(
     prompt: agentRun.generatedPrompt,
   };
 
+  const capturedSteps: AgentStepEvent[] = [];
   let output: Awaited<ReturnType<typeof provider.run>>;
   try {
-    output = await provider.run(input);
+    // Use streaming if available so we can capture steps; fall back to run()
+    if (provider.stream) {
+      output = await provider.stream(input, (step) => capturedSteps.push(step));
+    } else {
+      output = await provider.run(input);
+    }
   } catch (err) {
     // If the provider throws, mark as failed
     await prisma.agentRun.update({
@@ -109,6 +116,9 @@ export async function POST(
       endedAt: new Date(),
     },
   });
+
+  // Persist steps and evaluations for the completed run
+  await ingestRunResult({ agentRunId: id, output, steps: capturedSteps });
 
   await writeAudit({
     taskId: agentRun.taskId,
