@@ -14,6 +14,7 @@ import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
 import CloneTaskButton from '@/components/CloneTaskButton';
 import TranscriptParser from '@/components/TranscriptParser';
 import AuditTimeline from '@/components/AuditTimeline';
+import DispatchAgentRunButton from '@/components/DispatchAgentRunButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +86,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
         }
         badge={<RiskBadge level={task.riskLevel} />}
         actions={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <DispatchAgentRunButton taskId={task.id} taskTitle={task.title} />
             {!['completed', 'failed'].includes(task.status) && (
               <Link href={`/tasks/${task.id}/edit`} className="btn btn-ghost btn-sm">
                 Edit

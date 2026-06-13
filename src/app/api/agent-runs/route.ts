@@ -1,9 +1,41 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 import { getFeatureFlags } from '@/lib/featureFlags';
 import { resolveDispatch } from '@/lib/dispatchGate';
 import { writeAudit } from '@/lib/audit';
+
+// GET /api/agent-runs?taskId=<optional>
+// Auth: admin or reviewer
+// Returns list of agent runs, optionally filtered by taskId, ordered by startedAt desc, limit 50.
+export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const taskId = searchParams.get('taskId') ?? undefined;
+
+  const agentRuns = await prisma.agentRun.findMany({
+    where: taskId ? { taskId } : undefined,
+    orderBy: { startedAt: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      taskId: true,
+      status: true,
+      selectedTool: true,
+      startedAt: true,
+      endedAt: true,
+      task: { select: { title: true } },
+    },
+  });
+
+  return NextResponse.json({ agentRuns });
+}
 
 // POST /api/agent-runs
 // Body: { taskId: string }
