@@ -1,10 +1,16 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import SidebarNav from './SidebarNav';
+import NotificationBell from './NotificationBell';
 
 const NO_SIDEBAR_PATHS = ['/login'];
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+  notificationsEnabled?: boolean;
+}
+
+export default function AppShell({ children, notificationsEnabled = false }: AppShellProps) {
   const pathname = usePathname();
   const hideSidebar = NO_SIDEBAR_PATHS.includes(pathname);
 
@@ -15,9 +21,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="sidebar-brand">
-          <div className="sidebar-brand-name">AI Dev Orchestrator</div>
-          <div className="sidebar-brand-label">Internal Tool</div>
+        <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div className="sidebar-brand-name">AI Dev Orchestrator</div>
+            <div className="sidebar-brand-label">Internal Tool</div>
+          </div>
+          <NotificationBell enabled={notificationsEnabled} />
         </div>
         <SidebarNav />
         <div className="sidebar-footer">v0.1.0 · Internal</div>
