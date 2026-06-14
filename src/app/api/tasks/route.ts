@@ -72,6 +72,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Evaluate policy gates
+    const { evaluatePolicy } = await import('@/lib/policyGates');
+    const policyResult = evaluatePolicy({ title, instruction, riskLevel, environment });
+    // If blocked or requires approval, force approvalRequired = true
+    const effectiveApprovalRequired = approvalRequired || policyResult.requiresApproval || policyResult.blocked;
+
     // Determine which project to associate with the task.  If a projectId is
     // provided, use it directly.  Otherwise, find or create a default project.
     let finalProjectId: string;
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
         agentTool,
         riskLevel,
         environment,
-        approvalRequired,
+        approvalRequired: effectiveApprovalRequired,
         ...(priority !== undefined ? { priority } : {}),
         ...(dueDate !== undefined && dueDate !== null ? { dueDate: new Date(dueDate) } : {}),
         ...(milestoneId !== undefined && milestoneId !== null ? { milestoneId } : {}),
@@ -106,10 +112,10 @@ export async function POST(request: Request) {
     await writeAudit({
       taskId: task.id,
       event: 'task_created',
-      details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
+      details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired: effectiveApprovalRequired, at: new Date().toISOString() }),
       userId: currentUser?.userId ?? null,
     });
-    return NextResponse.json(task, { status: 201 });
+    return NextResponse.json({ ...task, policyEvaluation: policyResult }, { status: 201 });
   } catch (err) {
     console.error(err);
     return new NextResponse(JSON.stringify({ error: 'Failed to create task' }), { status: 500 });
