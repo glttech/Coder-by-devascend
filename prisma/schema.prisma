@@ -57,6 +57,7 @@ model Task {
   audits            AuditLog[]
   operatorSessions  OperatorSession[]
   instructions      Instruction[]
+  incidents         Incident[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -113,6 +114,7 @@ model AgentRun {
   evaluations     Evaluation[]
   audits          AuditLog[]
   steps           AgentStep[]
+  incidents       Incident[]
 }
 
 model AgentStep {
@@ -258,4 +260,27 @@ model GithubPR {
   updatedAt         DateTime  @updatedAt
 
   @@unique([projectId, prNumber])
+}
+
+model Incident {
+  id               String    @id @default(uuid())
+  taskId           String?
+  task             Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  agentRunId       String?
+  agentRun         AgentRun? @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
+  title            String
+  description      String?
+  trigger          String    // "ci_failure" | "reviewer_block" | "policy_block" | "run_failure" | "manual_rollback"
+  severity         String    @default("medium")
+  status           String    @default("open")
+  timeline         String?   // JSON: Array<{ timestamp: string, event: string, actor?: string }>
+  failedCommand    String?
+  failedTest       String?
+  riskCategory     String?
+  reviewerDecision String?
+  followUpAction   String?
+  resolvedAt       DateTime?
+  resolvedBy       String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
