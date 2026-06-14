@@ -10,27 +10,29 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String?
-  role      String    @default("admin")  // "admin" | "reviewer"
-  approvals Approval[]
-  auditLogs AuditLog[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String?
+  role           String    @default("admin")  // "admin" | "reviewer"
+  approvals      Approval[]
+  auditLogs      AuditLog[]
+  assignedTasks  Task[]    @relation("TaskAssignee")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Project {
-  id            String    @id @default(uuid())
+  id            String      @id @default(uuid())
   name          String
   description   String?
   repoOwner     String?
   repoName      String?
-  defaultBranch String    @default("main")
+  defaultBranch String      @default("main")
   tasks         Task[]
   githubPRs     GithubPR[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  milestones    Milestone[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Task {
@@ -44,6 +46,12 @@ model Task {
   environment       String             // "local", "dev", "staging", "production"
   approvalRequired  Boolean
   status            String             @default("pending") // "pending", "running", "completed", "failed"
+  priority          String             @default("medium")  // "low", "medium", "high", "critical"
+  dueDate           DateTime?
+  assigneeId        String?
+  assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  milestoneId       String?
+  milestone         Milestone?         @relation(fields: [milestoneId], references: [id])
   agentRuns         AgentRun[]
   approval          Approval?
   audits            AuditLog[]
@@ -51,6 +59,19 @@ model Task {
   instructions      Instruction[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+}
+
+model Milestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  targetDate  DateTime?
+  status      String    @default("open") // "open" | "completed"
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model PromptTemplate {
