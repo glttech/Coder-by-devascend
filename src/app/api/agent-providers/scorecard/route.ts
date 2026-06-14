@@ -3,13 +3,13 @@ import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
 
-export function ciPassRate(runs: { testResult: string | null }[]): number {
+function ciPassRate(runs: { testResult: string | null }[]): number {
   if (runs.length === 0) return 0;
   const passing = runs.filter((r) => r.testResult && /pass/i.test(r.testResult)).length;
   return Math.round((passing / runs.length) * 100);
 }
 
-export function mostCommonRisk(tasks: { riskLevel: string }[]): string {
+function mostCommonRisk(tasks: { riskLevel: string }[]): string {
   if (tasks.length === 0) return 'unknown';
   const counts: Record<string, number> = {};
   for (const t of tasks) counts[t.riskLevel] = (counts[t.riskLevel] ?? 0) + 1;
