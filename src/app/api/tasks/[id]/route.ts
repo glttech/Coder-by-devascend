@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/rbac';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
+const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
 const TERMINAL_STATUSES = new Set(['completed', 'failed']);
 
 // GET /api/tasks/[id] — return a single task with relations.
@@ -46,7 +47,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { title, instruction, riskLevel, environment, approvalRequired } = body;
+  const { title, instruction, riskLevel, environment, approvalRequired, priority, dueDate, assigneeId, milestoneId } = body;
 
   const errors: string[] = [];
 
@@ -78,6 +79,25 @@ export async function PATCH(
     errors.push('approvalRequired must be a boolean');
   }
 
+  if (priority !== undefined && !VALID_PRIORITIES.includes(priority as string)) {
+    errors.push(`priority must be one of: ${VALID_PRIORITIES.join(', ')}`);
+  }
+
+  if (dueDate !== undefined && dueDate !== null) {
+    const parsed = new Date(dueDate as string);
+    if (isNaN(parsed.getTime())) {
+      errors.push('dueDate must be a valid ISO date string or null');
+    }
+  }
+
+  if (assigneeId !== undefined && assigneeId !== null && typeof assigneeId !== 'string') {
+    errors.push('assigneeId must be a string or null');
+  }
+
+  if (milestoneId !== undefined && milestoneId !== null && typeof milestoneId !== 'string') {
+    errors.push('milestoneId must be a string or null');
+  }
+
   if (errors.length > 0) {
     return NextResponse.json({ error: errors.join('; ') }, { status: 422 });
   }
@@ -99,6 +119,10 @@ export async function PATCH(
     if (riskLevel !== undefined) updateData.riskLevel = riskLevel;
     if (environment !== undefined) updateData.environment = environment;
     if (approvalRequired !== undefined) updateData.approvalRequired = approvalRequired;
+    if (priority !== undefined) updateData.priority = priority;
+    if (dueDate !== undefined) updateData.dueDate = dueDate === null ? null : new Date(dueDate as string);
+    if (assigneeId !== undefined) updateData.assigneeId = assigneeId === null ? null : assigneeId;
+    if (milestoneId !== undefined) updateData.milestoneId = milestoneId === null ? null : milestoneId;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(existing);

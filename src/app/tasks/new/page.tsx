@@ -136,6 +136,8 @@ export default function NewTaskPage() {
   const [riskLevel, setRiskLevel] = useState('low');
   const [environment, setEnvironment] = useState('dev');
   const [approvalRequired, setApprovalRequired] = useState(false);
+  const [priority, setPriority] = useState('medium');
+  const [dueDate, setDueDate] = useState('');
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -161,7 +163,7 @@ export default function NewTaskPage() {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, instruction, agentTool, riskLevel, environment, approvalRequired }),
+        body: JSON.stringify({ title, instruction, agentTool, riskLevel, environment, approvalRequired, priority, dueDate: dueDate || undefined }),
       });
       if (!res.ok) {
         const { error } = await res.json();
@@ -286,6 +288,38 @@ export default function NewTaskPage() {
             <label htmlFor="approvalRequired" className="form-label" style={{ marginBottom: 0, cursor: 'pointer' }}>
               Approval required before execution
             </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="priority">Priority</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  background: priority === 'critical' ? 'var(--red, #ef4444)' :
+                    priority === 'high' ? 'var(--orange, #f97316)' :
+                    priority === 'medium' ? 'var(--amber, #f59e0b)' : 'var(--green, #22c55e)',
+                }} />
+                <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)} style={{ flex: 1 }}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="dueDate">Due Date <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
           </div>
 
           {error && (

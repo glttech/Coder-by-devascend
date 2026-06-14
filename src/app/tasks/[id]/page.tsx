@@ -44,6 +44,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
       project: true,
       approval: true,
       instructions: { orderBy: { createdAt: 'desc' } },
+      assignee: { select: { id: true, name: true, email: true } },
+      milestone: { select: { id: true, title: true, projectId: true } },
     },
   });
 
@@ -180,6 +182,44 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <div className="meta-row">
               <span className="meta-label">Requested by</span>
               <span className="meta-value">{requesterLabel}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Priority</span>
+              <span className="meta-value">
+                <span className={`badge ${
+                  task.priority === 'critical' ? 'badge-sev-high' :
+                  task.priority === 'high' ? 'badge-sev-high' :
+                  task.priority === 'medium' ? 'badge-warning' : 'badge-success'
+                }`} style={task.priority === 'high' ? { background: 'rgba(249,115,22,0.12)', color: '#ea6c00', borderColor: 'rgba(249,115,22,0.3)' } : undefined}>
+                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                </span>
+              </span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Due date</span>
+              <span className="meta-value">
+                {task.dueDate ? (
+                  <span style={task.dueDate < new Date() ? { color: 'var(--red, #ef4444)', fontWeight: 500 } : undefined}>
+                    {task.dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                ) : '—'}
+              </span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Assignee</span>
+              <span className="meta-value">
+                {task.assignee ? (task.assignee.name ?? task.assignee.email) : '—'}
+              </span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Milestone</span>
+              <span className="meta-value">
+                {task.milestone ? (
+                  <Link href={`/projects/${task.milestone.projectId}/milestones/${task.milestone.id}`} style={{ color: 'var(--blue)' }}>
+                    {task.milestone.title}
+                  </Link>
+                ) : '—'}
+              </span>
             </div>
           </div>
         </Card>

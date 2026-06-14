@@ -72,6 +72,7 @@ export default async function TaskList() {
                 <th className="col-hide-mobile">ID</th>
                 <th>Title</th>
                 <th>Status</th>
+                <th className="col-hide-mobile">Priority</th>
                 <th className="col-hide-mobile">Risk</th>
                 <th className="col-hide-mobile">Environment</th>
                 <th className="col-hide-mobile">Agent</th>
@@ -95,6 +96,20 @@ export default async function TaskList() {
                       </Link>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{task.status}</td>
+                    <td className="col-hide-mobile">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <span style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          background: task.priority === 'critical' ? 'var(--red, #ef4444)' :
+                            task.priority === 'high' ? '#f97316' :
+                            task.priority === 'medium' ? 'var(--amber, #f59e0b)' : 'var(--green, #22c55e)',
+                        }} />
+                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                      </span>
+                    </td>
                     <td className="col-hide-mobile"><RiskBadge level={task.riskLevel} /></td>
                     <td className="col-hide-mobile"><EnvBadge env={task.environment} /></td>
                     <td className="col-hide-mobile" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
