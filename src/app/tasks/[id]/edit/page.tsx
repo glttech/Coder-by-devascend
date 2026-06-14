@@ -8,6 +8,17 @@ interface EditTaskPageProps {
   params: { id: string };
 }
 
+interface UserOption {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
+interface MilestoneOption {
+  id: string;
+  title: string;
+}
+
 export default function EditTaskPage({ params }: EditTaskPageProps) {
   const router = useRouter();
   const { id } = params;
@@ -17,6 +28,15 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
   const [riskLevel, setRiskLevel] = useState('low');
   const [environment, setEnvironment] = useState('dev');
   const [approvalRequired, setApprovalRequired] = useState(false);
+  const [priority, setPriority] = useState('medium');
+  const [dueDate, setDueDate] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [milestoneId, setMilestoneId] = useState('');
+  const [projectId, setProjectId] = useState('');
+
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [milestones, setMilestones] = useState<MilestoneOption[]>([]);
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,10 +52,30 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
         setRiskLevel(task.riskLevel ?? 'low');
         setEnvironment(task.environment ?? 'dev');
         setApprovalRequired(task.approvalRequired ?? false);
+        setPriority(task.priority ?? 'medium');
+        setDueDate(task.dueDate ? task.dueDate.slice(0, 10) : '');
+        setAssigneeId(task.assigneeId ?? '');
+        setMilestoneId(task.milestoneId ?? '');
+        setProjectId(task.projectId ?? '');
       })
       .catch(() => setLoadError('Failed to load task'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => Array.isArray(data) ? setUsers(data) : setUsers([]))
+      .catch(() => setUsers([]));
+  }, []);
+
+  useEffect(() => {
+    if (!projectId) return;
+    fetch(`/api/projects/${projectId}/milestones`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => Array.isArray(data) ? setMilestones(data) : setMilestones([]))
+      .catch(() => setMilestones([]));
+  }, [projectId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +85,17 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
       const res = await fetch(`/api/tasks/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, instruction, riskLevel, environment, approvalRequired }),
+        body: JSON.stringify({
+          title,
+          instruction,
+          riskLevel,
+          environment,
+          approvalRequired,
+          priority,
+          dueDate: dueDate || null,
+          assigneeId: assigneeId || null,
+          milestoneId: milestoneId || null,
+        }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -142,6 +192,59 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
             <label htmlFor="approvalRequired" className="form-label" style={{ marginBottom: 0, cursor: 'pointer' }}>
               Approval required before execution
             </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="priority">Priority</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  background: priority === 'critical' ? 'var(--red, #ef4444)' :
+                    priority === 'high' ? 'var(--orange, #f97316)' :
+                    priority === 'medium' ? 'var(--amber, #f59e0b)' : 'var(--green, #22c55e)',
+                }} />
+                <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)} style={{ flex: 1 }}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="dueDate">Due Date <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="assigneeId">Assignee <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <select id="assigneeId" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+                <option value="">— unassigned —</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="milestoneId">Milestone <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <select id="milestoneId" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
+                <option value="">— none —</option>
+                {milestones.map((m) => (
+                  <option key={m.id} value={m.id}>{m.title}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {saveError && (

@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/rbac';
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
 const VALID_AGENT_TOOLS = ['open-swe', 'claude-code-manual', 'codex-manual', 'openclaw-manual'];
+const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
 // GET /api/tasks – return a list of tasks in descending creation order.
 export async function GET() {
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   const data = await request.json();
-  const { title, instruction, projectId, agentTool, riskLevel, environment, approvalRequired } = data;
+  const { title, instruction, projectId, agentTool, riskLevel, environment, approvalRequired, priority, dueDate, milestoneId } = data;
 
   const errors: string[] = [];
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
@@ -56,6 +57,15 @@ export async function POST(request: Request) {
   }
   if (typeof approvalRequired !== 'boolean') {
     errors.push('approvalRequired must be a boolean');
+  }
+  if (priority !== undefined && !VALID_PRIORITIES.includes(priority)) {
+    errors.push(`priority must be one of: ${VALID_PRIORITIES.join(', ')}`);
+  }
+  if (dueDate !== undefined && dueDate !== null) {
+    const parsed = new Date(dueDate);
+    if (isNaN(parsed.getTime())) {
+      errors.push('dueDate must be a valid ISO date string');
+    }
   }
   if (errors.length > 0) {
     return new NextResponse(JSON.stringify({ error: errors.join('; ') }), { status: 422 });
@@ -88,6 +98,9 @@ export async function POST(request: Request) {
         riskLevel,
         environment,
         approvalRequired,
+        ...(priority !== undefined ? { priority } : {}),
+        ...(dueDate !== undefined && dueDate !== null ? { dueDate: new Date(dueDate) } : {}),
+        ...(milestoneId !== undefined && milestoneId !== null ? { milestoneId } : {}),
       },
     });
     await writeAudit({
