@@ -96,6 +96,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
               </Link>
             )}
             <CloneTaskButton taskId={task.id} />
+            <Link href={`/tasks/${task.id}/evidence`} className="btn btn-ghost btn-sm">
+              Change Control Pack
+            </Link>
             <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
               View Summary Report →
             </Link>
