@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/projects',              label: 'Projects',          icon: '⬟' },
   { href: '/tasks',                 label: 'Tasks',             icon: '◈' },
   { href: '/instructions/pending',  label: 'Review Queue', icon: '◉' },
+  { href: '/providers/scorecard',   label: 'Scorecard',         icon: '◑' },
   { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
 ];
 
