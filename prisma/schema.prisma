@@ -106,8 +106,9 @@ model AgentRun {
   commandsRun     String?
   testResult      String?
   commitHash      String?
-  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled
-  status          String         @default("pending") // "pending", "running", "succeeded", "failed"
+  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled | preview
+  status          String         @default("pending") // "pending", "running", "succeeded", "failed", "preview"
+  sandboxPlan     String?        // JSON: { plannedFiles, plannedCommands, estimatedRisk, warnings }
   startedAt       DateTime       @default(now())
   endedAt         DateTime?
   evaluations     Evaluation[]

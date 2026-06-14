@@ -2,10 +2,13 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { getCurrentUser, isAuthEnabled } from '@/lib/session';
+import { getFeatureFlags } from '@/lib/featureFlags';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import AgentRunActions from '@/components/AgentRunActions';
+import SandboxPreviewPanel from '@/components/SandboxPreviewPanel';
+import type { SandboxPlan } from '@/lib/sandboxPlanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +42,7 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
     }
   }
 
-  const agentRun = await prisma.agentRun.findUnique({
+  const agentRunRaw = await prisma.agentRun.findUnique({
     where: { id: params.id },
     include: {
       steps: { orderBy: { stepIndex: 'asc' } },
@@ -47,6 +50,9 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
       task: { select: { id: true, title: true } },
     },
   });
+  // sandboxPlan is a new column not yet reflected in generated Prisma types;
+  // we access it via a safe cast after DB returns the real value.
+  const agentRun = agentRunRaw as (typeof agentRunRaw & { sandboxPlan?: string | null }) | null;
 
   if (!agentRun) {
     notFound();
@@ -57,6 +63,12 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
   const userRole = currentUser?.role ?? 'reviewer';
 
   const duration = formatDuration(agentRun.startedAt, agentRun.endedAt);
+
+  const flags = getFeatureFlags();
+  const sandboxPlan: SandboxPlan | null =
+    agentRun.status === 'preview' && agentRun.sandboxPlan
+      ? (JSON.parse(agentRun.sandboxPlan) as SandboxPlan)
+      : null;
 
   return (
     <div>
@@ -79,6 +91,33 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
           />
         }
       />
+
+      {/* Sandbox Preview Panel */}
+      {(agentRun.status === 'preview' || !flags.sandboxMode) && sandboxPlan ? (
+        <div className="section">
+          <SandboxPreviewPanel
+            agentRunId={agentRun.id}
+            plan={sandboxPlan}
+            sandboxEnabled={flags.sandboxMode}
+            userRole={userRole}
+          />
+        </div>
+      ) : agentRun.status === 'preview' && !sandboxPlan ? (
+        <div className="section">
+          <div
+            style={{
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: 6,
+              padding: '10px 14px',
+              fontSize: 13,
+              color: '#1d4ed8',
+            }}
+          >
+            Sandbox mode is disabled. Set <code>FEATURE_SANDBOX_MODE=true</code> to enable.
+          </div>
+        </div>
+      ) : null}
 
       {/* Timing metadata */}
       <div className="section">
