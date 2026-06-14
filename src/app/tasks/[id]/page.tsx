@@ -15,6 +15,7 @@ import CloneTaskButton from '@/components/CloneTaskButton';
 import TranscriptParser from '@/components/TranscriptParser';
 import AuditTimeline from '@/components/AuditTimeline';
 import DispatchAgentRunButton from '@/components/DispatchAgentRunButton';
+import { evaluatePolicy } from '@/lib/policyGates';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,13 @@ export default async function TaskPage({ params }: TaskPageProps) {
   }
 
   const prompt = buildPrompt(task);
+
+  const policyResult = evaluatePolicy({
+    title: task.title,
+    instruction: task.instruction,
+    riskLevel: task.riskLevel,
+    environment: task.environment,
+  });
 
   const approverId = task.approval?.approverId;
   const approver = approverId
@@ -148,6 +156,53 @@ export default async function TaskPage({ params }: TaskPageProps) {
                 The AI has submitted a suggestion. Look at the <strong>AI Suggestions</strong> section below and click <strong>Approve</strong> to accept it, or <strong>Block</strong> to reject it.
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Policy gate evaluation badge */}
+      {policyResult.violations.length > 0 && (
+        <div className="section">
+          <div style={{
+            background: policyResult.blocked
+              ? 'rgba(239,68,68,0.06)'
+              : 'rgba(251,191,36,0.08)',
+            border: `1px solid ${policyResult.blocked ? 'rgba(239,68,68,0.3)' : 'rgba(251,191,36,0.4)'}`,
+            borderRadius: 8,
+            padding: '14px 18px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span
+                className="badge"
+                style={{
+                  background: policyResult.blocked ? 'rgba(239,68,68,0.12)' : 'rgba(251,191,36,0.12)',
+                  color: policyResult.blocked ? '#dc2626' : '#b45309',
+                  border: `1px solid ${policyResult.blocked ? 'rgba(239,68,68,0.3)' : 'rgba(251,191,36,0.4)'}`,
+                  fontWeight: 700,
+                  fontSize: 12,
+                }}
+              >
+                {policyResult.blocked ? 'Policy: Blocked' : 'Policy: Approval Required'}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                {policyResult.blocked
+                  ? 'This task has been flagged and requires owner approval before it can proceed.'
+                  : 'This task requires owner approval before it can be dispatched.'}
+              </span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--text-secondary)' }}>
+              {policyResult.violations.map((v) => (
+                <li key={v.ruleId} style={{ marginBottom: 2 }}>
+                  <strong>{v.ruleName}</strong>
+                  {' — '}
+                  <span style={{ color: v.severity === 'block' ? '#dc2626' : '#b45309' }}>
+                    {v.severity === 'block' ? 'blocked' : 'approval required'}
+                  </span>
+                  {': '}
+                  {v.reason}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}

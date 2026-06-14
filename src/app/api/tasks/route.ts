@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
+import { evaluatePolicy } from '@/lib/policyGates';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
@@ -71,6 +72,12 @@ export async function POST(request: Request) {
     return new NextResponse(JSON.stringify({ error: errors.join('; ') }), { status: 422 });
   }
 
+  // Evaluate policy rules before task creation.
+  const policyEvaluation = evaluatePolicy({ title, instruction, riskLevel, environment });
+  // If policy flags the task, ensure approvalRequired is set.
+  const finalApprovalRequired =
+    approvalRequired || policyEvaluation.blocked || policyEvaluation.requiresApproval;
+
   try {
     // Determine which project to associate with the task.  If a projectId is
     // provided, use it directly.  Otherwise, find or create a default project.
@@ -97,7 +104,7 @@ export async function POST(request: Request) {
         agentTool,
         riskLevel,
         environment,
-        approvalRequired,
+        approvalRequired: finalApprovalRequired,
         ...(priority !== undefined ? { priority } : {}),
         ...(dueDate !== undefined && dueDate !== null ? { dueDate: new Date(dueDate) } : {}),
         ...(milestoneId !== undefined && milestoneId !== null ? { milestoneId } : {}),
@@ -106,10 +113,17 @@ export async function POST(request: Request) {
     await writeAudit({
       taskId: task.id,
       event: 'task_created',
-      details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
+      details: JSON.stringify({
+        agentTool,
+        riskLevel,
+        environment,
+        approvalRequired: finalApprovalRequired,
+        policyViolations: policyEvaluation.violations,
+        at: new Date().toISOString(),
+      }),
       userId: currentUser?.userId ?? null,
     });
-    return NextResponse.json(task, { status: 201 });
+    return NextResponse.json({ task, policyEvaluation }, { status: 201 });
   } catch (err) {
     console.error(err);
     return new NextResponse(JSON.stringify({ error: 'Failed to create task' }), { status: 500 });
