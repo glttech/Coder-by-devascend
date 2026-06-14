@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Badge, RiskBadge } from '@/components/ui/Badge';
 import { getCurrentUser, getAuthMode } from '@/lib/session';
-import MoveTaskButton from './MoveTaskButton';
+import { MoveTaskButton } from '@/components/MoveTaskButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,8 +73,6 @@ export default async function BoardPage({ params }: BoardPageProps) {
     COLUMNS.map((col) => [col.status, tasks.filter((t) => t.status === col.status)]),
   ) as Record<TaskStatus, typeof tasks>;
 
-  const allStatuses: TaskStatus[] = ['pending', 'running', 'completed', 'failed'];
-
   return (
     <div>
       <PageHeader
@@ -103,7 +101,6 @@ export default async function BoardPage({ params }: BoardPageProps) {
       >
         {COLUMNS.map((col) => {
           const colTasks = byStatus[col.status];
-          const otherStatuses = allStatuses.filter((s) => s !== col.status);
 
           return (
             <div
@@ -243,7 +240,6 @@ export default async function BoardPage({ params }: BoardPageProps) {
                         <MoveTaskButton
                           taskId={task.id}
                           currentStatus={col.status}
-                          otherStatuses={otherStatuses}
                         />
                       </div>
                     );

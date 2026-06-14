@@ -32,7 +32,7 @@ export async function GET(
 // Accepts any subset of: title, instruction, riskLevel, environment, approvalRequired,
 // priority, dueDate, assigneeId, milestoneId, status.
 // Blocked when the task is in a terminal status (completed / failed) — unless the field being
-// changed is `status` itself (which allows moving a task out of terminal via the Kanban board).
+// changed is 'status' itself (which allows moving a task out of terminal via the Kanban board).
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } },
