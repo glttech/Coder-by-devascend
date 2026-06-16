@@ -190,3 +190,12 @@ model GithubPR {
 
   @@unique([projectId, prNumber])
 }
+
+model NotificationPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  emailInvite     Boolean  @default(true)
+  emailApproval   Boolean  @default(true)
+  emailRunDone    Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
