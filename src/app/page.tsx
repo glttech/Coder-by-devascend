@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, DecisionBadge, RiskBadge } from '@/components/ui/Badge';
 import { summarisePR } from '@/lib/prSummary';
+import DashboardWidgetCustomizer from '@/components/DashboardWidgetCustomizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,10 +116,13 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        subtitle="Governance overview for AI-assisted development"
-      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <PageHeader
+          title="Dashboard"
+          subtitle="Governance overview for AI-assisted development"
+        />
+        <DashboardWidgetCustomizer />
+      </div>
 
       {/* How it works */}
       <div className="section">
