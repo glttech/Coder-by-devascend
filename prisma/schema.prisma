@@ -163,6 +163,44 @@ model OperatorSession {
   auditLogs              AuditLog[]
 }
 
+model ActiveSession {
+  id        String    @id @default(uuid())
+  sessionId String    @unique
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   // "approval_needed" | "run_completed" | "run_failed" | "session_revoked"
+  title      String
+  body       String?
+  read       Boolean  @default(false)
+  taskId     String?
+  agentRunId String?
+  createdAt  DateTime @default(now())
+}
+
+model Diagram {
+  id         String   @id @default(uuid())
+  orgId      String   @default("org_default")
+  kind       String   // task_lifecycle | architecture | dependency
+  title      String
+  source     String   // Mermaid source — the persisted content
+  entityType String?  // task | project
+  entityId   String?
+  createdBy  String   @default("system")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([orgId])
+  @@index([entityType, entityId])
+}
+
+
 model GithubPR {
   id                String    @id @default(uuid())
   projectId         String

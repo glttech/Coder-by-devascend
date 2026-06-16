@@ -12,6 +12,11 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
 import CloneTaskButton from '@/components/CloneTaskButton';
+import TranscriptParser from '@/components/TranscriptParser';
+import AuditTimeline from '@/components/AuditTimeline';
+import DispatchAgentRunButton from '@/components/DispatchAgentRunButton';
+import DiagramPanel from '@/components/DiagramPanel';
+import { generateTaskLifecycleDiagram } from '@/lib/diagrams';
 
 export const dynamic = 'force-dynamic';
 
@@ -225,6 +230,54 @@ export default async function TaskPage({ params }: TaskPageProps) {
             ))}
           </div>
         )}
+      </div>
+      {/* Diagrams */}
+      <div className="section">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Diagrams
+        </div>
+        <Card>
+          <CardHeader title="Task Diagrams" subtitle="Generate and save visual diagrams for this task" />
+          <DiagramPanel
+            entityType="task"
+            entityId={task.id}
+            generators={[
+              {
+                kind: 'task_lifecycle',
+                label: '📊 Lifecycle',
+                source: generateTaskLifecycleDiagram({
+                  id: task.id,
+                  title: task.title,
+                  status: task.status,
+                  riskLevel: task.riskLevel,
+                  approvalRequired: task.approvalRequired,
+                  agentRuns: task.agentRuns,
+                  instructions: task.instructions,
+                }),
+              },
+            ]}
+          />
+        </Card>
+      </div>
+
+      {/* Activity Log */}
+      <div className="section">
+        <details>
+          <summary style={{
+            cursor: 'pointer',
+            userSelect: 'none',
+            listStyle: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <span className="section-title" style={{ pointerEvents: 'none' }}>Activity Log</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>▸ expand</span>
+          </summary>
+          <div style={{ marginTop: 16, position: 'relative' }}>
+            <AuditTimeline taskId={task.id} />
+          </div>
+        </details>
       </div>
     </div>
   );

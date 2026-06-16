@@ -4,6 +4,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { RiskBadge } from '@/components/ui/Badge';
 import { computeProjectHealth, computeStalePRs, computeReleaseReadiness, healthSignal } from '@/lib/projectHealth';
 import type { PRHealthInputFull } from '@/lib/projectHealth';
+import DiagramPanel from '@/components/DiagramPanel';
+import { generateArchitectureDiagram } from '@/lib/diagrams';
+import { Card, CardHeader } from '@/components/ui/Card';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +30,20 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const project = await prisma.project.findUnique({
     where: { id: params.id },
     include: {
-      tasks: { orderBy: { createdAt: 'desc' }, take: 10 },
+      tasks: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          riskLevel: true,
+          priority: true,
+          dueDate: true,
+          createdAt: true,
+          environment: true,
+        },
+      },
       githubPRs: { orderBy: { importedAt: 'desc' }, take: 5 },
       _count: { select: { tasks: true, githubPRs: true } },
     },
@@ -275,6 +291,30 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Diagrams */}
+      <div className="section">
+        <Card>
+          <CardHeader title="Project Diagrams" subtitle="Generate and save visual diagrams for this project" />
+          <DiagramPanel
+            entityType="project"
+            entityId={project.id}
+            generators={[
+              {
+                kind: 'architecture',
+                label: '🏗️ Architecture',
+                source: generateArchitectureDiagram({
+                  id: project.id,
+                  name: project.name,
+                  repoOwner: project.repoOwner,
+                  repoName: project.repoName,
+                  tasks: project.tasks,
+                }),
+              },
+            ]}
+          />
+        </Card>
       </div>
 
       {/* GitHub PRs */}
