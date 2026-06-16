@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/instructions/pending',  label: 'Review Queue', icon: '◉' },
   { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
   { href: '/diagrams',             label: 'Diagrams',          icon: '◆' },
+  { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
 ];
 
 interface MeResponse {
