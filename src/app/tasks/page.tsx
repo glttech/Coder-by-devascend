@@ -47,9 +47,12 @@ export default async function TaskList() {
           ) : undefined
         }
         actions={
-          <Link href="/tasks/new" className="btn btn-primary">
-            + New Task
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <a href="/api/tasks/export" className="btn btn-ghost btn-sm">Export CSV</a>
+            <Link href="/tasks/new" className="btn btn-primary">
+              + New Task
+            </Link>
+          </div>
         }
       />
 
