@@ -1,10 +1,16 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { subscribe } from '@/lib/events/bus';
+import { getCurrentUser } from '@/lib/currentUser';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
+  const user = await getCurrentUser();
+  const check = requireRole(user, 'any');
+  if (!check.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: check.status });
+
   const channel = req.nextUrl.searchParams.get('channel') ?? 'default';
 
   const encoder = new TextEncoder();

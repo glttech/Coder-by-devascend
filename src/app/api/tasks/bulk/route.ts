@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/currentUser';
+import { requireRole } from '@/lib/rbac';
 
 type BulkAction = 'status' | 'delete' | 'priority';
 
@@ -7,6 +9,10 @@ const VALID_STATUSES = ['pending', 'running', 'completed', 'failed', 'cancelled'
 const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+  const check = requireRole(user, 'any');
+  if (!check.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: check.status });
+
   const body = await req.json() as { ids: string[]; action: BulkAction; value?: string };
   const { ids, action, value } = body;
 
@@ -53,6 +59,8 @@ export async function POST(req: Request) {
       },
     });
   } else if (action === 'delete') {
+    const adminCheck = requireRole(user, 'admin');
+    if (!adminCheck.ok) return NextResponse.json({ error: 'Admin required for bulk delete' }, { status: 403 });
     const result = await prisma.task.deleteMany({
       where: { id: { in: ids } },
     });

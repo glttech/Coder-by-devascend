@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { getSessionOptions } from '@/lib/session';
 import type { AppSession } from '@/lib/session';
+import { checkLoginRateLimit } from '@/lib/loginRateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,20 @@ const prisma = new PrismaClient();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getClientIP(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1';
+}
+
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const rateLimit = checkLoginRateLimit(`register:${ip}`);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: `Too many registration attempts. Try again in ${Math.ceil(rateLimit.retryAfterMs / 60000)} minutes.` },
+      { status: 429 }
+    );
+  }
+
   let email: string;
   let password: string;
   let confirmPassword: string;

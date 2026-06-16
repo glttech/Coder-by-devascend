@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/currentUser';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  const check = requireRole(user, 'any');
+  if (!check.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: check.status });
+
   const diagram = await prisma.diagram.findUnique({ where: { id: params.id } });
   if (!diagram) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 

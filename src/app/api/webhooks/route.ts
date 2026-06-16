@@ -7,7 +7,11 @@ export async function GET() {
   const user = await getCurrentUser();
   const check = requireRole(user, 'admin');
   if (!check.ok) return NextResponse.json({ error: 'Forbidden' }, { status: check.status });
-  const webhooks = await prisma.webhook.findMany({ where: { orgId: 'org_default' }, orderBy: { createdAt: 'desc' } });
+  const webhooks = await prisma.webhook.findMany({
+    where: { orgId: 'org_default' },
+    select: { id: true, url: true, events: true, enabled: true, failureCount: true, lastTriggeredAt: true, createdAt: true, updatedAt: true },
+    orderBy: { createdAt: 'desc' },
+  });
   return NextResponse.json({ webhooks });
 }
 

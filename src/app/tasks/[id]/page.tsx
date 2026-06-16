@@ -235,7 +235,6 @@ export default async function TaskPage({ params }: TaskPageProps) {
             taskId={task.id}
             approvalRequired={task.approvalRequired}
             approved={task.approval?.approved}
-            approverName={approver?.name ?? approver?.email ?? undefined}
           />
         </div>
       )}
