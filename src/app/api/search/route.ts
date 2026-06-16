@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/currentUser';
 
 type SearchResult = {
   id: string;
@@ -10,6 +11,9 @@ type SearchResult = {
 };
 
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim();
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 50);
