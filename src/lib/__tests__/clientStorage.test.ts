@@ -1,21 +1,24 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 
 // Mock localStorage for Node.js test environment
 const store: Record<string, string> = {};
-globalThis.localStorage = {
+const mockStorage: Storage = {
   getItem: (k: string) => store[k] ?? null,
   setItem: (k: string, v: string) => { store[k] = v; },
   removeItem: (k: string) => { delete store[k]; },
   clear: () => { Object.keys(store).forEach(k => { delete store[k]; }); },
   key: (i: number) => Object.keys(store)[i] ?? null,
   get length() { return Object.keys(store).length; },
-} as Storage;
+};
+globalThis.localStorage = mockStorage;
 // Also mock window so isAvailable() returns true
-(globalThis as Record<string, unknown>).window = { localStorage: globalThis.localStorage };
+(globalThis as Record<string, unknown>).window = { localStorage: mockStorage };
 
-// Import after mocking
-const { clientStorage } = await import('../clientStorage.js');
+// Use createRequire so the mocks above are in place before module executes
+const _require = createRequire(import.meta.url);
+const { clientStorage } = _require('../clientStorage') as typeof import('../clientStorage');
 
 describe('clientStorage', () => {
   beforeEach(() => {
@@ -40,9 +43,11 @@ describe('clientStorage', () => {
   test('clear removes all cda. prefixed keys', () => {
     clientStorage.set('a', 1);
     clientStorage.set('b', 2);
+    store['other.key'] = 'untouched';
     clientStorage.clear();
     assert.equal(clientStorage.get('a'), null);
     assert.equal(clientStorage.get('b'), null);
+    assert.equal(store['other.key'], 'untouched');
   });
 
   test('expired entry returns null', async () => {
@@ -54,5 +59,16 @@ describe('clientStorage', () => {
   test('non-expired entry still returns value', () => {
     clientStorage.set('lasting', 'here', 60_000);
     assert.equal(clientStorage.get('lasting'), 'here');
+  });
+
+  test('corrupted JSON returns null', () => {
+    store['cda.bad'] = 'not-json{{';
+    assert.equal(clientStorage.get('bad'), null);
+  });
+
+  test('keys are namespaced with cda. prefix', () => {
+    clientStorage.set('mykey', 'val');
+    assert.ok('cda.mykey' in store);
+    assert.ok(!('mykey' in store));
   });
 });
