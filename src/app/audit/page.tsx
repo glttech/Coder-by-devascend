@@ -134,9 +134,12 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
         title="Audit Log"
         subtitle={subtitle}
         actions={
-          hasFilter ? (
-            <Link href="/audit" className="btn btn-ghost btn-sm">Clear filters</Link>
-          ) : undefined
+          <div style={{ display: 'flex', gap: 8 }}>
+            <a href="/api/audit/export" className="btn btn-ghost btn-sm">Export CSV</a>
+            {hasFilter && (
+              <Link href="/audit" className="btn btn-ghost btn-sm">Clear filters</Link>
+            )}
+          </div>
         }
       />
 
