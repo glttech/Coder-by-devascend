@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { getIronSession } from 'iron-session';
 import { getSessionOptions } from '@/lib/session';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 
 export default async function TeamPage() {

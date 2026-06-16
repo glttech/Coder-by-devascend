@@ -31,9 +31,8 @@ describe('Comment validation', () => {
   });
 
   it('authorId defaults to anonymous when no user', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const user: any = null;
-    const authorId = (user as { id?: string } | null)?.id ?? 'anonymous';
+    const user = null as { id?: string } | null;
+    const authorId = user?.id ?? 'anonymous';
     assert.equal(authorId, 'anonymous');
   });
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getIronSession } from 'iron-session';
 import { getSessionOptions } from '@/lib/session';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 
 export async function GET() {
   const session = await getIronSession<{ userId?: string }>(cookies(), getSessionOptions());

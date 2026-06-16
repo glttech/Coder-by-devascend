@@ -6,7 +6,7 @@ export function scoped(orgId: string) {
 
 export async function ensureDefaultOrg() {
   // Import prisma and create org_default if it doesn't exist
-  const { prisma } = await import('@/lib/prisma');
+  const { default: prisma } = await import('@/lib/prisma');
   const existing = await prisma.organization.findUnique({ where: { id: DEFAULT_ORG_ID } });
   if (!existing) {
     await prisma.organization.create({

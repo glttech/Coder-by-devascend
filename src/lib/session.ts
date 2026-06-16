@@ -14,7 +14,7 @@ export type AuthMode = 'disabled' | 'enforced' | 'misconfigured';
  * - 'enforced'      — both are set; login required
  * - 'misconfigured' — one is set without the other (unsafe; treated as server error)
  */
-export function getAuthMode(env: NodeJS.ProcessEnv = process.env): AuthMode {
+export function getAuthMode(env: Partial<NodeJS.ProcessEnv> = process.env): AuthMode {
   const hasUsername = Boolean(env.ADMIN_USERNAME);
   const hasHash = Boolean(env.ADMIN_PASSWORD_HASH);
   if (!hasUsername && !hasHash) return 'disabled';
@@ -22,11 +22,11 @@ export function getAuthMode(env: NodeJS.ProcessEnv = process.env): AuthMode {
   return 'misconfigured';
 }
 
-export function isAuthEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+export function isAuthEnabled(env: Partial<NodeJS.ProcessEnv> = process.env): boolean {
   return getAuthMode(env) === 'enforced';
 }
 
-export function getSessionOptions(env: NodeJS.ProcessEnv = process.env): SessionOptions {
+export function getSessionOptions(env: Partial<NodeJS.ProcessEnv> = process.env): SessionOptions {
   const maxAgeHours = parseInt(env.SESSION_MAX_AGE_HOURS ?? '24', 10);
   const ttl = (isNaN(maxAgeHours) ? 24 : maxAgeHours) * 60 * 60;
 
