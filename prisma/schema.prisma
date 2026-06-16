@@ -163,6 +163,44 @@ model OperatorSession {
   auditLogs              AuditLog[]
 }
 
+model ActiveSession {
+  id        String    @id @default(uuid())
+  sessionId String    @unique
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   // "approval_needed" | "run_completed" | "run_failed" | "session_revoked"
+  title      String
+  body       String?
+  read       Boolean  @default(false)
+  taskId     String?
+  agentRunId String?
+  createdAt  DateTime @default(now())
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  orgId      String    @default("org_default")
+  name       String
+  prefix     String    // first 12 chars of raw key, shown in UI
+  hashedKey  String    @unique
+  scopes     String[]  @default([])
+  createdBy  String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([orgId])
+}
+
+
 model GithubPR {
   id                String    @id @default(uuid())
   projectId         String
