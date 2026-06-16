@@ -49,6 +49,7 @@ model Task {
   audits            AuditLog[]
   operatorSessions  OperatorSession[]
   instructions      Instruction[]
+  comments          Comment[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -190,6 +191,18 @@ model ShareLink {
   createdBy   String    @default("system")
   createdAt   DateTime  @default(now())
   @@index([entityId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
 }
 model GithubPR {
   id                String    @id @default(uuid())
