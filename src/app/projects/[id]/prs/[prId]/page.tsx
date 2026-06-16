@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
 import RefreshPRButton from '@/components/RefreshPRButton';
+import { generatePrDiffDiagram } from '@/lib/diagrams/prDiff';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,7 @@ export default async function PRDetailPage({ params }: PageProps) {
 
   const summary = summarisePR(pr.title, pr.body ?? null);
   const qs = QUALITY_STYLES[summary.evidenceQuality] ?? QUALITY_STYLES.missing;
+  const diagram = generatePrDiffDiagram(pr.prNumber, pr.filesChanged);
   const repoUrl = pr.project.repoOwner && pr.project.repoName
     ? `https://github.com/${pr.project.repoOwner}/${pr.project.repoName}`
     : null;
@@ -229,6 +231,26 @@ export default async function PRDetailPage({ params }: PageProps) {
                 <li style={{ fontSize: 12, color: 'var(--text-muted)' }}>…and {pr.filesChanged.length - 50} more</li>
               )}
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* File Change Map Diagram */}
+      {pr.filesChanged.length > 0 && (
+        <div className="section">
+          <div className="section-header">
+            <span className="section-title">File Change Map</span>
+          </div>
+          <div className="card">
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>{diagram.title}</p>
+            <pre className="prompt-block" style={{ fontSize: 11, overflowX: 'auto' }}>{diagram.source}</pre>
+            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+              Paste the above into{' '}
+              <a href="https://mermaid.live" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue)' }}>
+                mermaid.live
+              </a>{' '}
+              to render.
+            </div>
           </div>
         </div>
       )}
