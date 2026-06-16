@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
   { href: '/diagrams',             label: 'Diagrams',          icon: '◆' },
   { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
+  { href: '/settings/team',         label: 'Team',              icon: '◈' },
 ];
 
 export default function SidebarNav() {
