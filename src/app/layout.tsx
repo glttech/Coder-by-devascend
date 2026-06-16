@@ -3,11 +3,14 @@ import type { ReactNode } from 'react';
 import SidebarNav from '@/components/SidebarNav';
 import SkipToContent from '@/components/SkipToContent';
 import MobileSidebar from '@/components/MobileSidebar';
+import ThemeScript from '@/components/ThemeScript';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head />
+      <head>
+        <ThemeScript />
+      </head>
       <body>
         <SkipToContent />
         <div className="app-shell">
