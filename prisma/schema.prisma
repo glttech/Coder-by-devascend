@@ -190,3 +190,19 @@ model GithubPR {
 
   @@unique([projectId, prNumber])
 }
+
+model Diagram {
+  id         String   @id @default(uuid())
+  orgId      String   @default("org_default")
+  entityType String   // "task" | "project"
+  entityId   String
+  kind       String   // "lifecycle" | "architecture"
+  title      String
+  source     String   @db.Text
+  svg        String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([entityId])
+  @@index([orgId])
+}
