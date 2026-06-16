@@ -1,7 +1,7 @@
 import type { SessionOptions } from 'iron-session';
 
 export interface AppSession {
-  userId: 'admin';
+  userId: string;
   username: string;
   loginAt: string;
 }

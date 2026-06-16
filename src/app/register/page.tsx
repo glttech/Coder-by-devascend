@@ -2,38 +2,37 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-function isSafeNext(next: string | null): boolean {
-  if (!next) return false;
-  return next.startsWith('/') && !next.startsWith('//') && !next.includes('://');
-}
-
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const next = params?.get('next') ?? null;
-  const redirectTo = isSafeNext(next) ? next! : '/';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password, confirmPassword }),
       });
       const body = await res.json();
       if (!res.ok) {
-        setError(body.error || 'Login failed');
+        setError(body.error || 'Registration failed.');
         return;
       }
-      router.push(redirectTo);
+      router.push('/');
     } catch {
       setError('Network error. Please try again.');
     } finally {
@@ -44,19 +43,19 @@ export default function LoginPage() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-1)' }}>
       <div className="card" style={{ width: '100%', maxWidth: 400 }}>
-        <h1 className="page-title" style={{ marginBottom: 4 }}>Sign in</h1>
+        <h1 className="page-title" style={{ marginBottom: 4 }}>Create account</h1>
         <p className="page-subtitle" style={{ marginBottom: 24 }}>Coder by DevAscend governance console</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="username">Username</label>
+            <label className="form-label" htmlFor="email">Email</label>
             <input
-              id="username"
-              type="text"
-              autoComplete="username"
+              id="email"
+              type="email"
+              autoComplete="email"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
             />
           </div>
@@ -66,10 +65,25 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
+              minLength={12}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+            />
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Minimum 12 characters</p>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" htmlFor="confirmPassword">Confirm password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={loading}
             />
           </div>
@@ -81,20 +95,13 @@ export default function LoginPage() {
           )}
 
           <button type="submit" disabled={loading} className="btn btn-primary btn-lg" style={{ marginTop: 4 }}>
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
 
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>— or —</div>
-          <a href="/api/auth/github" className="btn btn-ghost btn-sm" style={{ width: '100%', display: 'block', textAlign: 'center' }}>
-            Sign in with GitHub
-          </a>
-        </div>
-
         <p style={{ marginTop: 20, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-          Don&apos;t have an account?{' '}
-          <a href="/register" style={{ color: 'var(--accent)' }}>Register</a>
+          Already have an account?{' '}
+          <a href="/login" style={{ color: 'var(--accent)' }}>Sign in</a>
         </p>
       </div>
     </div>
