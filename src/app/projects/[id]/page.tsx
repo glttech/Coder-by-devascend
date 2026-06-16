@@ -27,7 +27,18 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const project = await prisma.project.findUnique({
     where: { id: params.id },
     include: {
-      tasks: { orderBy: { createdAt: 'desc' }, take: 10 },
+      tasks: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          riskLevel: true,
+          createdAt: true,
+          environment: true,
+        },
+      },
       githubPRs: { orderBy: { importedAt: 'desc' }, take: 5 },
       _count: { select: { tasks: true, githubPRs: true } },
     },
