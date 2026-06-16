@@ -42,6 +42,19 @@ async function main(): Promise<void> {
   }
 
   try {
+    // Ensure default org exists
+    await prisma.organization.upsert({
+      where: { id: 'org_default' },
+      update: {},
+      create: {
+        id: 'org_default',
+        name: 'Default Organization',
+        slug: 'default',
+        plan: 'free',
+      },
+    });
+    console.log('✓ Default organization ensured: org_default');
+
     await prisma.user.upsert({
       where: { email: payload.email },
       update: { role: 'admin' },
