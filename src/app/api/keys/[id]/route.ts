@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
+import { getCurrentUser } from '@/lib/currentUser';
 import { requireRole } from '@/lib/rbac';
 
 // DELETE /api/keys/[id] — revoke an API key

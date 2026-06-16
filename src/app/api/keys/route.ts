@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
+import { getCurrentUser } from '@/lib/currentUser';
 import { requireRole } from '@/lib/rbac';
 import { createApiKey, VALID_SCOPES } from '@/lib/apiKeys';
 
