@@ -1148,3 +1148,88 @@ tbody tr:hover { background-color: #f8fafc; }
 @media (max-width: 400px) {
   .explainer-steps { grid-template-columns: 1fr; }
 }
+
+/* ── Mobile & Accessibility ── */
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 22px;
+  padding: 6px 10px;
+  color: var(--text);
+  border-radius: 6px;
+}
+
+.mobile-menu-btn:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Focus indicators for keyboard nav */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .layout-root {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    padding: 16px;
+    min-width: 0;
+  }
+
+  .data-table {
+    font-size: 12px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 6px 8px;
+  }
+
+  .prompt-block {
+    font-size: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .page-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .grid.grid-cols-2,
+  .grid.md\:grid-cols-4 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid.grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+}
