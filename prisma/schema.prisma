@@ -163,6 +163,18 @@ model OperatorSession {
   auditLogs              AuditLog[]
 }
 
+model ShareLink {
+  id          String    @id @default(uuid())
+  entityType  String    // task_report
+  entityId    String
+  token       String    @unique
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  viewCount   Int       @default(0)
+  createdBy   String    @default("system")
+  createdAt   DateTime  @default(now())
+  @@index([entityId])
+}
 model GithubPR {
   id                String    @id @default(uuid())
   projectId         String
