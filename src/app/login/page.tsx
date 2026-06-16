@@ -84,6 +84,13 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>— or —</div>
+          <a href="/api/auth/github" className="btn btn-ghost btn-sm" style={{ width: '100%', display: 'block', textAlign: 'center' }}>
+            Sign in with GitHub
+          </a>
+        </div>
       </div>
     </div>
   );
