@@ -1,6 +1,6 @@
 import type { AuthMode } from './session.js';
 
-const PUBLIC_EXACT = new Set(['/login', '/favicon.ico']);
+const PUBLIC_EXACT = new Set(['/login', '/register', '/favicon.ico']);
 const PUBLIC_PREFIXES = ['/_next/', '/api/auth/'];
 
 /** Returns true for paths that never require authentication. */

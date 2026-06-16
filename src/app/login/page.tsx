@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 function isSafeNext(next: string | null): boolean {
   if (!next) return false;
@@ -108,6 +109,11 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--text-muted)' }}>
+          Don&apos;t have an account?{' '}
+          <Link href="/register" style={{ color: 'var(--blue)' }}>Create one</Link>
+        </p>
       </div>
     </div>
   );
