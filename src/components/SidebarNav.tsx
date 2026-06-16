@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/tasks',                 label: 'Tasks',             icon: '◈' },
   { href: '/instructions/pending',  label: 'Pending Approvals', icon: '◉' },
   { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
+  { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
 ];
 
 export default function SidebarNav() {
