@@ -29,6 +29,7 @@ model Project {
   defaultBranch String    @default("main")
   tasks         Task[]
   githubPRs     GithubPR[]
+  ciRuns        CiRun[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -203,6 +204,21 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([taskId])
+}
+
+model CiRun {
+  id        String   @id @default(cuid())
+  projectId String
+  prId      String?
+  workflow  String
+  status    String
+  url       String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 model GithubPR {
   id                String    @id @default(uuid())
