@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge, RiskBadge, EnvBadge, DecisionBadge, SeverityBadge } from '@/components/ui/Badge';
 import { DecisionBanner } from '@/components/ui/DecisionBanner';
+import CreateShareLink from '@/components/CreateShareLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,10 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
           </div>
         }
         actions={
-          <Link href={`/tasks/${task.id}`} className="btn btn-ghost btn-sm">← Task Detail</Link>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <CreateShareLink entityType="task_report" entityId={task.id} />
+            <Link href={`/tasks/${task.id}`} className="btn btn-ghost btn-sm">← Task Detail</Link>
+          </div>
         }
       />
 
