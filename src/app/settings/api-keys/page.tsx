@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session';
+import { getCurrentUser } from '@/lib/currentUser';
 import { redirect } from 'next/navigation';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card, CardHeader } from '@/components/ui/Card';

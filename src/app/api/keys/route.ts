@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       orgId: 'org_default',
       name: body.name.trim(),
       scopes: body.scopes,
-      createdBy: check.user.userId,
+      createdBy: user!.id,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
     });
     return NextResponse.json(result, { status: 201 });
