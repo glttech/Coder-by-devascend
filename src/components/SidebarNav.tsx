@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import GlobalSearch from '@/components/GlobalSearch';
 
 const NAV_ITEMS = [
   { href: '/',                      label: 'Dashboard',         icon: '⬡' },
@@ -58,6 +59,7 @@ export default function SidebarNav() {
   return (
     <nav className="sidebar-nav">
       <div className="sidebar-section-label">Navigation</div>
+      <GlobalSearch />
       {NAV_ITEMS.map((item) => {
         const isActive = item.href === '/'
           ? pathname === '/'
