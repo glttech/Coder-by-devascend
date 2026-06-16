@@ -38,8 +38,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           title: true,
           status: true,
           riskLevel: true,
-          priority: true,
-          dueDate: true,
           createdAt: true,
           environment: true,
         },
