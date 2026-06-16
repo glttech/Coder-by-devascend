@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { RiskBadge, EnvBadge } from '@/components/ui/Badge';
+import BulkTaskActions from '@/components/BulkTaskActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +65,7 @@ export default async function TaskList() {
           action={<Link href="/tasks/new" className="btn btn-primary">Create first task</Link>}
         />
       ) : (
+        <>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -124,6 +126,12 @@ export default async function TaskList() {
             </tbody>
           </table>
         </div>
+
+        <div style={{ marginTop: 32 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Bulk Operations</h2>
+          <BulkTaskActions tasks={tasks.map(t => ({ id: t.id, title: t.title, status: t.status }))} />
+        </div>
+        </>
       )}
     </div>
   );
