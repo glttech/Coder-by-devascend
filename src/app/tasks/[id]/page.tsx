@@ -12,8 +12,26 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, RiskBadge, EnvBadge } from '@/components/ui/Badge';
 import CloneTaskButton from '@/components/CloneTaskButton';
+import TranscriptParser from '@/components/TranscriptParser';
+import AuditTimeline from '@/components/AuditTimeline';
+import DispatchAgentRunButton from '@/components/DispatchAgentRunButton';
+import TaskComments from '@/components/TaskComments';
 
 export const dynamic = 'force-dynamic';
+
+const TOOL_DISPLAY: Record<string, string> = {
+  'claude-code-manual': 'Claude Code',
+  'codex-manual': 'Codex',
+  'openclaw-manual': 'OpenClaw',
+  'open-swe': 'Open SWE',
+};
+
+const ENV_DISPLAY: Record<string, string> = {
+  'local': 'Local',
+  'dev': 'Development',
+  'staging': 'Staging',
+  'production': 'Production',
+};
 
 interface TaskPageProps {
   params: { id: string };
@@ -27,6 +45,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
       project: true,
       approval: true,
       instructions: { orderBy: { createdAt: 'desc' } },
+      assignee: { select: { id: true, name: true, email: true } },
+      milestone: { select: { id: true, title: true, projectId: true } },
     },
   });
 
@@ -42,6 +62,22 @@ export default async function TaskPage({ params }: TaskPageProps) {
 
   const prompt = buildPrompt(task);
 
+  const approverId = task.approval?.approverId;
+  const approver = approverId
+    ? await prisma.user.findUnique({
+        where: { id: approverId },
+        select: { name: true, email: true },
+      })
+    : null;
+
+  const creatorLog = await prisma.auditLog.findFirst({
+    where: { taskId: task.id, event: 'task_created' },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  const requesterLabel = creatorLog?.user
+    ? (creatorLog.user.name ?? creatorLog.user.email)
+    : 'System';
+
   return (
     <div>
       <PageHeader
@@ -53,7 +89,8 @@ export default async function TaskPage({ params }: TaskPageProps) {
         }
         badge={<RiskBadge level={task.riskLevel} />}
         actions={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <DispatchAgentRunButton taskId={task.id} taskTitle={task.title} />
             {!['completed', 'failed'].includes(task.status) && (
               <Link href={`/tasks/${task.id}/edit`} className="btn btn-ghost btn-sm">
                 Edit
@@ -61,11 +98,60 @@ export default async function TaskPage({ params }: TaskPageProps) {
             )}
             <CloneTaskButton taskId={task.id} />
             <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
-              Evidence Report →
+              View Summary Report →
             </Link>
           </div>
         }
       />
+
+      {/* What to do next — status-based guidance */}
+      {task.status === 'pending' && !task.approvalRequired && (
+        <div className="section">
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--blue)' }}>Next step:</strong> Copy the generated prompt below, run it in your AI tool, then paste the response back in the &ldquo;Submit AI Response&rdquo; section.
+          </div>
+        </div>
+      )}
+      {task.status === 'completed' && (
+        <div className="section">
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: '#16a34a' }}>Task complete.</strong> View the full summary in the <a href={`/tasks/${task.id}/report`} style={{ color: 'var(--blue)' }}>Summary Report</a>.
+          </div>
+        </div>
+      )}
+      {task.status === 'failed' && (
+        <div className="section">
+          <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <strong style={{ color: '#dc2626' }}>Task failed.</strong> Check the AI responses and audit log below for details. You can <a href={`/tasks/${task.id}/edit`} style={{ color: 'var(--blue)' }}>edit the task</a> and retry.
+          </div>
+        </div>
+      )}
+
+      {/* Approval callout — shown when task is awaiting human review */}
+      {task.approvalRequired &&
+        (task.status === 'pending_approval' || task.status === 'awaiting_approval') && (
+        <div className="section">
+          <div style={{
+            background: 'var(--amber-bg, rgba(251,191,36,0.08))',
+            border: '1px solid var(--amber-border, rgba(251,191,36,0.4))',
+            borderRadius: 8,
+            padding: '14px 18px',
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1.3 }}>⏳</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                This task is waiting for your review.
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                The AI has submitted a suggestion. Look at the <strong>AI Suggestions</strong> section below and click <strong>Approve</strong> to accept it, or <strong>Block</strong> to reject it.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Metadata */}
       <div className="section">
@@ -74,7 +160,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <span className="card-title">Task Details</span>
             <div style={{ display: 'flex', gap: 6 }}>
               <EnvBadge env={task.environment} />
-              <span className="badge badge-neutral">{task.agentTool}</span>
+              <span className="badge badge-neutral">{TOOL_DISPLAY[task.agentTool] ?? task.agentTool}</span>
             </div>
           </div>
           <div className="meta-grid" style={{ marginTop: 12 }}>
@@ -87,8 +173,54 @@ export default async function TaskPage({ params }: TaskPageProps) {
               <span className="meta-value">{task.status}</span>
             </div>
             <div className="meta-row">
+              <span className="meta-label">Environment</span>
+              <span className="meta-value">{ENV_DISPLAY[task.environment] ?? task.environment}</span>
+            </div>
+            <div className="meta-row">
               <span className="meta-label">Approval required</span>
               <span className="meta-value">{task.approvalRequired ? 'Yes' : 'No'}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Requested by</span>
+              <span className="meta-value">{requesterLabel}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Priority</span>
+              <span className="meta-value">
+                <span className={`badge ${
+                  task.priority === 'critical' ? 'badge-sev-high' :
+                  task.priority === 'high' ? 'badge-sev-high' :
+                  task.priority === 'medium' ? 'badge-warning' : 'badge-success'
+                }`} style={task.priority === 'high' ? { background: 'rgba(249,115,22,0.12)', color: '#ea6c00', borderColor: 'rgba(249,115,22,0.3)' } : undefined}>
+                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                </span>
+              </span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Due date</span>
+              <span className="meta-value">
+                {task.dueDate ? (
+                  <span style={task.dueDate < new Date() ? { color: 'var(--red, #ef4444)', fontWeight: 500 } : undefined}>
+                    {task.dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                ) : '—'}
+              </span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Assignee</span>
+              <span className="meta-value">
+                {task.assignee ? (task.assignee.name ?? task.assignee.email) : '—'}
+              </span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">Milestone</span>
+              <span className="meta-value">
+                {task.milestone ? (
+                  <Link href={`/projects/${task.milestone.projectId}/milestones/${task.milestone.id}`} style={{ color: 'var(--blue)' }}>
+                    {task.milestone.title}
+                  </Link>
+                ) : '—'}
+              </span>
             </div>
           </div>
         </Card>
@@ -101,12 +233,16 @@ export default async function TaskPage({ params }: TaskPageProps) {
             taskId={task.id}
             approvalRequired={task.approvalRequired}
             approved={task.approval?.approved}
+            approverName={approver?.name ?? approver?.email ?? undefined}
           />
         </div>
       )}
 
       {/* Generated Prompt */}
       <div className="section">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 1 — Copy the prompt
+        </div>
         <Card>
           <CardHeader title="Generated Prompt" subtitle="Structured execution prompt ready to paste into your AI agent" />
           <pre className="prompt-block prompt-block-scrollable">{prompt}</pre>
@@ -116,24 +252,42 @@ export default async function TaskPage({ params }: TaskPageProps) {
         </Card>
       </div>
 
-      {/* New Agent Run */}
+      {/* Submit AI Response */}
       <div className="section">
-        <Card>
-          <CardHeader title="Record Agent Run" subtitle="Submit the agent response to evaluate and track the run" />
-          <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
-        </Card>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 2 — Submit the AI response
+        </div>
+        <div className="section-header">
+          <span className="section-title">Submit AI Response</span>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          After using the AI tool with the prompt above, paste its response here. The system will
+          check it for safety and tell you what to do next.
+        </p>
+        <OperatorPanel taskId={task.id} taskTitle={task.title} />
       </div>
 
-      {/* Instructions lifecycle */}
+      {/* Parse AI Transcript */}
+      <div className="section">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 2b — Parse AI Transcript
+        </div>
+        <TranscriptParser taskId={task.id} />
+      </div>
+
+      {/* AI Suggestions lifecycle */}
       <div className="section" id="instructions">
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Step 3 — Review suggestions
+        </div>
         <div className="section-header">
-          <span className="section-title">Instructions ({task.instructions.length})</span>
+          <span className="section-title">AI Suggestions ({task.instructions.length})</span>
         </div>
         {task.instructions.length === 0 ? (
           <EmptyState
-            icon="◉"
-            title="No instructions linked"
-            description="Instructions track discrete work items through the approval → execution → completion lifecycle. Create one via the API to start."
+            icon="💡"
+            title="No AI suggestions yet"
+            description="Use the prompt below to get a response from your AI tool, then paste it back here."
           />
         ) : (
           <div className="table-wrap">
@@ -143,7 +297,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
                   <th>ID</th>
                   <th>Title</th>
                   <th>Status</th>
-                  <th>State Version</th>
+                  <th>Version</th>
                   <th>Created</th>
                   <th>Actions</th>
                 </tr>
@@ -179,22 +333,21 @@ export default async function TaskPage({ params }: TaskPageProps) {
         )}
       </div>
 
-      {/* Operator Console */}
+      {/* New Agent Run */}
       <div className="section">
-        <div className="section-header">
-          <span className="section-title">Operator Console</span>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, marginTop: 4 }}>
+          Track AI responses
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-          After running the prompt in an AI coding agent, paste the response here. The system will
-          analyze risk, check for missing evidence, and generate a safe next step.
-        </p>
-        <OperatorPanel taskId={task.id} taskTitle={task.title} />
+        <Card>
+          <CardHeader title="Record AI Response" subtitle="Submit the AI response to evaluate and track the run" />
+          <RunPromptPanel taskId={task.id} prompt={prompt} defaultTool={task.agentTool} />
+        </Card>
       </div>
 
-      {/* Previous Runs */}
+      {/* AI Response History */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Previous Runs ({task.agentRuns.length})</span>
+          <span className="section-title">AI Response History ({task.agentRuns.length})</span>
         </div>
         {task.agentRuns.length === 0 ? (
           <EmptyState
@@ -225,6 +378,28 @@ export default async function TaskPage({ params }: TaskPageProps) {
             ))}
           </div>
         )}
+      </div>
+      {/* Comments */}
+      <div className="section"><div className="card"><TaskComments taskId={task.id} /></div></div>
+
+      {/* Activity Log */}
+      <div className="section">
+        <details>
+          <summary style={{
+            cursor: 'pointer',
+            userSelect: 'none',
+            listStyle: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <span className="section-title" style={{ pointerEvents: 'none' }}>Activity Log</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>▸ expand</span>
+          </summary>
+          <div style={{ marginTop: 16, position: 'relative' }}>
+            <AuditTimeline taskId={task.id} />
+          </div>
+        </details>
       </div>
     </div>
   );
