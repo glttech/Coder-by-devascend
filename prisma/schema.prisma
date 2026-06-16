@@ -163,6 +163,21 @@ model OperatorSession {
   auditLogs              AuditLog[]
 }
 
+model Invitation {
+  id        String   @id @default(uuid())
+  orgId     String   @default("org_default")
+  email     String
+  role      String   @default("reviewer")
+  token     String   @unique
+  invitedBy String
+  status    String   @default("pending")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([orgId])
+  @@index([email])
+}
+
 model GithubPR {
   id                String    @id @default(uuid())
   projectId         String
