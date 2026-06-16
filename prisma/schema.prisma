@@ -190,3 +190,19 @@ model GithubPR {
 
   @@unique([projectId, prNumber])
 }
+
+model Webhook {
+  id              String    @id @default(uuid())
+  orgId           String    @default("org_default")
+  name            String
+  url             String
+  secret          String?
+  events          String[]  @default([])
+  enabled         Boolean   @default(true)
+  lastTriggeredAt DateTime?
+  failureCount    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([orgId])
+}
