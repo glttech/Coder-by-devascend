@@ -15,6 +15,7 @@ import CloneTaskButton from '@/components/CloneTaskButton';
 import TranscriptParser from '@/components/TranscriptParser';
 import AuditTimeline from '@/components/AuditTimeline';
 import DispatchAgentRunButton from '@/components/DispatchAgentRunButton';
+import TaskComments from '@/components/TaskComments';
 
 export const dynamic = 'force-dynamic';
 
@@ -378,6 +379,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
           </div>
         )}
       </div>
+      {/* Comments */}
+      <div className="section"><div className="card"><TaskComments taskId={task.id} /></div></div>
+
       {/* Activity Log */}
       <div className="section">
         <details>
