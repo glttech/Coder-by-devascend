@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const NAV_ITEMS = [
   { href: '/',                      label: 'Dashboard',         icon: '⬡' },
@@ -32,6 +33,9 @@ export default function SidebarNav() {
           </Link>
         );
       })}
+      <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+        <ThemeToggle />
+      </div>
     </nav>
   );
 }

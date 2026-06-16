@@ -1,11 +1,14 @@
 import './globals.css';
 import type { ReactNode } from 'react';
 import SidebarNav from '@/components/SidebarNav';
+import ThemeScript from '@/components/ThemeScript';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head />
+      <head>
+        <ThemeScript />
+      </head>
       <body>
         <div className="app-shell">
           <aside className="sidebar">
