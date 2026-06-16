@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
+import { parsePageParams, buildPageResult } from '@/lib/pagination';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
 const VALID_AGENT_TOOLS = ['open-swe', 'claude-code-manual', 'codex-manual', 'openclaw-manual'];
 
-// GET /api/tasks – return a list of tasks in descending creation order.
-export async function GET() {
+// GET /api/tasks – return a paginated list of tasks.
+// Supports ?limit=&cursor=&order= query params.
+export async function GET(request: NextRequest) {
   try {
+    const { take, cursor, order } = parsePageParams(request.nextUrl.searchParams);
     const tasks = await prisma.task.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: order },
+      take: take + 1, // fetch one extra to determine if there is a next page
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: { project: true, approval: true },
     });
-    return NextResponse.json(tasks);
+    const page = buildPageResult(tasks, take);
+    return NextResponse.json(page);
   } catch (err) {
     return new NextResponse(JSON.stringify({ error: 'Failed to fetch tasks' }), { status: 500 });
   }

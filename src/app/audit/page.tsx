@@ -92,7 +92,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
   const logs = await prisma.auditLog.findMany({
     where,
     orderBy: { createdAt: 'desc' },
-    take: 200,
+    take: 100, // Phase 1: limited to 100 rows; cursor pagination will be added in a later phase
     include: {
       task: { select: { id: true, title: true } },
       instruction: { select: { id: true, title: true } },
@@ -102,7 +102,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
   const hasFilter = !!(taskId || instructionId || eventFilter);
 
   const parts: string[] = [
-    logs.length === 200 ? '200+ entries (latest 200)' : `${logs.length} entries`,
+    logs.length === 100 ? '100+ entries (latest 100)' : `${logs.length} entries`,
   ];
   if (taskId) parts.push(`task: ${taskId.slice(0, 8)}`);
   if (instructionId) parts.push(`instruction: ${instructionId.slice(0, 8)}`);

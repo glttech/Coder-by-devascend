@@ -1,7 +1,26 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { evaluateResponse } from '@/lib/promptEvaluator';
 import { createTrace, logObservation } from '@/lib/langfuse';
+import { parsePageParams, buildPageResult } from '@/lib/pagination';
+
+// GET /api/runs – return a paginated list of agent runs.
+// Supports ?limit=&cursor=&order= query params.
+export async function GET(request: NextRequest) {
+  try {
+    const { take, cursor, order } = parsePageParams(request.nextUrl.searchParams);
+    const runs = await prisma.agentRun.findMany({
+      orderBy: { startedAt: order },
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    const page = buildPageResult(runs, take);
+    return NextResponse.json(page);
+  } catch (err) {
+    return new NextResponse(JSON.stringify({ error: 'Failed to fetch runs' }), { status: 500 });
+  }
+}
 
 // POST /api/runs – record an agent run.  Expects JSON with taskId,
 // generatedPrompt, selectedTool, and response.  Performs basic evaluation
