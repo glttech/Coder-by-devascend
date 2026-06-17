@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { checkApprovalAllowed } from '@/lib/approvalGuard';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 // POST /api/approvals – record an approval decision for a task.
 // Body: { taskId: string, approved: boolean }
@@ -16,6 +19,12 @@ import { checkApprovalAllowed } from '@/lib/approvalGuard';
 // create, and the conditional updateMany (where approved is still null) admits
 // only one decision on an undecided row. The loser receives a 409.
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'admin');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   const data = await request.json();
   const { taskId, approved } = data;
   if (!taskId || typeof approved !== 'boolean') {
@@ -47,10 +56,12 @@ export async function POST(request: Request) {
       error: 'An approval decision has already been recorded for this task and cannot be changed',
     };
 
+    const approverId = currentUser?.userId ?? null;
+
     let approval;
     try {
       // First decision: create relies on the unique constraint on taskId.
-      approval = await prisma.approval.create({ data: { taskId, approved } });
+      approval = await prisma.approval.create({ data: { taskId, approved, approverId } });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         // A row already exists. Flip it only if it is still undecided; the
@@ -58,7 +69,7 @@ export async function POST(request: Request) {
         // most one concurrent request matches.
         const updated = await prisma.approval.updateMany({
           where: { taskId, approved: null },
-          data: { approved },
+          data: { approved, approverId },
         });
         if (updated.count === 0) {
           return NextResponse.json(ALREADY_DECIDED, { status: 409 });
@@ -70,28 +81,26 @@ export async function POST(request: Request) {
     }
 
     // Record the decision in the audit trail — only after a decision was written.
-    await prisma.auditLog.create({
-      data: {
+    await writeAudit({
+      taskId,
+      event: 'task_approval_decided',
+      details: JSON.stringify({
         taskId,
-        event: 'task_approval_decided',
-        details: JSON.stringify({
-          taskId,
-          approved,
-          at: new Date().toISOString(),
-        }),
-      },
+        approved,
+        at: new Date().toISOString(),
+      }),
+      userId: currentUser?.userId ?? null,
     });
 
     // Advance task status: an accepted approval means work can begin.
     // Only move forward from 'pending' — do not overwrite 'running'/'completed'/'failed'.
     if (approved === true && task?.status === 'pending') {
       await prisma.task.update({ where: { id: taskId }, data: { status: 'running' } });
-      await prisma.auditLog.create({
-        data: {
-          taskId,
-          event: 'task_status_changed',
-          details: JSON.stringify({ from: 'pending', to: 'running', reason: 'approval_accepted', at: new Date().toISOString() }),
-        },
+      await writeAudit({
+        taskId,
+        event: 'task_status_changed',
+        details: JSON.stringify({ from: 'pending', to: 'running', reason: 'approval_accepted', at: new Date().toISOString() }),
+        userId: currentUser?.userId ?? null,
       });
     }
 

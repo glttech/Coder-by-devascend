@@ -72,7 +72,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
     <div>
       <PageHeader
         title={task.title}
-        subtitle="Evidence Report"
+        subtitle="Task Summary Report"
         badge={
           <div style={{ display: 'flex', gap: 6 }}>
             <RiskBadge level={task.riskLevel} />
@@ -141,7 +141,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
               </span>
             </div>
             <div className="meta-row">
-              <span className="meta-label">Operator Sessions</span>
+              <span className="meta-label">AI Sessions</span>
               <span className="meta-value">{sessions.length} recorded</span>
             </div>
           </div>
@@ -222,14 +222,14 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
 
         {/* Session timeline */}
         {sessions.length > 1 && (
-          <ReportSection title={`Operator Session Timeline (${sessions.length} steps)`}>
+          <ReportSection title={`AI Session Timeline (${sessions.length} steps)`}>
             <table className="data-table" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <thead>
                 <tr>
                   <th style={{ width: 50 }}>Step</th>
                   <th>Decision</th>
                   <th>Risk Flags</th>
-                  <th>Missing Evidence</th>
+                  <th>Missing Info</th>
                   <th style={{ width: 130 }}>When</th>
                 </tr>
               </thead>
@@ -271,16 +271,16 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
         </ReportSection>
 
         {/* Instructions */}
-        <ReportSection title={`Instructions (${task.instructions.length})`}>
+        <ReportSection title={`AI Suggestions (${task.instructions.length})`}>
           {task.instructions.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No instructions linked.</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No AI suggestions linked.</p>
           ) : (
             <table className="data-table" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <thead>
                 <tr>
                   <th>Title</th>
                   <th>Status</th>
-                  <th>State Version</th>
+                  <th>Version</th>
                   <th>Updated</th>
                 </tr>
               </thead>
@@ -309,7 +309,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
                   <tr>
                     <th style={{ width: 140 }}>When</th>
                     <th>Event</th>
-                    <th>Instruction</th>
+                    <th>AI Suggestion</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,7 +337,7 @@ export default async function EvidenceReportPage({ params }: ReportPageProps) {
 
         {/* Agent runs */}
         {task.agentRuns.length > 0 && (
-          <ReportSection title="Recent Agent Runs">
+          <ReportSection title="Recent AI Responses">
             <table className="data-table" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <thead>
                 <tr>

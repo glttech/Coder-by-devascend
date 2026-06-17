@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DecisionBanner } from '@/components/ui/DecisionBanner';
+import { useCsrfToken } from '@/hooks/useCsrfToken';
 
 interface RiskFlagDetail {
   key: string;
@@ -104,7 +105,7 @@ function DecisionFactors({ session, action }: { session: EnrichedSession; action
       )}
       {missing.length > 0 && (
         <div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber-text)' }}>Missing evidence:</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber-text)' }}>Missing information:</span>
           <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
             {missing.map((e) => <li key={e.key}>{e.label} — {e.description}</li>)}
           </ul>
@@ -158,10 +159,10 @@ function AnalysisPanel({ session }: { session: EnrichedSession }) {
 
         <div className="card card-sm">
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 10 }}>
-            Missing Evidence {session.missingEvidenceDetails.length > 0 && <span style={{ fontWeight: 400 }}>({session.missingEvidenceDetails.length})</span>}
+            Missing Information {session.missingEvidenceDetails.length > 0 && <span style={{ fontWeight: 400 }}>({session.missingEvidenceDetails.length})</span>}
           </div>
           {session.missingEvidenceDetails.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--green-text)' }}>✓ All required evidence provided</p>
+            <p style={{ fontSize: 13, color: 'var(--green-text)' }}>✓ All required information provided</p>
           ) : (
             session.missingEvidenceDetails.map((e) => (
               <div key={e.key} className="evidence-item">
@@ -188,10 +189,12 @@ function AnalysisPanel({ session }: { session: EnrichedSession }) {
 
 export default function OperatorPanel({ taskId, taskTitle }: Props) {
   const router = useRouter();
+  const csrfToken = useCsrfToken();
   const [sessions, setSessions] = useState<EnrichedSession[]>([]);
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   const [agentTool, setAgentTool] = useState('claude-code-manual');
@@ -214,12 +217,13 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!csrfToken) { setSubmitError('Session error — refresh the page'); return; }
     setSubmitting(true);
     setSubmitError('');
     try {
       const res = await fetch('/api/operator-sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ taskId, agentTool, agentResponse, filesMentioned, commandsMentioned, validationOutput, reviewerNotes }),
       });
       const data = await res.json();
@@ -228,6 +232,8 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
       setSessions((prev) => [newSession, ...prev]);
       setActiveSessionId(newSession.id);
       setAgentResponse(''); setFilesMentioned(''); setCommandsMentioned(''); setValidationOutput(''); setReviewerNotes('');
+      setSubmitSuccess('✓ Response analyzed — see results below');
+      setTimeout(() => setSubmitSuccess(null), 4000);
       router.refresh();
     } catch {
       setSubmitError('Network error — please try again.');
@@ -246,7 +252,7 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -6 }}>
           After running a prompt, paste the agent response here. The system will analyze risk,
-          identify missing evidence, and determine the safest next step.
+          identify missing information, and determine the safest next step.
         </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -327,6 +333,20 @@ export default function OperatorPanel({ taskId, taskTitle }: Props) {
           {submitError && (
             <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', fontSize: 13 }}>
               {submitError}
+            </div>
+          )}
+
+          {submitSuccess && (
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              color: '#16a34a',
+              fontSize: 13,
+              fontWeight: 500,
+            }}>
+              {submitSuccess}
             </div>
           )}
 

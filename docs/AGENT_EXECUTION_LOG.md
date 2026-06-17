@@ -1190,3 +1190,96 @@ Design approval, `ADMIN_USERNAME` value, `ADMIN_PASSWORD_HASH` and `SESSION_SECR
 | Rollback | Delete new files, revert .env.example, uninstall iron-session + bcryptjs |
 | Repo-only | Yes |
 | DEV validation | Pending
+
+---
+
+## Entry 019 — 2026-06-07
+
+**Session goal:** Overnight autonomous prod-readiness — PR B auth enforcement, PR C UI polish, PR D config validation, PR E CI hardening.
+
+**HEAD at session start:** `9535d7c`
+
+---
+
+### PR B — feat: auth enforcement (middleware + authGuard)
+
+#### What
+
+- **`src/lib/authGuard.ts`** (new) — pure, testable helpers: `isPublicPath()`, `resolveAuthDecision()`. No external deps beyond the `AuthMode` type.
+- **`src/middleware.ts`** — major update: matcher expanded to all paths; enforced/disabled/misconfigured branches; governance key OR session for API routes; page redirects to `/login?next=<path>`; `/login` and `/api/auth/*` always public
+- **`src/lib/session.ts`** — `env` param type changed from `NodeJS.ProcessEnv` to `Record<string, string | undefined>`
+- **`src/lib/__tests__/authGuard.test.ts`** (new) — 30 tests
+
+| Field | Value |
+|-------|-------|
+| PR | #57 |
+| Merge SHA | `c431f817` |
+| Tests | 588 pass |
+| Build | clean |
+| Typecheck | clean |
+| Risk | Medium — middleware affects all requests; disabled-mode path unchanged |
+
+---
+
+### PR D — feat: config validation (SESSION_SECRET length, auth config check, max-age parsing)
+
+#### What
+
+- **`src/lib/session.ts`** — `SESSION_SECRET_MIN_LENGTH = 32`, `validateAuthConfig(env)`, `parseSessionMaxAge(raw)`, `getSessionOptions()` secret-length enforcement
+- **`src/lib/__tests__/session.test.ts`** — 16 new tests
+
+| Field | Value |
+|-------|-------|
+| PR | #59 |
+| Merge SHA | `424bf3fb` |
+| Tests | 604 pass |
+| Build | clean |
+| Typecheck | clean |
+| Risk | Low — additive only; getSessionOptions throws earlier on short secret |
+
+---
+
+### PR E — ci: add typecheck, test, and unconditional lint steps
+
+#### What
+
+- **`.github/workflows/ci.yml`** — three changes:
+  1. Added `npm run typecheck` step (before lint) — catches TypeScript errors that the build step can miss in some edge cases
+  2. Added `npm run test` step — runs the full `tsx --test` suite in CI (was never run in CI before)
+  3. Replaced conditional ESLint check with unconditional `npm run lint` — ESLint is installed; the guard was masking whether it actually ran
+
+#### Pre-merge checks
+
+- `npm run typecheck` locally: clean
+- `npm run lint` locally: ✔ No ESLint warnings or errors
+- `npm test` locally: 604 pass
+- No product logic changes
+- No env/schema changes
+- Rollback: revert ci.yml
+
+| Field | Value |
+|-------|-------|
+| Branch | feat/ci-hardening |
+| PR | #60 |
+| Files changed | .github/workflows/ci.yml |
+| Risk | Low — CI config only |
+
+---
+
+### PR C — feat: auth UI polish (sidebar hide on /login, logout button, already-auth redirect)
+
+#### What
+
+- **`src/components/AppShell.tsx`** (new) — client component; hides sidebar on `/login`, full shell elsewhere
+- **`src/app/layout.tsx`** — delegates shell to `<AppShell>`
+- **`src/components/SidebarNav.tsx`** — `UserBadge`: shows username + "Sign out" button when session active; sign-out POSTs `/api/auth/logout` then redirects to `/login`
+- **`src/app/login/page.tsx`** — on mount: checks `/api/auth/me`; redirects away if already authenticated; spinner during check
+
+| Field | Value |
+|-------|-------|
+| PR | #58 |
+| Files | layout.tsx, AppShell.tsx (new), SidebarNav.tsx, login/page.tsx |
+| Tests | 604 pass |
+| Build | clean |
+| Typecheck | clean |
+| Risk | Low — UI only |

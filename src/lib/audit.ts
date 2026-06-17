@@ -1,26 +1,23 @@
-/**
- * writeAudit — lightweight helper to persist an audit log entry.
- *
- * All fields except `event` are optional; pass only what is relevant for the
- * operation being recorded.
- */
-import prisma from '@/lib/prisma';
+import prisma from './prisma';
 
 export interface AuditEntry {
   event: string;
   details?: string;
-  userId?: string;
   taskId?: string;
   agentRunId?: string;
   operatorSessionId?: string;
   instructionId?: string;
+  userId?: string | null;
 }
 
+/**
+ * Fire-and-forget audit log writer.
+ * Errors are swallowed so governance is never blocked by a storage failure.
+ */
 export async function writeAudit(entry: AuditEntry): Promise<void> {
   try {
     await prisma.auditLog.create({ data: entry });
   } catch {
-    // Audit failures must never break the main flow.
-    console.error('[audit] Failed to write audit log', entry);
+    // Intentionally silent — audit failures must not interrupt the main flow.
   }
 }

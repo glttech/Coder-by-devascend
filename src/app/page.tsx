@@ -4,7 +4,6 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge, DecisionBadge, RiskBadge } from '@/components/ui/Badge';
 import { summarisePR } from '@/lib/prSummary';
-import DashboardWidgetCustomizer from '@/components/DashboardWidgetCustomizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +18,9 @@ export default async function Dashboard() {
   let staleInstructions = 0;
   let staleTasks = 0;
   let sessionsNeedingAction = 0;
+  let prCIFailed = 0;
+  let prMergeConflict = 0;
+  let prStale = 0;
   let recentTasks: { id: string; title: string; status: string; riskLevel: string; environment: string; createdAt: Date }[] = [];
   let riskyDecisions: { id: string; taskId: string; taskTitle: string; recommendedAction: string; decisionReason: string | null; createdAt: Date }[] = [];
   let totalImportedPRs = 0;
@@ -57,6 +59,12 @@ export default async function Dashboard() {
     staleTasks = await prisma.task.count({
       where: { status: { notIn: ['completed', 'failed'] }, updatedAt: { lt: sevenDaysAgo } },
     });
+
+    [prCIFailed, prMergeConflict, prStale] = await Promise.all([
+      prisma.githubPR.count({ where: { ciStatus: 'failure' } }),
+      prisma.githubPR.count({ where: { state: 'open', ciStatus: 'error' } }),
+      prisma.githubPR.count({ where: { state: 'open', updatedAt: { lt: sevenDaysAgo } } }),
+    ]);
 
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     sessionsNeedingAction = await prisma.operatorSession.count({
@@ -116,13 +124,97 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <PageHeader
-          title="Dashboard"
-          subtitle="Governance overview for AI-assisted development"
-        />
-        <DashboardWidgetCustomizer />
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Overview of AI-assisted development"
+      />
+
+      {/* Demo data notice — shown when sample data is detected */}
+      {totalTasks === 1 && pendingApprovals > 0 && (
+        <div style={{
+          padding: '12px 16px',
+          borderRadius: 8,
+          background: 'rgba(59,130,246,0.06)',
+          border: '1px solid rgba(59,130,246,0.2)',
+          fontSize: 13,
+          color: 'var(--text-secondary)',
+          marginBottom: 16,
+        }}>
+          <strong style={{ color: 'var(--blue)' }}>Looks like you have sample data!</strong>
+          {' '}Follow these steps to explore:{' '}
+          <a href="/tasks" style={{ color: 'var(--blue)' }}>Open the task →</a>
+          {' · '}
+          <a href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review the AI suggestion →</a>
+          {' · '}
+          <a href="/audit" style={{ color: 'var(--blue)' }}>View the audit log →</a>
+        </div>
+      )}
+
+      {/* Getting Started — shown only when no tasks exist */}
+      {totalTasks === 0 && (
+        <div className="section">
+          <div className="card" style={{
+            background: 'var(--blue-bg, rgba(59,130,246,0.08))',
+            border: '1px solid var(--blue-border, rgba(59,130,246,0.25))',
+            borderBottom: '3px solid var(--blue, rgba(59,130,246,0.6))',
+          }}>
+            <div className="card-header" style={{ marginBottom: 12 }}>
+              <span className="card-title" style={{ fontSize: 16 }}>Welcome to Coder by DevAscend</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                {
+                  n: '1',
+                  title: 'Create a project',
+                  desc: 'Connect a GitHub repository so the tool can track pull requests.',
+                  href: '/projects/new',
+                  label: '→ New Project',
+                },
+                {
+                  n: '2',
+                  title: 'Create a task',
+                  desc: 'Describe what you want the AI to work on.',
+                  href: '/tasks/new',
+                  label: '→ New Task',
+                },
+                {
+                  n: '3',
+                  title: 'Review suggestions',
+                  desc: 'When the AI responds, approve or block its suggestion here.',
+                  href: '/instructions/pending',
+                  label: '→ Review Queue',
+                },
+                {
+                  n: '4',
+                  title: 'Import a pull request',
+                  desc: 'Once code is merged, import the GitHub PR here to see a code review summary.',
+                  href: '/projects',
+                  label: '→ Go to Projects',
+                },
+              ].map(({ n, title, desc, href, label }) => (
+                <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'var(--blue)', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 13, flexShrink: 0,
+                  }}>{n}</div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{title}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}> — {desc}</span>
+                  </div>
+                  <Link href={href} style={{ color: 'var(--blue)', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    {label}
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <p style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              New here? Run <code style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.06)', padding: '1px 4px', borderRadius: 3 }}>npm run seed:demo</code> in your terminal to create sample data you can explore right away.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* How it works */}
       <div className="section">
@@ -132,10 +224,10 @@ export default async function Dashboard() {
           </p>
           <div className="explainer-steps">
             {[
-              { n: '1', title: 'Create a task', desc: 'Define the work, agent tool, risk level, and environment.' },
-              { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt with stop conditions and validation steps.' },
-              { n: '3', title: 'Record the agent response', desc: 'Paste what the AI agent did — files, commands, and output.' },
-              { n: '4', title: 'Get a risk decision', desc: 'The console flags risk, checks evidence, and recommends the safe next step with a full audit trail.' },
+              { n: '1', title: 'Create a task', desc: 'Describe what you want the AI to do — choose a template or write your own instruction.' },
+              { n: '2', title: 'Generate a safe prompt', desc: 'Get a structured prompt you can paste into Claude, Codex, or any AI tool.' },
+              { n: '3', title: 'Record the AI response', desc: 'Paste what the AI did back here. The system checks it for risks before anything is approved.' },
+              { n: '4', title: 'Get a safety decision', desc: 'See a clear recommendation — safe to continue, needs review, or blocked — with a full audit trail.' },
             ].map(({ n, title, desc }) => (
               <div key={n} className="explainer-step">
                 <div className="explainer-step-num">{n}</div>
@@ -166,7 +258,7 @@ export default async function Dashboard() {
             </div>
           ))}
           <div className="stat-card">
-            <div className="stat-card-label">Pending Approvals</div>
+            <div className="stat-card-label">Review Queue</div>
             <div className="stat-card-value" style={{ color: pendingApprovals > 0 ? 'var(--amber)' : 'var(--text)' }}>
               {pendingApprovals}
             </div>
@@ -194,17 +286,17 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {/* Governance Health */}
+      {/* Review Health */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Governance Health</span>
+          <span className="section-title">Review Health</span>
           <span className={`badge ${healthWarning ? 'badge-warning' : 'badge-success'}`}>
             {healthWarning ? 'Needs attention' : 'All clear'}
           </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <HealthCard
-            label="Pending Approvals"
+            label="Review Queue"
             value={pendingInstructions}
             href="/instructions/pending"
             warn={pendingInstructions > 0}
@@ -212,7 +304,7 @@ export default async function Dashboard() {
             warnBorder="#fde68a"
           />
           <HealthCard
-            label="Blocked Instructions"
+            label="Blocked AI Suggestions"
             value={blockedInstructions}
             href="/tasks"
             warn={blockedInstructions > 0}
@@ -220,13 +312,13 @@ export default async function Dashboard() {
             warnBorder="#fca5a5"
           />
           <HealthCard
-            label="Stale Instructions (7d+)"
+            label="Stale AI Suggestions (7d+)"
             value={staleInstructions}
             href="/tasks"
             warn={staleInstructions > 0}
             warnColor="var(--purple)"
             warnBorder="#c4b5fd"
-            tooltip="Approved/executing instructions not updated in 7+ days"
+            tooltip="Approved/executing AI suggestions not updated in 7+ days"
           />
           <HealthCard
             label="Stale Tasks (7d+)"
@@ -238,18 +330,19 @@ export default async function Dashboard() {
             tooltip="Non-terminal tasks not updated in 7+ days"
           />
           <HealthCard
-            label="Sessions Needing Action"
-            value={sessionsNeedingAction}
-            href="/tasks"
-            warn={sessionsNeedingAction > 0}
+            label="AI Reviews Needing Action"
+            value={sessionsNeedingAction + pendingInstructions + prCIFailed + prMergeConflict + prStale}
+            href="/instructions/pending"
+            warn={sessionsNeedingAction > 0 || pendingInstructions > 0 || prCIFailed > 0 || prMergeConflict > 0 || prStale > 0}
             warnColor="var(--orange)"
             warnBorder="#fdba74"
-            tooltip="Operator sessions from last 48h with non-CONTINUE decision"
+            tooltip={`${pendingInstructions} suggestions + ${prCIFailed} CI failures + ${prMergeConflict} conflicts + ${prStale} stale PRs + ${sessionsNeedingAction} sessions`}
+            subLabel={`${pendingInstructions} suggestions · ${prCIFailed + prMergeConflict + prStale} PRs`}
           />
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
           <Link href="/audit" style={{ color: 'var(--blue)' }}>View audit log →</Link>
-          <Link href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review pending instructions →</Link>
+          <Link href="/instructions/pending" style={{ color: 'var(--blue)' }}>Review AI suggestions →</Link>
         </div>
       </div>
 
@@ -274,7 +367,7 @@ export default async function Dashboard() {
                   <th>Title</th>
                   <th>Status</th>
                   <th>Risk</th>
-                  <th>Env</th>
+                  <th>Environment</th>
                   <th>Created</th>
                 </tr>
               </thead>
@@ -332,17 +425,17 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* GitHub PR Evidence */}
+      {/* Recent Pull Requests */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Recent GitHub PR Evidence</span>
+          <span className="section-title">Recent Pull Requests</span>
           <Link href="/projects" style={{ fontSize: 12, color: 'var(--blue)' }}>View projects →</Link>
         </div>
         {recentGithubPRs.length === 0 ? (
           <EmptyState
             icon="⬟"
             title="No PRs imported yet"
-            description="Open a project and import a GitHub PR to see evidence here."
+            description="No pull requests imported yet. Open a project and import a GitHub pull request to track code reviews here."
             action={<Link href="/projects" className="btn btn-primary">Go to Projects</Link>}
           />
         ) : (
@@ -406,13 +499,13 @@ export default async function Dashboard() {
       {/* Recent runs */}
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Recent Agent Runs</span>
+          <span className="section-title">Recent AI Responses</span>
         </div>
         {recentRuns.length === 0 ? (
           <EmptyState
             icon="◎"
-            title="No agent runs recorded yet"
-            description="Run a prompt from a task detail page to record agent runs and evaluation results here."
+            title="No AI responses recorded yet"
+            description="Run a prompt from a task detail page to record AI responses and evaluation results here."
           />
         ) : (
           <div className="table-wrap">
@@ -456,10 +549,10 @@ export default async function Dashboard() {
 }
 
 function HealthCard({
-  label, value, href, warn, warnColor, warnBorder, tooltip,
+  label, value, href, warn, warnColor, warnBorder, tooltip, subLabel,
 }: {
   label: string; value: number; href: string;
-  warn: boolean; warnColor: string; warnBorder: string; tooltip?: string;
+  warn: boolean; warnColor: string; warnBorder: string; tooltip?: string; subLabel?: string;
 }) {
   return (
     <Link
@@ -472,6 +565,9 @@ function HealthCard({
       <div className="health-card-value" style={{ color: warn ? warnColor : 'var(--text)' }}>
         {value}
       </div>
+      {subLabel && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{subLabel}</div>
+      )}
     </Link>
   );
 }

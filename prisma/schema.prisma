@@ -10,15 +10,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
+  id            String     @id @default(uuid())
+  email         String     @unique
   name          String?
   passwordHash  String?
+  role          String     @default("admin")  // "admin" | "reviewer"
   approvals     Approval[]
   auditLogs     AuditLog[]
-  assignedTasks Task[]    @relation("TaskAssignee")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  assignedTasks Task[]     @relation("TaskAssignee")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 model Project {
@@ -34,19 +35,6 @@ model Project {
   ciRuns        CiRun[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-}
-
-model Milestone {
-  id          String    @id @default(uuid())
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
-  title       String
-  description String?
-  dueDate     DateTime?
-  status      String    @default("open") // "open", "closed"
-  tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
 }
 
 model Task {
@@ -76,6 +64,19 @@ model Task {
   updatedAt         DateTime           @updatedAt
 }
 
+model Milestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  targetDate  DateTime?
+  status      String    @default("open") // "open" | "completed"
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model PromptTemplate {
   id        String   @id @default(uuid())
   name      String
@@ -84,10 +85,23 @@ model PromptTemplate {
   updatedAt DateTime @updatedAt
 }
 
+model AgentProvider {
+  id        String     @id @default(uuid())
+  name      String     // "mock", "claude-code", "codex", "open-swe"
+  type      String     // "mock" | "claude" | "codex" | "open-swe"
+  enabled   Boolean    @default(false) // all disabled by default
+  config    Json?      // non-secret config only (model name, endpoint, etc.)
+  agentRuns AgentRun[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
 model AgentRun {
-  id               String       @id @default(uuid())
+  id               String         @id @default(uuid())
   taskId           String
-  task             Task         @relation(fields: [taskId], references: [id])
+  task             Task           @relation(fields: [taskId], references: [id])
+  providerId       String?
+  provider         AgentProvider? @relation(fields: [providerId], references: [id])
   generatedPrompt  String
   selectedTool     String
   response         String?
@@ -95,19 +109,32 @@ model AgentRun {
   commandsRun      String?
   testResult       String?
   commitHash       String?
-  status           String       @default("pending") // "pending", "running", "succeeded", "failed"
-  startedAt        DateTime     @default(now())
+  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled
+  status           String         @default("pending") // "pending", "running", "succeeded", "failed"
+  startedAt        DateTime       @default(now())
   endedAt          DateTime?
   // Agent Role System (PR 1.1) — all nullable/defaulted, additive only
   roleKey          String?
   modelUsed        String?
-  structuredOutput String?      @db.Text
+  structuredOutput String?        @db.Text
   riskScore        Float?
-  promptTokens     Int?         @default(0)
-  completionTokens Int?         @default(0)
-  cachedTokens     Int?         @default(0)
+  promptTokens     Int?           @default(0)
+  completionTokens Int?           @default(0)
+  cachedTokens     Int?           @default(0)
   evaluations      Evaluation[]
   audits           AuditLog[]
+  steps            AgentStep[]
+}
+
+model AgentStep {
+  id         String   @id @default(uuid())
+  agentRunId String
+  agentRun   AgentRun @relation(fields: [agentRunId], references: [id])
+  stepIndex  Int
+  type       String   // "prompt", "tool_call", "tool_result", "text", "error"
+  content    String
+  metadata   Json?
+  createdAt  DateTime @default(now())
 }
 
 model Evaluation {
@@ -249,6 +276,29 @@ model CiRun {
 
   @@index([projectId])
 }
+
+model ActiveSession {
+  id        String    @id @default(uuid())
+  sessionId String    @unique
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   // "approval_needed" | "run_completed" | "run_failed" | "session_revoked"
+  title      String
+  body       String?
+  read       Boolean  @default(false)
+  taskId     String?
+  agentRunId String?
+  createdAt  DateTime @default(now())
+}
+
+
 model GithubPR {
   id                String    @id @default(uuid())
   projectId         String

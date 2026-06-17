@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
 const VALID_AGENT_TOOLS = ['open-swe', 'claude-code-manual', 'codex-manual', 'openclaw-manual'];
+const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
 // GET /api/tasks – return a list of tasks in descending creation order.
 export async function GET() {
@@ -22,8 +26,14 @@ export async function GET() {
 // Task model fields (except id, status and timestamps).  Returns the
 // created task.
 export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'admin');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   const data = await request.json();
-  const { title, instruction, projectId, agentTool, riskLevel, environment, approvalRequired } = data;
+  const { title, instruction, projectId, agentTool, riskLevel, environment, approvalRequired, priority, dueDate, milestoneId } = data;
 
   const errors: string[] = [];
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
@@ -47,6 +57,15 @@ export async function POST(request: Request) {
   }
   if (typeof approvalRequired !== 'boolean') {
     errors.push('approvalRequired must be a boolean');
+  }
+  if (priority !== undefined && !VALID_PRIORITIES.includes(priority)) {
+    errors.push(`priority must be one of: ${VALID_PRIORITIES.join(', ')}`);
+  }
+  if (dueDate !== undefined && dueDate !== null) {
+    const parsed = new Date(dueDate);
+    if (isNaN(parsed.getTime())) {
+      errors.push('dueDate must be a valid ISO date string');
+    }
   }
   if (errors.length > 0) {
     return new NextResponse(JSON.stringify({ error: errors.join('; ') }), { status: 422 });
@@ -79,14 +98,16 @@ export async function POST(request: Request) {
         riskLevel,
         environment,
         approvalRequired,
+        ...(priority !== undefined ? { priority } : {}),
+        ...(dueDate !== undefined && dueDate !== null ? { dueDate: new Date(dueDate) } : {}),
+        ...(milestoneId !== undefined && milestoneId !== null ? { milestoneId } : {}),
       },
     });
-    await prisma.auditLog.create({
-      data: {
-        taskId: task.id,
-        event: 'task_created',
-        details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
-      },
+    await writeAudit({
+      taskId: task.id,
+      event: 'task_created',
+      details: JSON.stringify({ agentTool, riskLevel, environment, approvalRequired, at: new Date().toISOString() }),
+      userId: currentUser?.userId ?? null,
     });
     return NextResponse.json(task, { status: 201 });
   } catch (err) {

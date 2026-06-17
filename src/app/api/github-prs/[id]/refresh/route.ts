@@ -1,10 +1,59 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchGithubPR, resolveGithubCoords, userSafeErrorMessage } from '@/lib/githubClient';
+import { writeAudit } from '@/lib/audit';
 
 interface RouteContext {
   params: { id: string };
 }
+
+export type RefreshErrorCode =
+  | 'RATE_LIMITED'
+  | 'NOT_FOUND'
+  | 'AUTH_ERROR'
+  | 'NETWORK_ERROR'
+  | 'PARSE_ERROR'
+  | 'UNKNOWN';
+
+export interface RefreshSuccessResponse {
+  ok: true;
+  pr: {
+    id: string;
+    title: string;
+    state: string;
+    ciStatus: string | null;
+    updatedAt: string;
+  };
+}
+
+export interface RefreshErrorResponse {
+  ok: false;
+  error: string;
+  code: RefreshErrorCode;
+}
+
+export type RefreshResponse = RefreshSuccessResponse | RefreshErrorResponse;
+
+/** Map GithubClientError codes to our public RefreshErrorCode. */
+function toRefreshErrorCode(githubCode: string): RefreshErrorCode {
+  switch (githubCode) {
+    case 'RATE_LIMITED':   return 'RATE_LIMITED';
+    case 'NOT_FOUND':      return 'NOT_FOUND';
+    case 'AUTH_REQUIRED':  return 'AUTH_ERROR';
+    case 'NETWORK_ERROR':  return 'NETWORK_ERROR';
+    case 'PARSE_ERROR':    return 'PARSE_ERROR';
+    default:               return 'UNKNOWN';
+  }
+}
+
+const HTTP_STATUS_MAP: Partial<Record<RefreshErrorCode, number>> = {
+  NOT_FOUND:    404,
+  RATE_LIMITED: 429,
+  AUTH_ERROR:   401,
+  NETWORK_ERROR: 502,
+  PARSE_ERROR:   502,
+  UNKNOWN:       500,
+};
 
 // POST /api/github-prs/[id]/refresh — re-fetch PR metadata from GitHub and update stored record
 export async function POST(_request: Request, { params }: RouteContext) {
@@ -25,11 +74,17 @@ export async function POST(_request: Request, { params }: RouteContext) {
       },
     });
   } catch {
-    return NextResponse.json({ error: 'Failed to look up PR record' }, { status: 500 });
+    const body: RefreshErrorResponse = {
+      ok: false,
+      error: 'Failed to look up PR record',
+      code: 'UNKNOWN',
+    };
+    return NextResponse.json(body, { status: 500 });
   }
 
   if (!pr) {
-    return NextResponse.json({ error: 'PR not found' }, { status: 404 });
+    const body: RefreshErrorResponse = { ok: false, error: 'PR not found', code: 'NOT_FOUND' };
+    return NextResponse.json(body, { status: 404 });
   }
 
   const coords = resolveGithubCoords(
@@ -40,10 +95,12 @@ export async function POST(_request: Request, { params }: RouteContext) {
   );
 
   if (!coords) {
-    return NextResponse.json(
-      { error: 'Cannot determine GitHub repository for this PR. Set repoOwner and repoName on the project.' },
-      { status: 422 },
-    );
+    const body: RefreshErrorResponse = {
+      ok: false,
+      error: 'Cannot determine GitHub repository for this PR. Set repoOwner and repoName on the project.',
+      code: 'UNKNOWN',
+    };
+    return NextResponse.json(body, { status: 422 });
   }
 
   // Fetch latest data from GitHub — token server-side only, never returned to client
@@ -51,17 +108,13 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const result = await fetchGithubPR(coords.owner, coords.repo, coords.prNumber, token);
 
   if (!result.ok) {
-    const statusMap: Record<string, number> = {
-      NOT_FOUND: 404,
-      RATE_LIMITED: 429,
-      AUTH_REQUIRED: 401,
-      NETWORK_ERROR: 502,
-      PARSE_ERROR: 502,
+    const code = toRefreshErrorCode(result.error.code);
+    const body: RefreshErrorResponse = {
+      ok: false,
+      error: userSafeErrorMessage(result.error.code),
+      code,
     };
-    return NextResponse.json(
-      { error: userSafeErrorMessage(result.error.code), code: result.error.code },
-      { status: statusMap[result.error.code] ?? 502 },
-    );
+    return NextResponse.json(body, { status: HTTP_STATUS_MAP[code] ?? 502 });
   }
 
   const d = result.data;
@@ -88,24 +141,38 @@ export async function POST(_request: Request, { params }: RouteContext) {
       },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        event: 'github_pr_refreshed',
-        details: JSON.stringify({
-          prId: id,
-          projectId: pr.projectId,
-          prNumber: d.prNumber,
-          owner: coords.owner,
-          repo: coords.repo,
-          newState: d.state,
-          newCiStatus: d.ciStatus,
-          refreshedAt: updated.updatedAt.toISOString(),
-        }),
-      },
+    await writeAudit({
+      event: 'github_pr_refreshed',
+      details: JSON.stringify({
+        prId: id,
+        projectId: pr.projectId,
+        prNumber: d.prNumber,
+        owner: coords.owner,
+        repo: coords.repo,
+        newState: d.state,
+        newCiStatus: d.ciStatus,
+        refreshedAt: updated.updatedAt.toISOString(),
+      }),
+      userId: null,
     });
 
-    return NextResponse.json({ pr: updated, refreshedAt: updated.updatedAt });
+    const body: RefreshSuccessResponse = {
+      ok: true,
+      pr: {
+        id: updated.id,
+        title: updated.title,
+        state: updated.state,
+        ciStatus: updated.ciStatus,
+        updatedAt: updated.updatedAt.toISOString(),
+      },
+    };
+    return NextResponse.json(body);
   } catch {
-    return NextResponse.json({ error: 'Failed to save refreshed PR data' }, { status: 500 });
+    const body: RefreshErrorResponse = {
+      ok: false,
+      error: 'Failed to save refreshed PR data',
+      code: 'UNKNOWN',
+    };
+    return NextResponse.json(body, { status: 500 });
   }
 }

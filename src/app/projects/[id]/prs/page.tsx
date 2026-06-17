@@ -4,8 +4,12 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
 import { buildPRFilters, normaliseStateFilter, normaliseCIFilter } from '@/lib/prFilters';
 import { computeCISummary } from '@/lib/projectHealth';
+import DiscoverPRsButton from '@/components/DiscoverPRsButton';
 
 export const dynamic = 'force-dynamic';
+
+/** PRs open for longer than this without a refresh are considered stale. */
+const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 interface PageProps {
   params: { id: string };
@@ -82,7 +86,7 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
   return (
     <div>
       <PageHeader
-        title="PR Evidence"
+        title="Pull Request History"
         subtitle={
           <Link href={`/projects/${params.id}`} style={{ fontSize: 12, color: 'var(--blue)' }}>
             ← {project.name}
@@ -93,9 +97,12 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
         }
         actions={
           repoUrl ? (
-            <Link href={`/projects/${params.id}/prs/import`} className="btn btn-primary btn-sm">
-              + Import PR
-            </Link>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <DiscoverPRsButton projectId={params.id} />
+              <Link href={`/projects/${params.id}/prs/import`} className="btn btn-primary btn-sm">
+                + Import PR
+              </Link>
+            </div>
           ) : undefined
         }
       />
@@ -194,7 +201,7 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
           <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '24px 0' }}>
             {activeFilters
               ? 'No PRs match the current filters.'
-              : 'No PRs imported yet. Use "+ Import PR" to fetch evidence from a GitHub PR URL.'}
+              : 'No pull requests imported yet. Use "+ Import PR" to add a GitHub pull request.'}
           </div>
         ) : (
           <div className="table-wrap">
@@ -214,6 +221,9 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                 {prs.map((pr) => {
                   const summary = summarisePR(pr.title, pr.body ?? null);
                   const lastRefreshed = pr.updatedAt > pr.importedAt ? pr.updatedAt : pr.importedAt;
+                  const isStale =
+                    pr.state === 'open' &&
+                    Date.now() - lastRefreshed.getTime() > STALE_THRESHOLD_MS;
                   return (
                     <tr key={pr.id}>
                       <td>
@@ -225,12 +235,23 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                         </Link>
                       </td>
                       <td style={{ maxWidth: 300 }}>
-                        <Link
-                          href={`/projects/${params.id}/prs/${pr.id}`}
-                          style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}
-                        >
-                          {pr.title.length > 72 ? pr.title.slice(0, 72) + '…' : pr.title}
-                        </Link>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Link
+                            href={`/projects/${params.id}/prs/${pr.id}`}
+                            style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}
+                          >
+                            {pr.title.length > 72 ? pr.title.slice(0, 72) + '…' : pr.title}
+                          </Link>
+                          {isStale && (
+                            <span
+                              className="badge badge-warning"
+                              style={{ fontSize: 10, whiteSpace: 'nowrap' }}
+                              title="This open PR has not been refreshed in over 2 hours"
+                            >
+                              ⚠ Stale
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <span className={`badge badge-${pr.merged ? 'success' : pr.state === 'open' ? 'pending_approval' : 'neutral'}`}>

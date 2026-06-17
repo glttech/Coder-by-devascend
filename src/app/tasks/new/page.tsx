@@ -136,9 +136,12 @@ export default function NewTaskPage() {
   const [riskLevel, setRiskLevel] = useState('low');
   const [environment, setEnvironment] = useState('dev');
   const [approvalRequired, setApprovalRequired] = useState(false);
+  const [priority, setPriority] = useState('medium');
+  const [dueDate, setDueDate] = useState('');
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   function applyPreset(preset: Preset) {
     setActivePreset(preset.id);
@@ -160,13 +163,15 @@ export default function NewTaskPage() {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, instruction, agentTool, riskLevel, environment, approvalRequired }),
+        body: JSON.stringify({ title, instruction, agentTool, riskLevel, environment, approvalRequired, priority, dueDate: dueDate || undefined }),
       });
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || 'Failed to create task');
       }
       const task = await res.json();
+      setSuccess('✓ Task created! Loading...');
+      await new Promise(r => setTimeout(r, 600));
       router.push(`/tasks/${task.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
@@ -181,7 +186,7 @@ export default function NewTaskPage() {
         <div className="page-header-row">
           <div>
             <h1 className="page-title">New Task</h1>
-            <p className="page-subtitle">Define the work unit, agent tool, and risk parameters</p>
+            <p className="page-subtitle">Describe what you want the AI to work on</p>
           </div>
         </div>
       </div>
@@ -229,7 +234,7 @@ export default function NewTaskPage() {
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label" htmlFor="instruction">
-              Raw Instruction
+              Task Description
               <span style={{ color: 'var(--red)', marginLeft: 3 }}>*</span>
             </label>
             <textarea
@@ -240,16 +245,16 @@ export default function NewTaskPage() {
               rows={8}
               placeholder="Describe exactly what the agent should do. Be precise about scope, constraints, and expected output."
             />
-            <div className="form-hint">This becomes the Objective section of the generated prompt.</div>
+            <div className="form-hint">Describe exactly what you want the AI to do — what to change, create, or fix.</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label" htmlFor="agentTool">Agent / Tool</label>
+              <label className="form-label" htmlFor="agentTool">AI Tool</label>
               <select id="agentTool" value={agentTool} onChange={(e) => setAgentTool(e.target.value)}>
-                <option value="claude-code-manual">Claude Code (manual)</option>
-                <option value="codex-manual">Codex (manual)</option>
-                <option value="openclaw-manual">OpenClaw (manual)</option>
+                <option value="claude-code-manual">Claude Code</option>
+                <option value="codex-manual">Codex</option>
+                <option value="openclaw-manual">OpenClaw</option>
                 <option value="open-swe">Open SWE</option>
               </select>
             </div>
@@ -285,9 +290,55 @@ export default function NewTaskPage() {
             </label>
           </div>
 
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="priority">Priority</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  background: priority === 'critical' ? 'var(--red, #ef4444)' :
+                    priority === 'high' ? 'var(--orange, #f97316)' :
+                    priority === 'medium' ? 'var(--amber, #f59e0b)' : 'var(--green, #22c55e)',
+                }} />
+                <select id="priority" value={priority} onChange={(e) => setPriority(e.target.value)} style={{ flex: 1 }}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 140 }}>
+              <label className="form-label" htmlFor="dueDate">Due Date <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <input
+                id="dueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+          </div>
+
           {error && (
             <div style={{ background: 'var(--red-bg)', color: 'var(--red-text)', borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 13 }}>
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.3)',
+              color: '#16a34a',
+              fontSize: 13,
+              fontWeight: 500,
+            }}>
+              {success}
             </div>
           )}
 

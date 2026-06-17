@@ -152,12 +152,12 @@ export function computeReleaseReadiness(
     signal = 'caution';
     const parts: string[] = [];
     if (h.highRiskCount === 1) parts.push('1 high-risk PR');
-    if (h.staleCount > 0) parts.push(`${h.staleCount} stale evidence item${h.staleCount > 1 ? 's' : ''}`);
+    if (h.staleCount > 0) parts.push(`${h.staleCount} stale PR${h.staleCount > 1 ? 's' : ''}`);
     if (h.pendingCICount > 0) parts.push(`${h.pendingCICount} pending CI result${h.pendingCICount > 1 ? 's' : ''}`);
     suggestedAction = `Review ${parts.join(', ')} before releasing.`;
   } else {
     signal = 'ready';
-    suggestedAction = 'All evidence checks clear — safe to release.';
+    suggestedAction = 'All checks clear — safe to release.';
   }
 
   const recentMergedPRs = prs

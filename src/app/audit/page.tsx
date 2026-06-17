@@ -6,12 +6,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 export const dynamic = 'force-dynamic';
 
 const EVENT_LABELS: Record<string, string> = {
-  instruction_created:          'Instruction Created',
+  instruction_created:          'AI Suggestion Created',
   instruction_status_changed:   'Status Changed',
-  operator_session_created:     'Session Submitted',
-  operator_session_updated:     'Session Updated',
+  operator_session_created:     'AI Session Submitted',
+  operator_session_updated:     'AI Session Updated',
   task_created:                 'Task Created',
-  agent_run_created:            'Agent Run Recorded',
+  agent_run_created:            'AI Response Recorded',
   task_approval_decided:        'Approval Decided',
   task_status_changed:          'Task Status Changed',
 };
@@ -162,11 +162,11 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
 
       {logs.length === 0 ? (
         <EmptyState
-          icon="◎"
-          title="No audit entries"
+          icon="🔍"
+          title={hasFilter ? 'No matching activity' : 'No activity yet'}
           description={hasFilter
             ? 'No entries match the current filters.'
-            : 'Audit entries are recorded automatically when instructions are created, status-changed, or operator sessions are submitted.'}
+            : 'Every action in the system is recorded here — task creation, approvals, AI responses, and more.'}
           action={hasFilter ? <Link href="/audit" className="btn btn-ghost btn-sm">Clear filters</Link> : undefined}
         />
       ) : (
@@ -177,7 +177,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
                 <th style={{ width: 90 }}>When</th>
                 <th style={{ width: 160 }}>Event</th>
                 <th>Task</th>
-                <th>Instruction</th>
+                <th>AI Suggestion</th>
                 <th>Details</th>
               </tr>
             </thead>

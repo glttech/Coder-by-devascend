@@ -34,4 +34,6 @@ out
 
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
+
+# Claude Code agent working directories
 .claude/

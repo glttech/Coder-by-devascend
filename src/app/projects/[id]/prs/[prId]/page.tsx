@@ -12,10 +12,10 @@ interface PageProps {
 }
 
 const QUALITY_STYLES: Record<string, { color: string; label: string }> = {
-  strong:   { color: 'var(--green)',  label: 'Strong evidence' },
-  adequate: { color: 'var(--blue)',   label: 'Adequate evidence' },
-  weak:     { color: 'var(--amber)',  label: 'Weak evidence' },
-  missing:  { color: 'var(--red)',    label: 'Missing evidence' },
+  strong:   { color: 'var(--green)',  label: 'Strong' },
+  adequate: { color: 'var(--blue)',   label: 'Adequate' },
+  weak:     { color: 'var(--amber)',  label: 'Weak' },
+  missing:  { color: 'var(--red)',    label: 'Incomplete' },
 };
 
 const RISK_COLORS: Record<string, string> = {
@@ -171,16 +171,16 @@ export default async function PRDetailPage({ params }: PageProps) {
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>
-                  Evidence Quality
+                  Review Quality
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: qs.color }}>{summary.evidenceQuality}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: qs.color }}>{qs.label}</div>
               </div>
             </div>
 
             {summary.validationEvidence.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--green)', marginBottom: 6 }}>
-                  Validation Evidence ✓
+                  Validation Checks ✓
                 </div>
                 <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {summary.validationEvidence.map((e) => <li key={e}>{e}</li>)}

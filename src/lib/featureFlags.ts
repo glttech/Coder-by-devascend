@@ -1,6 +1,24 @@
-export const featureFlags = {
-  billingEnabled: process.env.FEATURE_BILLING === 'true',
-  sandboxMode: process.env.FEATURE_SANDBOX_MODE === 'true',
-  structuredLoggingEnabled: process.env.STRUCTURED_LOGGING === 'true',
-  agentLlmEnabled: process.env.FEATURE_AGENT_LLM === 'true',
-};
+type Env = Record<string, string | undefined>;
+
+export interface FeatureFlags {
+  billingEnabled: boolean;
+  sandboxMode: boolean;
+  structuredLoggingEnabled: boolean;
+  agentLlmEnabled: boolean;
+  orchestrationEnabled: boolean;
+  notificationsEnabled: boolean;
+}
+
+export function getFeatureFlags(env: Env = process.env): FeatureFlags {
+  return {
+    billingEnabled: env.FEATURE_BILLING === 'true',
+    sandboxMode: env.FEATURE_SANDBOX_MODE === 'true',
+    structuredLoggingEnabled: env.STRUCTURED_LOGGING === 'true',
+    agentLlmEnabled: env.FEATURE_AGENT_LLM === 'true',
+    orchestrationEnabled: env.ORCHESTRATION_ENABLED === 'true',
+    notificationsEnabled: env.NOTIFICATIONS_ENABLED === 'true',
+  };
+}
+
+/** Singleton using process.env. Prefer getFeatureFlags() in tests. */
+export const featureFlags = getFeatureFlags();

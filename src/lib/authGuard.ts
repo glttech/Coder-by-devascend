@@ -1,7 +1,7 @@
 import type { AuthMode } from './session.js';
 
 const PUBLIC_EXACT = new Set(['/login', '/favicon.ico']);
-const PUBLIC_PREFIXES = ['/_next/', '/api/auth/', '/share/'];
+const PUBLIC_PREFIXES = ['/_next/', '/api/auth/'];
 
 /** Returns true for paths that never require authentication. */
 export function isPublicPath(pathname: string): boolean {

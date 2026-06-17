@@ -5,6 +5,7 @@
  * Without a token, the public GitHub API allows 60 req/hour per IP.
  * With a token, the limit is 5000 req/hour.
  */
+import { retryFetch } from './retryFetch';
 
 export interface GithubPRData {
   prNumber: number;
@@ -144,10 +145,10 @@ export async function fetchGithubPR(
 ): Promise<GithubPRResult> {
   const headers = buildHeaders(token);
 
-  // Fetch PR metadata
+  // Fetch PR metadata — retries on transient errors (5xx, 429, network)
   let prJson: Record<string, unknown>;
   try {
-    const prRes = await fetch(
+    const prRes = await retryFetch(
       `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
       { headers },
     );

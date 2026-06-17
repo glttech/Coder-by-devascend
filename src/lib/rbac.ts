@@ -1,34 +1,45 @@
-/**
- * RBAC helpers for route handlers.
- *
- * The app currently has a single-admin model: if auth is disabled the request
- * is always permitted; if auth is enabled the user must be logged in.
- *
- * `requireRole` accepts a role string for forward-compatibility but currently
- * treats any authenticated session (role 'any' or 'admin') as sufficient.
- */
+import type { AppSession } from './session.js';
 
-export type RoleCheckResult =
-  | { ok: true }
-  | { ok: false; status: 401 | 403; message: string };
+export type RequiredRole = 'admin' | 'reviewer' | 'any';
+
+/** Minimal shape required by the role guard — compatible with both AppSession and CurrentUser. */
+type UserLike = { role: string };
 
 /**
- * Returns { ok: true } when the caller has the required role.
+ * Role guard for API Route Handlers.
  *
- * @param user  - result from getCurrentUser(); null means unauthenticated
- * @param role  - 'any' | 'admin' | 'reviewer' | 'viewer'
+ * Returns { ok: true, user } when the caller is authorised, or
+ * { ok: false, status, message } with the appropriate HTTP status otherwise:
+ *   - 401 when no session exists (unauthenticated)
+ *   - 403 when the user's role does not satisfy the required role
  */
 export function requireRole(
-  user: { id: string; role?: string } | null,
-  role: string,
-): RoleCheckResult {
-  if (!user) {
-    return { ok: false, status: 401, message: 'Unauthorized' };
+  user: AppSession | UserLike | null,
+  role: RequiredRole,
+): { ok: true; user: AppSession | UserLike } | { ok: false; status: 401 | 403; message: string } {
+  if (user === null) {
+    return { ok: false, status: 401, message: 'Unauthenticated' };
   }
-  // Single-admin model: authenticated user satisfies any role requirement.
-  // When multi-role support lands, extend this comparison.
-  if (role === 'admin' && user.role && user.role !== 'admin') {
-    return { ok: false, status: 403, message: 'Forbidden' };
+  if (role === 'admin' && user.role !== 'admin') {
+    return { ok: false, status: 403, message: 'Forbidden — admin role required' };
   }
-  return { ok: true };
+  if (role === 'reviewer' && user.role !== 'admin' && user.role !== 'reviewer') {
+    return { ok: false, status: 403, message: 'Forbidden — reviewer role required' };
+  }
+  return { ok: true, user };
+}
+
+/** Returns true only when the user may approve tasks (admin only). */
+export function canApprove(user: AppSession | UserLike | null): boolean {
+  return user?.role === 'admin';
+}
+
+/** Returns true only when the user may manage projects (admin only). */
+export function canManageProjects(user: AppSession | UserLike | null): boolean {
+  return user?.role === 'admin';
+}
+
+/** Returns true when the user may view tasks (admin or reviewer). */
+export function canViewTasks(user: AppSession | UserLike | null): boolean {
+  return user?.role === 'admin' || user?.role === 'reviewer';
 }

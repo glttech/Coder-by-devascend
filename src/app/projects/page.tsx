@@ -25,10 +25,10 @@ export default async function ProjectsPage() {
 
       {projects.length === 0 ? (
         <EmptyState
-          icon="⬟"
+          icon="📋"
           title="No projects yet"
-          description="Projects connect your GitHub repos to tasks and agent runs. Create one to start tracking PR evidence and governance status."
-          action={<Link href="/projects/new" className="btn btn-primary">Create first project</Link>}
+          description="A project connects to a GitHub repository. Create one to start tracking AI suggestions and pull requests."
+          action={<Link href="/projects/new" className="btn btn-primary">Create your first project</Link>}
         />
       ) : (
         <div className="table-wrap">

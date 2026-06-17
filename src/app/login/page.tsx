@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 function isSafeNext(next: string | null): boolean {
@@ -13,10 +13,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const next = params?.get('next') ?? null;
   const redirectTo = isSafeNext(next) ? next! : '/';
+
+  // Redirect already-authenticated users away from the login page.
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data: { authenticated?: boolean }) => {
+        if (data.authenticated) {
+          router.replace(redirectTo);
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => setChecking(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,11 +57,19 @@ export default function LoginPage() {
     }
   }
 
+  if (checking) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-1)' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--surface-1)' }}>
       <div className="card" style={{ width: '100%', maxWidth: 400 }}>
         <h1 className="page-title" style={{ marginBottom: 4 }}>Sign in</h1>
-        <p className="page-subtitle" style={{ marginBottom: 24 }}>Coder by DevAscend governance console</p>
+        <p className="page-subtitle" style={{ marginBottom: 24 }}>Coder by DevAscend — Internal Tool</p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -84,18 +108,6 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>— or —</div>
-          <a href="/api/auth/github" className="btn btn-ghost btn-sm" style={{ width: '100%', display: 'block', textAlign: 'center' }}>
-            Sign in with GitHub
-          </a>
-        </div>
-
-        <p style={{ marginTop: 20, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-          Don&apos;t have an account?{' '}
-          <a href="/register" style={{ color: 'var(--accent)' }}>Register</a>
-        </p>
       </div>
     </div>
   );

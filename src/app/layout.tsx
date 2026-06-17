@@ -1,32 +1,20 @@
 import './globals.css';
 import type { ReactNode } from 'react';
-import SidebarNav from '@/components/SidebarNav';
-import SkipToContent from '@/components/SkipToContent';
-import MobileSidebar from '@/components/MobileSidebar';
+import AppShell from '@/components/AppShell';
+import MobileNav from '@/components/MobileNav';
 import ThemeScript from '@/components/ThemeScript';
+import { getFeatureFlags } from '@/lib/featureFlags';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const { notificationsEnabled } = getFeatureFlags();
   return (
     <html lang="en">
       <head>
         <ThemeScript />
       </head>
       <body>
-        <SkipToContent />
-        <div className="app-shell">
-          <aside className="sidebar">
-            <div className="sidebar-brand">
-              <MobileSidebar />
-              <div className="sidebar-brand-name">AI Dev Orchestrator</div>
-              <div className="sidebar-brand-label">Governance Console</div>
-            </div>
-            <SidebarNav />
-            <div className="sidebar-footer">v0.1.0 · Internal</div>
-          </aside>
-          <div className="main-area">
-            <main id="main-content" role="main" className="main-content">{children}</main>
-          </div>
-        </div>
+        <AppShell notificationsEnabled={notificationsEnabled}>{children}</AppShell>
+        <MobileNav />
       </body>
     </html>
   );

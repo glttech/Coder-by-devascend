@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { RiskBadge, EnvBadge } from '@/components/ui/Badge';
-import BulkTaskActions from '@/components/BulkTaskActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,35 +47,36 @@ export default async function TaskList() {
           ) : undefined
         }
         actions={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <a href="/api/tasks/export" className="btn btn-ghost btn-sm">Export CSV</a>
-            <Link href="/tasks/new" className="btn btn-primary">
-              + New Task
-            </Link>
-          </div>
+          <Link href="/tasks/new" className="btn btn-primary">
+            + New Task
+          </Link>
         }
       />
 
       {tasks.length === 0 ? (
         <EmptyState
-          icon="◈"
+          icon="✅"
           title="No tasks yet"
-          description="Tasks represent units of AI-assisted development work. Create your first task to begin generating prompts and tracking agent runs."
-          action={<Link href="/tasks/new" className="btn btn-primary">Create first task</Link>}
+          description="Tasks describe what you want the AI to help with. Create a task, generate a prompt, and review the AI's suggestion before approving it."
+          action={<Link href="/tasks/new" className="btn btn-primary">Create your first task</Link>}
         />
       ) : (
         <>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+          Risk levels: Low · Medium · High — hover for details
+        </p>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th className="col-hide-mobile">ID</th>
                 <th>Title</th>
                 <th>Status</th>
-                <th>Risk</th>
-                <th>Env</th>
-                <th>Agent</th>
-                <th>Last activity</th>
+                <th className="col-hide-mobile">Priority</th>
+                <th className="col-hide-mobile">Risk</th>
+                <th className="col-hide-mobile">Environment</th>
+                <th className="col-hide-mobile">Agent</th>
+                <th className="col-hide-mobile">Last activity</th>
                 <th>Pending</th>
               </tr>
             </thead>
@@ -85,7 +85,7 @@ export default async function TaskList() {
                 const stale = !TERMINAL_STATUSES.has(task.status) && task.updatedAt < sevenDaysAgo;
                 return (
                   <tr key={task.id} style={stale ? { background: 'var(--amber-bg, rgba(251,191,36,0.05))' } : undefined}>
-                    <td>
+                    <td className="col-hide-mobile">
                       <Link href={`/tasks/${task.id}`} style={{ color: 'var(--blue)', fontFamily: 'monospace', fontSize: 11 }}>
                         {task.id.slice(0, 8)}
                       </Link>
@@ -96,10 +96,24 @@ export default async function TaskList() {
                       </Link>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{task.status}</td>
-                    <td><RiskBadge level={task.riskLevel} /></td>
-                    <td><EnvBadge env={task.environment} /></td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
-                    <td style={{ fontSize: 12 }}>
+                    <td className="col-hide-mobile">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <span style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          background: task.priority === 'critical' ? 'var(--red, #ef4444)' :
+                            task.priority === 'high' ? '#f97316' :
+                            task.priority === 'medium' ? 'var(--amber, #f59e0b)' : 'var(--green, #22c55e)',
+                        }} />
+                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                      </span>
+                    </td>
+                    <td className="col-hide-mobile"><RiskBadge level={task.riskLevel} /></td>
+                    <td className="col-hide-mobile"><EnvBadge env={task.environment} /></td>
+                    <td className="col-hide-mobile" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{task.agentTool}</td>
+                    <td className="col-hide-mobile" style={{ fontSize: 12 }}>
                       <span style={{ color: stale ? 'var(--amber)' : 'var(--text-muted)' }}>
                         {relativeTime(task.updatedAt)}
                       </span>
@@ -125,11 +139,6 @@ export default async function TaskList() {
               })}
             </tbody>
           </table>
-        </div>
-
-        <div style={{ marginTop: 32 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Bulk Operations</h2>
-          <BulkTaskActions tasks={tasks.map(t => ({ id: t.id, title: t.title, status: t.status }))} />
         </div>
         </>
       )}

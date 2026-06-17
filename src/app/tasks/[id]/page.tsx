@@ -74,6 +74,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
     }
   });
 
+
   const approverId = task.approval?.approverId;
   const approver = approverId
     ? await prisma.user.findUnique({
@@ -209,6 +210,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
         </div>
       )}
 
+
       {/* Metadata */}
       <div className="section">
         <Card>
@@ -289,6 +291,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
             taskId={task.id}
             approvalRequired={task.approvalRequired}
             approved={task.approval?.approved}
+            approverName={approver?.name ?? approver?.email ?? undefined}
           />
         </div>
       )}
@@ -436,6 +439,7 @@ export default async function TaskPage({ params }: TaskPageProps) {
       </div>
       {/* Comments */}
       <div className="section"><div className="card"><TaskComments taskId={task.id} /></div></div>
+
 
       {/* Activity Log */}
       <div className="section">
