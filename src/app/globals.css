@@ -1309,6 +1309,7 @@ select:focus-visible {
   .grid.grid-cols-2 {
     grid-template-columns: 1fr;
   }
+}
 
 /* ── Mobile bottom navigation bar ───────────────────────────────────────── */
 .mobile-nav {
