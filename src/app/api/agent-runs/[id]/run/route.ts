@@ -95,7 +95,7 @@ export async function POST(
         error: err instanceof Error ? err.message : String(err),
         at: new Date().toISOString(),
       }),
-      userId: user.userId,
+      userId: ('userId' in user ? user.userId : undefined) ?? ('id' in user ? (user as { id: string }).id : undefined),
     });
 
     return NextResponse.json({ error: 'Provider threw an error' }, { status: 500 });
@@ -128,7 +128,7 @@ export async function POST(
       status: finalStatus,
       at: new Date().toISOString(),
     }),
-    userId: user.userId,
+    userId: ('userId' in user ? user.userId : undefined) ?? ('id' in user ? (user as { id: string }).id : undefined),
   });
 
   return NextResponse.json(

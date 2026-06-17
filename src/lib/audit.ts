@@ -10,6 +10,14 @@ export interface AuditEntry {
   userId?: string | null;
 }
 
+/**
+ * Fire-and-forget audit log writer.
+ * Errors are swallowed so governance is never blocked by a storage failure.
+ */
 export async function writeAudit(entry: AuditEntry): Promise<void> {
-  await prisma.auditLog.create({ data: entry });
+  try {
+    await prisma.auditLog.create({ data: entry });
+  } catch {
+    // Intentionally silent — audit failures must not interrupt the main flow.
+  }
 }

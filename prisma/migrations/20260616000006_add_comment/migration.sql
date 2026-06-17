@@ -1,0 +1,11 @@
+CREATE TABLE "Comment" (
+  "id" TEXT NOT NULL,
+  "taskId" TEXT NOT NULL,
+  "authorId" TEXT NOT NULL DEFAULT 'system',
+  "body" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY ("id")
+);
+CREATE INDEX "Comment_taskId_idx" ON "Comment"("taskId");
+ALTER TABLE "Comment" ADD CONSTRAINT "Comment_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;

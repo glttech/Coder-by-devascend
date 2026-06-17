@@ -53,7 +53,7 @@ describe('requireRole — admin required', () => {
   test('admin user is allowed when admin is required', () => {
     const result = requireRole(adminUser, 'admin');
     assert.equal(result.ok, true);
-    if (result.ok) assert.equal(result.user.userId, adminUser.userId);
+    if (result.ok) assert.equal(('userId' in result.user ? result.user.userId : (result.user as { id?: string }).id), adminUser.userId);
   });
 });
 
@@ -61,13 +61,13 @@ describe('requireRole — reviewer required', () => {
   test('reviewer user is allowed when reviewer is required', () => {
     const result = requireRole(reviewerUser, 'reviewer');
     assert.equal(result.ok, true);
-    if (result.ok) assert.equal(result.user.userId, reviewerUser.userId);
+    if (result.ok) assert.equal(('userId' in result.user ? result.user.userId : (result.user as { id?: string }).id), reviewerUser.userId);
   });
 
   test('admin user is allowed when reviewer is required', () => {
     const result = requireRole(adminUser, 'reviewer');
     assert.equal(result.ok, true);
-    if (result.ok) assert.equal(result.user.userId, adminUser.userId);
+    if (result.ok) assert.equal(('userId' in result.user ? result.user.userId : (result.user as { id?: string }).id), adminUser.userId);
   });
 });
 
@@ -75,13 +75,13 @@ describe('requireRole — any role', () => {
   test('reviewer is allowed with role any', () => {
     const result = requireRole(reviewerUser, 'any');
     assert.equal(result.ok, true);
-    if (result.ok) assert.equal(result.user.userId, reviewerUser.userId);
+    if (result.ok) assert.equal(('userId' in result.user ? result.user.userId : (result.user as { id?: string }).id), reviewerUser.userId);
   });
 
   test('admin is allowed with role any', () => {
     const result = requireRole(adminUser, 'any');
     assert.equal(result.ok, true);
-    if (result.ok) assert.equal(result.user.userId, adminUser.userId);
+    if (result.ok) assert.equal(('userId' in result.user ? result.user.userId : (result.user as { id?: string }).id), adminUser.userId);
   });
 });
 

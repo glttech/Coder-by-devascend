@@ -10,15 +10,16 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  name           String?
-  role           String    @default("admin")  // "admin" | "reviewer"
-  approvals      Approval[]
-  auditLogs      AuditLog[]
-  assignedTasks  Task[]    @relation("TaskAssignee")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String     @id @default(uuid())
+  email         String     @unique
+  name          String?
+  passwordHash  String?
+  role          String     @default("admin")  // "admin" | "reviewer"
+  approvals     Approval[]
+  auditLogs     AuditLog[]
+  assignedTasks Task[]     @relation("TaskAssignee")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 model Project {
@@ -29,8 +30,9 @@ model Project {
   repoName      String?
   defaultBranch String      @default("main")
   tasks         Task[]
-  githubPRs     GithubPR[]
   milestones    Milestone[]
+  githubPRs     GithubPR[]
+  ciRuns        CiRun[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -57,6 +59,7 @@ model Task {
   audits            AuditLog[]
   operatorSessions  OperatorSession[]
   instructions      Instruction[]
+  comments          Comment[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -94,25 +97,33 @@ model AgentProvider {
 }
 
 model AgentRun {
-  id              String         @id @default(uuid())
-  taskId          String
-  task            Task           @relation(fields: [taskId], references: [id])
-  providerId      String?
-  provider        AgentProvider? @relation(fields: [providerId], references: [id])
-  generatedPrompt String
-  selectedTool    String
-  response        String?
-  filesChanged    String?
-  commandsRun     String?
-  testResult      String?
-  commitHash      String?
+  id               String         @id @default(uuid())
+  taskId           String
+  task             Task           @relation(fields: [taskId], references: [id])
+  providerId       String?
+  provider         AgentProvider? @relation(fields: [providerId], references: [id])
+  generatedPrompt  String
+  selectedTool     String
+  response         String?
+  filesChanged     String?
+  commandsRun      String?
+  testResult       String?
+  commitHash       String?
   // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled
-  status          String         @default("pending") // "pending", "running", "succeeded", "failed"
-  startedAt       DateTime       @default(now())
-  endedAt         DateTime?
-  evaluations     Evaluation[]
-  audits          AuditLog[]
-  steps           AgentStep[]
+  status           String         @default("pending") // "pending", "running", "succeeded", "failed"
+  startedAt        DateTime       @default(now())
+  endedAt          DateTime?
+  // Agent Role System (PR 1.1) — all nullable/defaulted, additive only
+  roleKey          String?
+  modelUsed        String?
+  structuredOutput String?        @db.Text
+  riskScore        Float?
+  promptTokens     Int?           @default(0)
+  completionTokens Int?           @default(0)
+  cachedTokens     Int?           @default(0)
+  evaluations      Evaluation[]
+  audits           AuditLog[]
+  steps            AgentStep[]
 }
 
 model AgentStep {
@@ -211,6 +222,61 @@ model OperatorSession {
   auditLogs              AuditLog[]
 }
 
+model Invitation {
+  id        String   @id @default(uuid())
+  orgId     String   @default("org_default")
+  email     String
+  role      String   @default("reviewer")
+  token     String   @unique
+  invitedBy String
+  status    String   @default("pending")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([orgId])
+  @@index([email])
+}
+
+model ShareLink {
+  id          String    @id @default(uuid())
+  entityType  String    // task_report
+  entityId    String
+  token       String    @unique
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  viewCount   Int       @default(0)
+  createdBy   String    @default("system")
+  createdAt   DateTime  @default(now())
+  @@index([entityId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+}
+
+model CiRun {
+  id        String   @id @default(cuid())
+  projectId String
+  prId      String?
+  workflow  String
+  status    String
+  url       String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
 model ActiveSession {
   id        String    @id @default(uuid())
   sessionId String    @unique
@@ -231,6 +297,7 @@ model Notification {
   agentRunId String?
   createdAt  DateTime @default(now())
 }
+
 
 model GithubPR {
   id                String    @id @default(uuid())
@@ -258,4 +325,155 @@ model GithubPR {
   updatedAt         DateTime  @updatedAt
 
   @@unique([projectId, prNumber])
+}
+
+model Diagram {
+  id         String   @id @default(uuid())
+  orgId      String   @default("org_default")
+  entityType String   // "task" | "project"
+  entityId   String
+  kind       String   // "lifecycle" | "architecture"
+  title      String
+  source     String   @db.Text
+  svg        String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([entityId])
+  @@index([orgId])
+}
+
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  plan        String       @default("free")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  memberships Membership[]
+}
+
+model Membership {
+  id        String       @id @default(uuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  userId    String
+  role      String       @default("reviewer")
+  createdAt DateTime     @default(now())
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@index([orgId])
+}
+
+model NotificationPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  emailInvite     Boolean  @default(true)
+  emailApproval   Boolean  @default(true)
+  emailRunDone    Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  orgId       String
+  name        String
+  prefix      String
+  keyHash     String    @unique
+  scopes      String[]
+  createdBy   String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([orgId])
+  @@index([keyHash])
+}
+
+model Webhook {
+  id              String    @id @default(uuid())
+  orgId           String
+  url             String
+  secret          String?
+  events          String[]
+  enabled         Boolean   @default(true)
+  failureCount    Int       @default(0)
+  lastTriggeredAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([orgId])
+}
+
+model AgentRole {
+  id           String   @id @default(uuid())
+  orgId        String   @default("org_default")
+  key          String   // e.g. "security_reviewer"
+  name         String
+  description  String?
+  systemPrompt String   @db.Text
+  allowedTools String[] @default([])
+  maxRiskLevel String   @default("medium") // "low" | "medium" | "high"
+  outputFormat String   @default("structured_findings")
+  modelPref    String   @default("claude-opus-4-8")
+  enabled      Boolean  @default(true)
+  isBuiltIn    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([orgId, key])
+  @@index([orgId])
+}
+
+model ExecutionTrace {
+  id                String   @id @default(uuid())
+  orgId             String   @default("org_default")
+  taskId            String?
+  agentRunId        String?
+  roleKey           String?
+  promptSent        String?  @db.Text  // redacted before persist
+  modelUsed         String?
+  toolCallsSummary  String?  // JSON summary of tool calls, redacted
+  evidenceRefs      String?  // JSON array of evidence references
+  riskScore         Float?
+  riskFlags         String?  // JSON array of risk flag keys
+  decisionCode      String?  // CONTINUE | RUN_VALIDATION | SENIOR_APPROVAL_REQUIRED | BLOCKED
+  approvalState     String?  // pending | approved | rejected | not_required
+  finalOutput       String?  @db.Text  // redacted before persist
+  promptTokens      Int?
+  completionTokens  Int?
+  createdAt         DateTime @default(now())
+  // NO updatedAt — append-only by design
+
+  @@index([orgId, taskId])
+  @@index([agentRunId])
+}
+
+// ---------------------------------------------------------------------------
+// RAG Foundation (PR 2.4)
+// Stores text chunks with deterministic stub embeddings for retrieval-augmented
+// governance analysis. Real embedding calls are gated behind FEATURE_RAG_EMBED.
+// ---------------------------------------------------------------------------
+
+model EvidenceChunk {
+  id          String   @id @default(uuid())
+  orgId       String   @default("org_default")
+  taskId      String?
+  // Source metadata
+  sourceType  String   // "task_instruction" | "agent_response" | "audit_log" | "manual"
+  sourceRef   String?  // e.g. agentRunId, instructionId, auditLogId
+  // Content
+  content     String   @db.Text
+  // Embedding stored as a JSON-serialised float array (stub = zero vector).
+  // Real embeddings written only when FEATURE_RAG_EMBED=true.
+  embedding   String?  @db.Text
+  embeddingModel String? // e.g. "stub-v0", "text-embedding-3-small"
+  // Retrieval metadata
+  chunkIndex  Int      @default(0)
+  tokenCount  Int?
+  createdAt   DateTime @default(now())
+
+  @@index([orgId, taskId])
+  @@index([sourceType])
 }
