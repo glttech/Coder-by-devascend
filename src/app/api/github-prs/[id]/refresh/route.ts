@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchGithubPR, resolveGithubCoords, userSafeErrorMessage } from '@/lib/githubClient';
 import { writeAudit } from '@/lib/audit';
+import { buildClassificationFields } from '@/lib/prClassifier';
 
 interface RouteContext {
   params: { id: string };
@@ -119,6 +120,25 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
   const d = result.data;
 
+  // Load existing record to check if manually classified
+  const existingPr = await prisma.githubPR.findUnique({
+    where: { id },
+    select: { classificationSource: true },
+  });
+
+  // Auto-reclassify unless the user has manually overridden the classification
+  const classificationUpdate =
+    existingPr?.classificationSource !== 'manual'
+      ? buildClassificationFields({
+          title: d.title,
+          body: d.body,
+          labels: d.labels,
+          filesChanged: d.filesChanged,
+          ciStatus: d.ciStatus,
+          state: d.state,
+        })
+      : {};
+
   try {
     const updated = await prisma.githubPR.update({
       where: { id },
@@ -136,6 +156,8 @@ export async function POST(_request: Request, { params }: RouteContext) {
         filesChanged: d.filesChanged,
         ciStatus: d.ciStatus,
         prUrl: d.prUrl,
+        ...classificationUpdate,
+        syncedAt: new Date(),
         githubUpdatedAt: d.githubUpdatedAt ? new Date(d.githubUpdatedAt) : null,
         githubMergedAt: d.githubMergedAt ? new Date(d.githubMergedAt) : null,
       },

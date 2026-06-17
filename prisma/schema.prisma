@@ -65,16 +65,17 @@ model Task {
 }
 
 model Milestone {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
+  project     Project    @relation(fields: [projectId], references: [id])
   title       String
   description String?
   targetDate  DateTime?
-  status      String    @default("open") // "open" | "completed"
+  status      String     @default("open") // "open" | "completed"
   tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  githubPRs   GithubPR[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model PromptTemplate {
@@ -124,6 +125,7 @@ model AgentRun {
   evaluations      Evaluation[]
   audits           AuditLog[]
   steps            AgentStep[]
+  githubPRs        GithubPR[]
 }
 
 model AgentStep {
@@ -304,6 +306,10 @@ model GithubPR {
   projectId         String
   project           Project   @relation(fields: [projectId], references: [id])
   taskId            String?
+  milestoneId       String?
+  milestone         Milestone? @relation(fields: [milestoneId], references: [id])
+  agentRunId        String?
+  agentRun          AgentRun?  @relation(fields: [agentRunId], references: [id])
   prNumber          Int
   title             String
   body              String?
@@ -321,10 +327,31 @@ model GithubPR {
   githubCreatedAt   DateTime?
   githubUpdatedAt   DateTime?
   githubMergedAt    DateTime?
+  // PR Memory Index (Feature 1) — auto-populated on import/refresh
+  classification       String?  // "feature"|"bug_fix"|"security"|"migration"|"deployment"|"rollback"|"incident"|"chore"|"test"|"docs"
+  classificationSource String?  // "auto_title"|"auto_label"|"auto_files"|"manual"
+  bugState             String?  // null|"known_issue"|"fixed"|"regression_risk"|"needs_retest"
+  reviewDecision       String?  // "approved"|"changes_requested"|"dismissed"|null
+  commentCount         Int?
+  syncedAt             DateTime?
   importedAt        DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   @@unique([projectId, prNumber])
+  @@index([projectId, classification])
+  @@index([projectId, bugState])
+  @@index([projectId, githubMergedAt])
+}
+
+// Tracks incremental sync state per project — one row per project.
+model PrSyncState {
+  projectId          String   @id
+  lastSyncedAt       DateTime?
+  lastSyncedPrNumber Int?
+  totalSynced        Int      @default(0)
+  syncStatus         String   @default("idle") // "idle"|"running"|"error"
+  errorMessage       String?
+  updatedAt          DateTime @updatedAt
 }
 
 model Diagram {
