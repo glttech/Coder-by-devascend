@@ -399,3 +399,31 @@ model ExecutionTrace {
   @@index([orgId, taskId])
   @@index([agentRunId])
 }
+
+// ---------------------------------------------------------------------------
+// RAG Foundation (PR 2.4)
+// Stores text chunks with deterministic stub embeddings for retrieval-augmented
+// governance analysis. Real embedding calls are gated behind FEATURE_RAG_EMBED.
+// ---------------------------------------------------------------------------
+
+model EvidenceChunk {
+  id          String   @id @default(uuid())
+  orgId       String   @default("org_default")
+  taskId      String?
+  // Source metadata
+  sourceType  String   // "task_instruction" | "agent_response" | "audit_log" | "manual"
+  sourceRef   String?  // e.g. agentRunId, instructionId, auditLogId
+  // Content
+  content     String   @db.Text
+  // Embedding stored as a JSON-serialised float array (stub = zero vector).
+  // Real embeddings written only when FEATURE_RAG_EMBED=true.
+  embedding   String?  @db.Text
+  embeddingModel String? // e.g. "stub-v0", "text-embedding-3-small"
+  // Retrieval metadata
+  chunkIndex  Int      @default(0)
+  tokenCount  Int?
+  createdAt   DateTime @default(now())
+
+  @@index([orgId, taskId])
+  @@index([sourceType])
+}
