@@ -103,6 +103,51 @@ export default async function TracePage({ params }: TracePageProps) {
         </div>
       </div>
 
+      {/* Summary stats */}
+      {traces.length > 0 && (() => {
+        const decisions = traces.map((t) => t.decisionCode).filter(Boolean);
+        const highestDecision = (['BLOCKED', 'SENIOR_APPROVAL_REQUIRED', 'RUN_VALIDATION', 'ASK_AGENT_FOR_EVIDENCE', 'CONTINUE'] as const).find(
+          (d) => decisions.includes(d),
+        ) ?? decisions[0];
+        const avgRisk =
+          traces.filter((t) => t.riskScore != null).reduce((sum, t) => sum + (t.riskScore ?? 0), 0) /
+          (traces.filter((t) => t.riskScore != null).length || 1);
+        const pendingCount = traces.filter((t) => t.approvalState === 'pending').length;
+        return (
+          <div className="section">
+            <div className="card" style={{ padding: '16px 20px' }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Governance Summary</div>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Total Traces</div>
+                  <div style={{ fontWeight: 600, fontSize: 18 }}>{traces.length}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Highest Decision</div>
+                  <span className={`badge ${DECISION_BADGE_CLASS[highestDecision ?? ''] ?? 'badge-neutral'}`} style={{ fontSize: 12 }}>
+                    {highestDecision ?? '—'}
+                  </span>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Avg Risk Score</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 600,
+                    color: avgRisk >= 0.7 ? 'var(--red, #ef4444)' : avgRisk >= 0.4 ? 'var(--amber, #f59e0b)' : 'var(--green, #22c55e)',
+                  }}>
+                    {avgRisk.toFixed(2)}
+                  </div>
+                </div>
+                {pendingCount > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Awaiting Approval</div>
+                    <span className="badge badge-warning" style={{ fontSize: 12 }}>{pendingCount}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Trace list */}
       <div className="section">
         <div className="section-header">
@@ -127,14 +172,30 @@ export default async function TracePage({ params }: TracePageProps) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {traces.map((trace) => {
+              type ParsedOutput = {
+                findings?: Array<{ category?: string; severity?: string; title?: string; detail?: string }>;
+                evidenceGaps?: string[];
+                recommendation?: string;
+                affectedFiles?: string[];
+              };
+              let parsedOutput: ParsedOutput | null = null;
               let formattedOutput: string | null = null;
               if (trace.finalOutput) {
                 try {
-                  formattedOutput = JSON.stringify(JSON.parse(trace.finalOutput), null, 2);
+                  parsedOutput = JSON.parse(trace.finalOutput) as ParsedOutput;
+                  formattedOutput = JSON.stringify(parsedOutput, null, 2);
                 } catch {
                   formattedOutput = trace.finalOutput;
                 }
               }
+
+              const SEVERITY_CLASS: Record<string, string> = {
+                critical: 'badge-sev-high',
+                high: 'badge-sev-high',
+                medium: 'badge-warning',
+                low: 'badge-neutral',
+                info: 'badge-neutral',
+              };
 
               let parsedRiskFlags: string[] = [];
               if (trace.riskFlags) {
@@ -274,18 +335,89 @@ export default async function TracePage({ params }: TracePageProps) {
                       )}
                     </div>
 
-                    {formattedOutput && (
+                    {parsedOutput?.recommendation && (
+                      <div className="meta-row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
+                        <span className="meta-label">Recommendation</span>
+                        <span className="meta-value" style={{ fontSize: 13, color: 'var(--text-primary)', fontStyle: 'italic' }}>
+                          {parsedOutput.recommendation}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Role findings */}
+                    {parsedOutput?.findings && parsedOutput.findings.length > 0 && (
                       <div style={{ marginTop: 12 }}>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: 'var(--text-secondary)',
-                            marginBottom: 6,
-                          }}
-                        >
-                          Final Output
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                          Findings ({parsedOutput.findings.length})
                         </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {parsedOutput.findings.map((f, fi) => (
+                            <div
+                              key={fi}
+                              style={{
+                                background: 'var(--surface-raised, rgba(0,0,0,0.04))',
+                                borderRadius: 6,
+                                padding: '8px 12px',
+                                fontSize: 12,
+                              }}
+                            >
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: f.detail ? 4 : 0 }}>
+                                {f.severity && (
+                                  <span className={`badge ${SEVERITY_CLASS[f.severity] ?? 'badge-neutral'}`} style={{ fontSize: 10 }}>
+                                    {f.severity}
+                                  </span>
+                                )}
+                                {f.category && (
+                                  <span className="badge badge-neutral" style={{ fontSize: 10 }}>{f.category}</span>
+                                )}
+                                {f.title && <span style={{ fontWeight: 500 }}>{f.title}</span>}
+                              </div>
+                              {f.detail && (
+                                <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{f.detail}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Evidence gaps */}
+                    {parsedOutput?.evidenceGaps && parsedOutput.evidenceGaps.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber, #f59e0b)', marginBottom: 6 }}>
+                          Evidence Gaps ({parsedOutput.evidenceGaps.length})
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                          {parsedOutput.evidenceGaps.map((gap, gi) => (
+                            <li key={gi} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                              {gap}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Affected files */}
+                    {parsedOutput?.affectedFiles && parsedOutput.affectedFiles.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                          Affected Files
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {parsedOutput.affectedFiles.map((f, fi) => (
+                            <span key={fi} className="badge badge-neutral" style={{ fontFamily: 'monospace', fontSize: 10 }}>
+                              {f}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {formattedOutput && (
+                      <details style={{ marginTop: 12 }}>
+                        <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', userSelect: 'none' }}>
+                          Raw JSON output
+                        </summary>
                         <pre
                           style={{
                             background: 'var(--surface-raised, rgba(0,0,0,0.06))',
@@ -295,14 +427,14 @@ export default async function TracePage({ params }: TracePageProps) {
                             fontFamily: 'monospace',
                             overflowX: 'auto',
                             color: 'var(--text-primary)',
-                            margin: 0,
+                            margin: '8px 0 0',
                             whiteSpace: 'pre-wrap',
                             wordBreak: 'break-all',
                           }}
                         >
                           {formattedOutput}
                         </pre>
-                      </div>
+                      </details>
                     )}
                   </div>
                 </details>

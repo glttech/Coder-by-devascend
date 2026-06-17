@@ -57,6 +57,24 @@ export default async function AgentsPage({ params }: AgentsPageProps) {
     notFound();
   }
 
+  // Compute senior approval requirement from role run history (PR 2.3)
+  const seniorApprovalRuns = task.agentRuns.filter((run) => {
+    if (!run.structuredOutput) return false;
+    try {
+      const parsed = JSON.parse(run.structuredOutput) as {
+        requiresApproval?: boolean;
+        decisionSuggestion?: string;
+      };
+      return (
+        parsed.requiresApproval === true ||
+        parsed.decisionSuggestion === 'SENIOR_APPROVAL_REQUIRED' ||
+        parsed.decisionSuggestion === 'BLOCKED'
+      );
+    } catch {
+      return false;
+    }
+  });
+
   return (
     <div>
       <PageHeader
@@ -67,11 +85,51 @@ export default async function AgentsPage({ params }: AgentsPageProps) {
           </span>
         }
         actions={
-          <Link href={`/tasks/${task.id}`} className="btn btn-ghost btn-sm">
-            Back to Task
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href={`/tasks/${task.id}/trace`} className="btn btn-ghost btn-sm">
+              Execution Trace
+            </Link>
+            <Link href={`/tasks/${task.id}`} className="btn btn-ghost btn-sm">
+              Back to Task
+            </Link>
+          </div>
         }
       />
+
+      {/* Senior approval gate banner (PR 2.3) */}
+      {seniorApprovalRuns.length > 0 && (
+        <div className="section">
+          <div
+            style={{
+              background: 'rgba(239,68,68,0.06)',
+              border: '2px solid rgba(239,68,68,0.4)',
+              borderRadius: 8,
+              padding: '14px 18px',
+              display: 'flex',
+              gap: 12,
+              alignItems: 'flex-start',
+            }}
+          >
+            <span style={{ fontSize: 20, lineHeight: 1.3 }}>🔒</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--red, #dc2626)' }}>
+                Senior Approval Required
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                {seniorApprovalRuns.length} role run{seniorApprovalRuns.length !== 1 ? 's have' : ' has'} determined
+                this task requires senior sign-off.
+                No action can proceed until a human approves via the Approval panel.
+              </div>
+              <Link
+                href={`/tasks/${task.id}#approval`}
+                className="btn btn-sm btn-primary"
+              >
+                Go to Approval Panel →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Safety notice */}
       <div className="section">

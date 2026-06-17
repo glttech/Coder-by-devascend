@@ -63,6 +63,17 @@ export default async function TaskPage({ params }: TaskPageProps) {
 
   const prompt = buildPrompt(task);
 
+  // Determine senior approval requirement from any role-based agent runs
+  const seniorApprovalRuns = task.agentRuns.filter((run) => {
+    if (!run.structuredOutput) return false;
+    try {
+      const parsed = JSON.parse(run.structuredOutput) as { requiresApproval?: boolean; decisionSuggestion?: string };
+      return parsed.requiresApproval === true || parsed.decisionSuggestion === 'SENIOR_APPROVAL_REQUIRED' || parsed.decisionSuggestion === 'BLOCKED';
+    } catch {
+      return false;
+    }
+  });
+
   const approverId = task.approval?.approverId;
   const approver = approverId
     ? await prisma.user.findUnique({
@@ -99,6 +110,12 @@ export default async function TaskPage({ params }: TaskPageProps) {
             )}
             <CloneTaskButton taskId={task.id} />
             <PdfExportButton taskId={task.id} />
+            <Link href={`/tasks/${task.id}/agents`} className="btn btn-ghost btn-sm">
+              Governance
+            </Link>
+            <Link href={`/tasks/${task.id}/trace`} className="btn btn-ghost btn-sm">
+              Trace
+            </Link>
             <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
               View Summary Report →
             </Link>
@@ -149,6 +166,43 @@ export default async function TaskPage({ params }: TaskPageProps) {
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                 The AI has submitted a suggestion. Look at the <strong>AI Suggestions</strong> section below and click <strong>Approve</strong> to accept it, or <strong>Block</strong> to reject it.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Senior approval gate banner (PR 2.3) */}
+      {seniorApprovalRuns.length > 0 && !task.approval?.approved && (
+        <div className="section">
+          <div style={{
+            background: 'rgba(239,68,68,0.06)',
+            border: '2px solid rgba(239,68,68,0.4)',
+            borderRadius: 8,
+            padding: '14px 18px',
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: 20, lineHeight: 1.3 }}>🔒</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, color: 'var(--red, #dc2626)' }}>
+                Senior Approval Required
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                {seniorApprovalRuns.length} governance role run{seniorApprovalRuns.length !== 1 ? 's have' : ' has'} flagged this task as requiring senior review before any action can proceed.
+                This task cannot move forward without explicit human sign-off.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Link href={`/tasks/${task.id}/agents`} className="btn btn-sm btn-primary">
+                  View Governance Analysis
+                </Link>
+                <Link href={`/tasks/${task.id}/trace`} className="btn btn-sm btn-ghost">
+                  View Execution Trace
+                </Link>
+                <a href={`#approval`} className="btn btn-sm btn-ghost">
+                  Approve / Block ↓
+                </a>
               </div>
             </div>
           </div>
