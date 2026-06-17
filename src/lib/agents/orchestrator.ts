@@ -10,6 +10,7 @@ import { computeDecision } from '@/lib/decisionEngine';
 import { analyzeRisk } from '@/lib/riskAnalyzer';
 import { checkMissingEvidence } from '@/lib/evidenceChecker';
 import { writeAudit } from '@/lib/audit';
+import { writeTrace } from '@/lib/trace/writer';
 import { assertRoleCanActOn, getRole } from '@/lib/agents/roles';
 import type { StructuredAgentOutput } from '@/lib/agents/roles';
 import { runAgentRole } from '@/lib/llm/chat';
@@ -101,6 +102,18 @@ export async function runOrchestrator(input: OrchestratorInput): Promise<Orchest
       decisionCode: decision.code,
       riskScore: structuredOutput.riskScore,
     }),
+  });
+
+  // 7b. Write immutable execution trace (append-only, mandatory redaction applied in writeTrace)
+  await writeTrace({
+    taskId: input.taskId,
+    roleKey: input.roleKey,
+    promptSent: input.taskInstruction,
+    riskScore: structuredOutput.riskScore,
+    riskFlags: riskFlags.map((f) => f.key),
+    decisionCode: decision.code,
+    approvalState: structuredOutput.requiresApproval ? 'pending' : 'not_required',
+    finalOutput: JSON.stringify(structuredOutput),
   });
 
   // 8. Return combined result

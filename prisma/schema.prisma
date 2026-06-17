@@ -375,3 +375,27 @@ model AgentRole {
   @@unique([orgId, key])
   @@index([orgId])
 }
+
+model ExecutionTrace {
+  id                String   @id @default(uuid())
+  orgId             String   @default("org_default")
+  taskId            String?
+  agentRunId        String?
+  roleKey           String?
+  promptSent        String?  @db.Text  // redacted before persist
+  modelUsed         String?
+  toolCallsSummary  String?  // JSON summary of tool calls, redacted
+  evidenceRefs      String?  // JSON array of evidence references
+  riskScore         Float?
+  riskFlags         String?  // JSON array of risk flag keys
+  decisionCode      String?  // CONTINUE | RUN_VALIDATION | SENIOR_APPROVAL_REQUIRED | BLOCKED
+  approvalState     String?  // pending | approved | rejected | not_required
+  finalOutput       String?  @db.Text  // redacted before persist
+  promptTokens      Int?
+  completionTokens  Int?
+  createdAt         DateTime @default(now())
+  // NO updatedAt — append-only by design
+
+  @@index([orgId, taskId])
+  @@index([agentRunId])
+}
