@@ -40,9 +40,22 @@ export function redactSensitive(text: string | undefined): string | undefined {
 
   let result = text;
 
-  // Pattern 1: key=value style for api_key, secret_key, password, token, bearer, authorization
+  // Pattern 1a: authorization/bearer header — match full "Authorization: Bearer <token>" form
+  // capturing both the header name and the bearer token value
   result = result.replace(
-    /(api[_-]?key|secret[_-]?key|password|token|bearer|authorization)[=: ]+[^\s]{4,}/gi,
+    /(authorization)[=: ]+(?:bearer\s+)?[^\s]{4,}/gi,
+    '[REDACTED]',
+  );
+
+  // Pattern 1b: bearer token standalone: "Bearer <token>"
+  result = result.replace(
+    /bearer[=: ]+[^\s]{4,}/gi,
+    '[REDACTED]',
+  );
+
+  // Pattern 1c: other key=value style for api_key, secret_key, password, token
+  result = result.replace(
+    /(api[_-]?key|secret[_-]?key|password|token)[=: ]+[^\s]{4,}/gi,
     '[REDACTED]',
   );
 
