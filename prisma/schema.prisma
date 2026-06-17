@@ -85,21 +85,29 @@ model PromptTemplate {
 }
 
 model AgentRun {
-  id             String      @id @default(uuid())
-  taskId         String
-  task           Task        @relation(fields: [taskId], references: [id])
-  generatedPrompt String
-  selectedTool   String
-  response       String?
-  filesChanged   String?
-  commandsRun    String?
-  testResult     String?
-  commitHash     String?
-  status         String      @default("pending") // "pending", "running", "succeeded", "failed"
-  startedAt      DateTime    @default(now())
-  endedAt        DateTime?
-  evaluations    Evaluation[]
-  audits         AuditLog[]
+  id               String       @id @default(uuid())
+  taskId           String
+  task             Task         @relation(fields: [taskId], references: [id])
+  generatedPrompt  String
+  selectedTool     String
+  response         String?
+  filesChanged     String?
+  commandsRun      String?
+  testResult       String?
+  commitHash       String?
+  status           String       @default("pending") // "pending", "running", "succeeded", "failed"
+  startedAt        DateTime     @default(now())
+  endedAt          DateTime?
+  // Agent Role System (PR 1.1) — all nullable/defaulted, additive only
+  roleKey          String?
+  modelUsed        String?
+  structuredOutput String?      @db.Text
+  riskScore        Float?
+  promptTokens     Int?         @default(0)
+  completionTokens Int?         @default(0)
+  cachedTokens     Int?         @default(0)
+  evaluations      Evaluation[]
+  audits           AuditLog[]
 }
 
 model Evaluation {
@@ -345,5 +353,25 @@ model Webhook {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  @@index([orgId])
+}
+
+model AgentRole {
+  id           String   @id @default(uuid())
+  orgId        String   @default("org_default")
+  key          String   // e.g. "security_reviewer"
+  name         String
+  description  String?
+  systemPrompt String   @db.Text
+  allowedTools String[] @default([])
+  maxRiskLevel String   @default("medium") // "low" | "medium" | "high"
+  outputFormat String   @default("structured_findings")
+  modelPref    String   @default("claude-opus-4-8")
+  enabled      Boolean  @default(true)
+  isBuiltIn    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([orgId, key])
   @@index([orgId])
 }
