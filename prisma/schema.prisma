@@ -542,3 +542,24 @@ model FeatureIdea {
   @@index([orgId, relevance])
   @@index([vendor])
 }
+
+// ---------------------------------------------------------------------------
+// Competitive Feature Matrix (PR 116)
+// Tracks Coder vs competitors across a fixed set of capability dimensions.
+// Each row = (competitor, featureKey). Status is admin-editable.
+// ---------------------------------------------------------------------------
+
+model CompetitorFeature {
+  id          String   @id @default(uuid())
+  competitor  String   // e.g. "GitHub Copilot", "Coder" (the product being compared)
+  featureKey  String   // e.g. "pr_memory", "audit_trail", "approval_gates"
+  status      String   @default("unknown") // "yes" | "no" | "partial" | "unknown"
+  notes       String?  @db.Text
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([competitor, featureKey])
+  @@index([competitor])
+  @@index([featureKey])
+}
