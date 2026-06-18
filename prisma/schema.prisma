@@ -110,11 +110,12 @@ model AgentRun {
   commandsRun      String?
   testResult       String?
   commitHash       String?
-  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled
-  status           String         @default("pending") // "pending", "running", "succeeded", "failed"
+  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled | preview
+  status           String         @default("pending") // "pending", "running", "succeeded", "failed", "preview"
+  sandboxPlan      String?        // JSON: { plannedFiles, plannedCommands, estimatedRisk, warnings }
   startedAt        DateTime       @default(now())
   endedAt          DateTime?
-  // Agent Role System (PR 1.1) — all nullable/defaulted, additive only
+  // Agent Role System — all nullable/defaulted, additive only
   roleKey          String?
   modelUsed        String?
   structuredOutput String?        @db.Text
