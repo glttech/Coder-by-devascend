@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { fetchGithubPR, parsePRUrl, userSafeErrorMessage } from '@/lib/githubClient';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { buildClassificationFields } from '@/lib/prClassifier';
 
 // GET /api/github-prs?projectId=... — list imported PRs for a project
 export async function GET(request: Request) {
@@ -97,6 +98,14 @@ export async function POST(request: Request) {
   }
 
   const d = result.data;
+  const classification = buildClassificationFields({
+    title: d.title,
+    body: d.body,
+    labels: d.labels,
+    filesChanged: d.filesChanged,
+    ciStatus: d.ciStatus,
+    state: d.state,
+  });
 
   // Upsert: if same project+prNumber already imported, refresh it
   try {
@@ -121,6 +130,8 @@ export async function POST(request: Request) {
         githubCreatedAt: d.githubCreatedAt ? new Date(d.githubCreatedAt) : null,
         githubUpdatedAt: d.githubUpdatedAt ? new Date(d.githubUpdatedAt) : null,
         githubMergedAt: d.githubMergedAt ? new Date(d.githubMergedAt) : null,
+        ...classification,
+        syncedAt: new Date(),
       },
       update: {
         title: d.title,
@@ -136,6 +147,8 @@ export async function POST(request: Request) {
         filesChanged: d.filesChanged,
         ciStatus: d.ciStatus,
         prUrl: d.prUrl,
+        ...classification,
+        syncedAt: new Date(),
         githubUpdatedAt: d.githubUpdatedAt ? new Date(d.githubUpdatedAt) : null,
         githubMergedAt: d.githubMergedAt ? new Date(d.githubMergedAt) : null,
       },
