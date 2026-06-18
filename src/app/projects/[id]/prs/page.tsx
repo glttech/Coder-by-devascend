@@ -5,6 +5,7 @@ import { summarisePR } from '@/lib/prSummary';
 import { buildPRFilters, normaliseStateFilter, normaliseCIFilter } from '@/lib/prFilters';
 import { computeCISummary } from '@/lib/projectHealth';
 import DiscoverPRsButton from '@/components/DiscoverPRsButton';
+import FullSyncButton from '@/components/FullSyncButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,14 +97,20 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
           <span className="badge badge-neutral">{prs.length}{activeFilters ? ` / ${totalCount}` : ''} PRs</span>
         }
         actions={
-          repoUrl ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <DiscoverPRsButton projectId={params.id} />
-              <Link href={`/projects/${params.id}/prs/import`} className="btn btn-primary btn-sm">
-                + Import PR
-              </Link>
-            </div>
-          ) : undefined
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Link href={`/projects/${params.id}/governance-timeline`} className="btn btn-ghost btn-sm">
+              Governance Timeline
+            </Link>
+            {repoUrl && (
+              <>
+                <DiscoverPRsButton projectId={params.id} />
+                <FullSyncButton projectId={params.id} />
+                <Link href={`/projects/${params.id}/prs/import`} className="btn btn-primary btn-sm">
+                  + Import PR
+                </Link>
+              </>
+            )}
+          </div>
         }
       />
 
