@@ -74,7 +74,7 @@ export async function POST(
       requiresApproval: plan.requiresApproval,
       at: new Date().toISOString(),
     }),
-    userId: auth.user.userId,
+    userId: (auth.user as import('@/lib/session').AppSession).userId,
   });
 
   return NextResponse.json({ agentRun, plan }, { status: 201 });

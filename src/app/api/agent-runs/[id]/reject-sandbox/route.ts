@@ -67,7 +67,7 @@ export async function POST(
       reason: reason ?? null,
       at: new Date().toISOString(),
     }),
-    userId: auth.user.userId,
+    userId: (auth.user as import('@/lib/session').AppSession).userId,
   });
 
   return NextResponse.json(updated, { status: 200 });
