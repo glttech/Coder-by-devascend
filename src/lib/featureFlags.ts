@@ -2,6 +2,7 @@ type Env = Record<string, string | undefined>;
 
 export interface FeatureFlags {
   billingEnabled: boolean;
+  /** When true, sandbox/preview mode is enabled — show planned impact before real execution. Off by default. */
   sandboxMode: boolean;
   structuredLoggingEnabled: boolean;
   agentLlmEnabled: boolean;
