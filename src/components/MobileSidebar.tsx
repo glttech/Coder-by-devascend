@@ -9,6 +9,10 @@ const NAV_ITEMS = [
   { href: '/tasks', label: 'Tasks', icon: '◈' },
   { href: '/instructions/pending', label: 'Pending Approvals', icon: '◉' },
   { href: '/audit', label: 'Audit Log', icon: '◎' },
+  { href: '/memory', label: 'Memory Search', icon: '◎' },
+  { href: '/radar', label: 'Feature Radar', icon: '◎' },
+  { href: '/matrix', label: 'Competitor Matrix', icon: '◫' },
+  { href: '/release-report', label: 'Release Report', icon: '◧' },
 ];
 
 export default function MobileSidebar() {
