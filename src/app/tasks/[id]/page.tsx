@@ -128,6 +128,9 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
               View Summary Report →
             </Link>
+            <a href={`/api/tasks/${task.id}/report`} target="_blank" className="btn btn-ghost btn-sm">
+              Download Report
+            </a>
           </div>
         }
       />
