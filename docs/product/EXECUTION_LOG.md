@@ -209,8 +209,25 @@ Disabled `open-swe` in task creation UI with "(coming soon)" label.
 
 **Branch:** feat/projects-api-auth  
 **Tests at open:** 1454  
-**Status:** Open, CI in progress
+**Status:** Open, CI green, ready for review
 
 - `GET /api/projects`: missing auth; now `requireRole('any')` + `take: 500`
 - `GET /api/projects/[id]`: missing auth; now `requireRole('any')`
 - `src/lib/__tests__/apiKeys.test.ts` (NEW): 11 tests covering `VALID_SCOPES`, scope validation, format regex, and key prefix
+
+---
+
+### PR #191 — Webhook Delivery, Org Membership Filter, Task Detail Auth
+
+**Branch:** feat/webhook-delivery-orgs-fix  
+**Tests at open:** 1459  
+**Status:** Open, CI in progress
+
+- `src/lib/webhookDelivery.ts` (NEW): outbound HMAC-SHA256 signed webhook delivery
+  - `triggerWebhooks(event, data)` — queries enabled webhooks, signs with `X-Coder-Signature`, POSTs with 10s timeout, tracks failures, auto-disables at 5 consecutive failures
+  - Gated by `WEBHOOKS_ENABLED=true` env var (default: false)
+  - 10 event types: task.created/updated/completed/failed, agent_run.completed/failed, approval.granted/rejected, instruction.approved/blocked
+- Wired into `POST /api/tasks` (task.created) and `POST /api/approvals` (approval.granted/rejected)
+- `GET /api/orgs`: filtered to user's memberships (was returning ALL organizations)
+- `GET /api/tasks/[id]`: now requires `requireRole('any')` (was fully unauthenticated)
+- 14 new tests in `webhookDelivery.test.ts`
