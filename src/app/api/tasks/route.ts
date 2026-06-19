@@ -4,6 +4,7 @@ import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
 import { evaluatePolicy } from '@/lib/policyGates';
+import { triggerWebhooks } from '@/lib/webhookDelivery';
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
@@ -123,6 +124,15 @@ export async function POST(request: Request) {
       }),
       userId: currentUser?.userId ?? null,
     });
+    // Fire-and-forget — webhook delivery must never block or fail the HTTP response
+    triggerWebhooks('task.created', {
+      taskId: task.id,
+      title: task.title,
+      riskLevel,
+      environment,
+      agentTool,
+      approvalRequired: finalApprovalRequired,
+    }).catch(() => {});
     return NextResponse.json({ task, policyEvaluation }, { status: 201 });
   } catch (err) {
     console.error(err);
