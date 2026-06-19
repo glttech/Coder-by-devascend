@@ -3,10 +3,18 @@ import prisma from '@/lib/prisma';
 import { fetchGithubPR, parsePRUrl, userSafeErrorMessage } from '@/lib/githubClient';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 import { buildClassificationFields } from '@/lib/prClassifier';
 
-// GET /api/github-prs?projectId=... — list imported PRs for a project
+// GET /api/github-prs?projectId=...&limit=50&cursor=...
+// Auth: any authenticated user.
 export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get('projectId');
 
@@ -14,12 +22,21 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'projectId query parameter is required' }, { status: 400 });
   }
 
+  const rawLimit = parseInt(searchParams.get('limit') ?? '100', 10);
+  const limit = isNaN(rawLimit) || rawLimit < 1 ? 100 : Math.min(rawLimit, 500);
+  const cursor = searchParams.get('cursor');
+
   try {
     const prs = await prisma.githubPR.findMany({
-      where: { projectId },
+      where: {
+        projectId,
+        ...(cursor ? { importedAt: { lt: new Date(cursor) } } : {}),
+      },
       orderBy: { importedAt: 'desc' },
+      take: limit,
     });
-    return NextResponse.json(prs);
+    const nextCursor = prs.length === limit ? prs[prs.length - 1].importedAt.toISOString() : null;
+    return NextResponse.json({ prs, nextCursor });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch GitHub PRs' }, { status: 500 });
   }

@@ -50,8 +50,6 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
       task: { select: { id: true, title: true } },
     },
   });
-  // sandboxPlan is a new column not yet reflected in generated Prisma types;
-  // we access it via a safe cast after DB returns the real value.
   const agentRun = agentRunRaw as (typeof agentRunRaw & { sandboxPlan?: string | null }) | null;
 
   if (!agentRun) {
