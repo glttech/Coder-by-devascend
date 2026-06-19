@@ -52,6 +52,14 @@ export default async function TaskPage({ params }: TaskPageProps) {
     },
   });
 
+  const hasSandboxPlan = task
+    ? task.agentRuns.some((run) => {
+        // sandboxPlan is a DB column not yet in generated Prisma types; cast through unknown
+        const r = run as unknown as { sandboxPlan?: string | null };
+        return Boolean(r.sandboxPlan);
+      })
+    : false;
+
   if (!task) {
     return (
       <div className="empty-state" style={{ maxWidth: 420 }}>
@@ -125,6 +133,11 @@ export default async function TaskPage({ params }: TaskPageProps) {
             <Link href={`/tasks/${task.id}/trace`} className="btn btn-ghost btn-sm">
               Trace
             </Link>
+            {hasSandboxPlan && (
+              <Link href={`/tasks/${task.id}/sandbox-replay`} className="btn btn-ghost btn-sm">
+                Sandbox Replay
+              </Link>
+            )}
             <Link href={`/tasks/${task.id}/report`} className="btn btn-ghost btn-sm">
               View Summary Report →
             </Link>
