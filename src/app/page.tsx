@@ -158,8 +158,11 @@ export default async function Dashboard() {
             border: '1px solid var(--blue-border, rgba(59,130,246,0.25))',
             borderBottom: '3px solid var(--blue, rgba(59,130,246,0.6))',
           }}>
-            <div className="card-header" style={{ marginBottom: 12 }}>
+            <div className="card-header" style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="card-title" style={{ fontSize: 16 }}>Welcome to Coder by DevAscend</span>
+              <Link href="/getting-started" className="btn btn-primary btn-sm" style={{ fontSize: 12 }}>
+                Full Getting Started Guide →
+              </Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
@@ -211,6 +214,7 @@ export default async function Dashboard() {
             </div>
             <p style={{ marginTop: 14, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
               New here? Run <code style={{ fontFamily: 'monospace', background: 'rgba(0,0,0,0.06)', padding: '1px 4px', borderRadius: 3 }}>npm run seed:demo</code> in your terminal to create sample data you can explore right away.
+              {' '}Or{' '}<Link href="/getting-started" style={{ color: 'var(--blue)' }}>read the Getting Started guide →</Link>
             </p>
           </div>
         </div>
