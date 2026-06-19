@@ -1,7 +1,7 @@
 # Product Roadmap — Coder by DevAscend
 
 **Last updated:** 2026-06-19  
-**Current branch:** main (all Phase 3 PRs #176–#183 merged)
+**Current branch:** main (all Phase 3 PRs #176–#183 merged; security/quality PRs #184–#192 open)
 
 ---
 
@@ -73,8 +73,8 @@
 [x] Notification preferences  
 
 ### Partial
-[~] Task linking to PRs (manual PATCH only, no auto-link)  
-[~] Agent run linking to PRs (manual PATCH only, no auto-link)  
+[~] Task linking to PRs (manual PATCH only — auto-link deferred to Phase 4)  
+[x] Agent run linking to PRs — auto-link with scored discovery (PR #185)  
 [~] Multi-org support (schema and API exist, UI limited)  
 [~] CI Dashboard (route + schema exist, UI partial)  
 [~] Billing / usage tracking (schema + usage API; no payment gateway)  
@@ -109,14 +109,15 @@
 [x] Rate limiting on 4 mutation endpoints (feat/rate-limit-mutations)  
 [x] Product documentation (ARCHITECTURE.md, DECISIONS.md, KNOWN_LIMITATIONS.md, EXECUTION_LOG.md)  
 
-### Phase 3 deferred items (not started — carry to Phase 3 follow-up or Phase 4)
-[ ] Auto-link PRs to tasks by branch name match  
-[ ] Auto-link agent runs to PRs by commit SHA  
-[ ] LLM-powered PR summaries (`FEATURE_REPO_MEMORY_LLM=true`)  
-[ ] GitHub webhooks (incoming push/PR events) — HMAC-verified receiver  
-[ ] Real-time PR sync (SSE push on webhook receipt)  
-[ ] CI Dashboard — complete the UI  
-[ ] Multi-org UI — complete member management
+### Phase 3 deferred items (status as of 2026-06-19)
+[x] Auto-link agent runs to PRs — SHA match + time proximity + branch keyword scoring (PR #185)  
+[x] Outbound HMAC-signed webhook delivery — 10 event types, auto-disable on failure (PR #191)  
+[ ] Auto-link PRs to tasks by branch name match (carry to Phase 4)  
+[ ] LLM-powered PR summaries (`FEATURE_REPO_MEMORY_LLM=true`) (carry to Phase 4)  
+[ ] GitHub webhooks (incoming push/PR events) — HMAC-verified receiver (carry to Phase 4)  
+[ ] Real-time PR sync (SSE push on webhook receipt) (carry to Phase 4)  
+[ ] CI Dashboard — complete the UI (carry to Phase 4)  
+[ ] Multi-org UI — complete member management (carry to Phase 4)
 
 ---
 
