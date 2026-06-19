@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
   { href: '/diagrams',              label: 'Diagrams',          icon: '◆' },
   { href: '/incidents',             label: 'Incidents',         icon: '⚠' },
+  { href: '/change-control',        label: 'Change Control',    icon: '◭' },
   { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
   { href: '/settings/team',         label: 'Team',              icon: '◈' },
   { href: '/ci',                    label: 'CI Dashboard',      icon: '⬭' },

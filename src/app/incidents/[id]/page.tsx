@@ -103,9 +103,14 @@ export default async function IncidentDetailPage({ params }: IncidentPageProps) 
           </div>
         }
         actions={
-          <Link href="/incidents" className="btn btn-ghost btn-sm">
-            ← All Incidents
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href={`/incidents/${incident.id}/postmortem`} className="btn btn-sm btn-primary">
+              View Postmortem
+            </Link>
+            <Link href="/incidents" className="btn btn-ghost btn-sm">
+              ← All Incidents
+            </Link>
+          </div>
         }
       />
 
