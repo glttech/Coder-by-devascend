@@ -18,6 +18,7 @@ export async function GET() {
   try {
     const incidents = await prisma.incident.findMany({
       orderBy: { createdAt: 'desc' },
+      take: 200,
       include: {
         task: { select: { id: true, title: true } },
         agentRun: { select: { id: true, status: true } },
@@ -50,6 +51,17 @@ export async function POST(request: Request) {
   const errors: string[] = [];
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     errors.push('title is required');
+  } else if ((title as string).length > 500) {
+    errors.push('title must be 500 characters or fewer');
+  }
+  if (description !== undefined && typeof description === 'string' && description.length > 10_000) {
+    errors.push('description must be 10,000 characters or fewer');
+  }
+  if (failedCommand !== undefined && typeof failedCommand === 'string' && failedCommand.length > 5_000) {
+    errors.push('failedCommand must be 5,000 characters or fewer');
+  }
+  if (failedTest !== undefined && typeof failedTest === 'string' && failedTest.length > 5_000) {
+    errors.push('failedTest must be 5,000 characters or fewer');
   }
   if (!trigger || !VALID_TRIGGERS.includes(trigger as string)) {
     errors.push(`trigger must be one of: ${VALID_TRIGGERS.join(', ')}`);
