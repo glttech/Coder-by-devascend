@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import { fetchGithubPR, resolveGithubCoords, userSafeErrorMessage } from '@/lib/githubClient';
 import { writeAudit } from '@/lib/audit';
 import { buildClassificationFields } from '@/lib/prClassifier';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 interface RouteContext {
   params: { id: string };
@@ -57,7 +59,10 @@ const HTTP_STATUS_MAP: Partial<Record<RefreshErrorCode, number>> = {
 };
 
 // POST /api/github-prs/[id]/refresh — re-fetch PR metadata from GitHub and update stored record
-export async function POST(_request: Request, { params }: RouteContext) {
+export async function POST(request: Request, { params }: RouteContext) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
   const { id } = params;
 
   // Load the stored PR and its project's repo coordinates

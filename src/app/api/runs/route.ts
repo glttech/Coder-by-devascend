@@ -3,11 +3,17 @@ import prisma from '@/lib/prisma';
 import { evaluateResponse } from '@/lib/promptEvaluator';
 import { createTrace, logObservation } from '@/lib/langfuse';
 import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 // POST /api/runs – record an agent run.  Expects JSON with taskId,
 // generatedPrompt, selectedTool, and response.  Performs basic evaluation
 // using built‑in heuristics and logs prompt/response to Langfuse.
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), { status: auth.status });
+
   const data = await request.json();
   const { taskId, generatedPrompt, selectedTool, response } = data;
   if (!taskId || !generatedPrompt || !selectedTool) {
