@@ -1,0 +1,168 @@
+# Product Roadmap — Coder by DevAscend
+
+**Last updated:** 2026-06-18  
+**Current branch:** feature/phase3-pr-intelligence  
+
+---
+
+## Status Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| [x] | Built and tested |
+| [~] | Partial — schema/API exists, UI limited |
+| [ ] | Planned — not started |
+| [!] | Being built now (active sprint) |
+
+---
+
+## Phase 1 — Useful Manual Orchestrator
+**Status: COMPLETE (commit e37b507, PR #29)**
+
+[x] Task intake with risk/env/agent config, 5 presets  
+[x] Structured 8-section prompt generator with environment guards  
+[x] Agent run recording with 8-point heuristic evaluation  
+[x] Risk analyzer (7 flags, negation-stripping)  
+[x] Evidence checker (5 evidence types)  
+[x] Decision engine (5 decision codes)  
+[x] Next-prompt generator  
+[x] Instruction lifecycle state machine (6 states)  
+[x] SHA256 stateVersion for optimistic concurrency  
+[x] Approval gate (atomic, concurrent-safe)  
+[x] GOVERNANCE_API_KEY middleware guard  
+[x] Input length validation  
+[x] Full AuditLog on all transitions  
+[x] Dashboard with governance health  
+[x] Pending approvals queue  
+[x] Evidence report per task  
+[x] 124 passing tests  
+
+---
+
+## Phase 2 — GitHub-Aware Orchestrator
+**Status: SUBSTANTIALLY COMPLETE (PRs #29 through #168)**
+
+### Built
+[x] Project registry with GitHub metadata (repoOwner, repoName, branch, PAT)  
+[x] GitHub REST API client (`src/lib/githubClient.ts`)  
+[x] PR import by URL or owner/repo/number  
+[x] Incremental PR sync with delta detection  
+[x] Full PR history import (`FullSyncButton` + `fullSync` flag)  
+[x] Deterministic PR classification (10 types, no LLM)  
+[x] Bug state detection (4 states from title/labels/files)  
+[x] PR memory search  
+[x] PR timeline grouped by week/day/milestone  
+[x] Policy gate evaluation per task (`evaluatePolicy`)  
+[x] AI Change Control Pack (evidence API + page per task)  
+[x] Sandbox Replay (sandboxPlan, approve/reject, preview mode)  
+[x] Incident model, API, page, and nav  
+[x] Agent Scorecard (provider scorecard page + API)  
+[x] Client Report Templates (task and project report APIs)  
+[x] GitHub OAuth + iron-session auth  
+[x] Role-based access control  
+[x] API keys with SHA-256 hashing  
+[x] HMAC-signed outgoing webhooks  
+[x] SSE real-time events  
+[x] Execution trace (append-only)  
+[x] Mermaid diagram generation + SVG export  
+[x] Multi-agent orchestration framework (7 built-in governance roles)  
+[x] LLM integration behind `FEATURE_AGENT_LLM=false`  
+[x] Audit log export (CSV)  
+[x] Share links for governance reports  
+[x] Task clone, bulk ops, comments, PDF export  
+[x] Notification preferences  
+
+### Partial
+[~] Task linking to PRs (manual PATCH only, no auto-link)  
+[~] Agent run linking to PRs (manual PATCH only, no auto-link)  
+[~] Multi-org support (schema and API exist, UI limited)  
+[~] CI Dashboard (route + schema exist, UI partial)  
+[~] Billing / usage tracking (schema + usage API; no payment gateway)  
+
+### Not started in Phase 2
+[ ] GitHub webhooks for incoming push events — moved to Phase 3  
+[ ] Real-time sync via websocket/SSE for PR updates  
+[ ] LLM-powered PR summaries (gated behind `FEATURE_REPO_MEMORY_LLM=false`)  
+
+---
+
+## Phase 3 — PR Intelligence & Governance Visualization
+**Status: ACTIVE SPRINT (feature/phase3-pr-intelligence)**
+
+### Built (this sprint)
+[x] Repository Intelligence API (`GET /api/projects/[id]/intelligence`)  
+[x] Governance Timeline API (`GET /api/projects/[id]/governance-timeline`)  
+[x] `FullSyncButton` component for full PR history import  
+
+### Being built now
+[!] Repository Intelligence UI page  
+[!] Governance Timeline UI page  
+
+### Planned for this sprint (within 2 days)
+[ ] Project Health Dashboard — full wiring of intelligence + timeline on project page  
+[ ] Docs and scripts (this task)  
+[ ] Quality gates — smoke test + pre-PR checklist  
+
+### Phase 3 remaining (after this sprint, ~2–4 weeks)
+[ ] Auto-link PRs to tasks by branch name match  
+[ ] Auto-link agent runs to PRs by commit SHA  
+[ ] LLM-powered PR summaries (`FEATURE_REPO_MEMORY_LLM=true`)  
+[ ] GitHub webhooks (incoming push/PR events) — HMAC-verified receiver  
+[ ] Real-time PR sync (SSE push on webhook receipt)  
+[ ] CI Dashboard — complete the UI  
+[ ] Multi-org UI — complete member management  
+
+**Estimated timeline:** 2–4 weeks for the remaining Phase 3 items. Small team; realistic pace is 1–2 features per week.
+
+---
+
+## Phase 4 — Semi-Autonomous Sub-Agent Workflow
+**Status: NOT STARTED**
+**Estimated start:** Q3 2026 (after Phase 3 is stable)
+
+[ ] Autonomy policy engine — per-project auto-approve rules  
+[ ] Sub-agent role dispatch (CTO / CISO / QA / DevOps / Docs)  
+[ ] Exception queue — surface only BLOCKED + SENIOR_APPROVAL tasks  
+[ ] Real agent dispatch via Claude Code CLI or API  
+[ ] Full Langfuse trace logging (currently console stub)  
+[ ] Rate limiting on all mutation endpoints  
+
+**Estimated timeline:** 6–8 weeks. High risk items (real agent dispatch, autonomy policy) require careful testing before enabling.
+
+---
+
+## Phase 5 — Production-Grade Governance
+**Status: NOT STARTED**
+**Estimated start:** Q4 2026 (do not start before Phase 4 is stable)
+
+[ ] Production deployment gate (full evidence chain required)  
+[ ] Database migration gate (separate approval workflow)  
+[ ] Secret rotation detection in PR diffs  
+[ ] Physical AuditLog immutability (PostgreSQL row-level security)  
+[ ] Rate limiting on all endpoints  
+[ ] Multi-org isolation enforcement at database level  
+[ ] Staging environment support  
+
+**Estimated timeline:** 8–12 weeks. Most items are security-critical and require independent review before shipping.
+
+---
+
+## Permanently Out of Scope
+
+- GitLab integration (no plans)  
+- Public multi-tenant SaaS (not the product)  
+- Mobile app  
+- Automated production deployments  
+
+---
+
+## Dependency Map
+
+```
+Phase 1 (done)
+  └── Phase 2 (substantially done)
+        └── Phase 3 (active) ─── auto-link ─── Phase 4 (webhooks needed)
+              └── Phase 4 (semi-autonomous) ─── Phase 5 (prod gate)
+```
+
+Phase 5 production gating requires Phase 3 intelligence + Phase 4 autonomy to be stable first.

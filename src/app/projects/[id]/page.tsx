@@ -146,6 +146,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         }
         actions={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Link href={`/projects/${project.id}/intelligence`} className="btn btn-ghost btn-sm">
+              Intelligence
+            </Link>
+            <Link href={`/projects/${project.id}/governance-timeline`} className="btn btn-ghost btn-sm">
+              Timeline
+            </Link>
             <Link href={`/projects/${project.id}/board`} className="btn btn-ghost btn-sm">
               Board
             </Link>
