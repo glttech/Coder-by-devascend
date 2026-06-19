@@ -5,6 +5,9 @@ import { requireRole } from '@/lib/rbac';
 import { fetchGithubPR } from '@/lib/githubClient';
 import { buildClassificationFields } from '@/lib/prClassifier';
 import { writeAudit } from '@/lib/audit';
+import { checkLimit, getClientIp, Bucket } from '@/lib/rateLimiter';
+
+const _syncBuckets = new Map<string, Bucket>();
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +101,14 @@ async function listPRsSinceDate(
  * Auth: admin only — requires GITHUB_TOKEN env var to be useful on private repos.
  */
 export async function POST(request: Request) {
+  const ip = getClientIp(request.headers.get('x-forwarded-for'), request.headers.get('x-real-ip'));
+  const rl = checkLimit(_syncBuckets, ip, 5);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Too many sync requests — try again shortly' }, {
+      status: 429, headers: { 'Retry-After': String(rl.retryAfter) },
+    });
+  }
+
   const user = await getCurrentUser();
   const auth = requireRole(user, 'admin');
   if (!auth.ok) {
