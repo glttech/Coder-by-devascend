@@ -16,10 +16,13 @@ const NAV_ITEMS = [
   { href: '/diagrams',              label: 'Diagrams',          icon: '◆' },
   { href: '/incidents',             label: 'Incidents',         icon: '⚠' },
   { href: '/change-control',        label: 'Change Control',    icon: '◭' },
+  { href: '/executive',             label: 'Executive',         icon: '◈' },
   { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
   { href: '/settings/team',         label: 'Team',              icon: '◈' },
   { href: '/ci',                    label: 'CI Dashboard',      icon: '⬭' },
   { href: '/demo',                  label: 'Demo',              icon: '◌' },
+  { href: '/status',                label: 'System Status',     icon: '◎' },
+  { href: '/settings/admin',        label: 'Admin',             icon: '⬡' },
 ];
 
 interface MeResponse {
