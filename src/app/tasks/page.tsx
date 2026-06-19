@@ -21,13 +21,17 @@ function relativeTime(date: Date): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+const TASK_LIST_LIMIT = 200;
+
 export default async function TaskList() {
   const tasks = await prisma.task.findMany({
     orderBy: { createdAt: 'desc' },
+    take: TASK_LIST_LIMIT,
     include: {
       instructions: { where: { status: 'pending_approval' }, select: { id: true } },
     },
   });
+  const listCapped = tasks.length === TASK_LIST_LIMIT;
 
   const sevenDaysAgo = new Date(Date.now() - STALE_THRESHOLD_MS);
   const staleCount = tasks.filter(
@@ -38,7 +42,7 @@ export default async function TaskList() {
     <div>
       <PageHeader
         title="Tasks"
-        subtitle={`${tasks.length} task${tasks.length !== 1 ? 's' : ''} total`}
+        subtitle={listCapped ? `Showing ${TASK_LIST_LIMIT} most recent tasks` : `${tasks.length} task${tasks.length !== 1 ? 's' : ''} total`}
         badge={
           staleCount > 0 ? (
             <span className="badge badge-warning" title="Non-terminal tasks not updated in 7+ days">

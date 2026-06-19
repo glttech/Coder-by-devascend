@@ -3,8 +3,38 @@ import assert from 'node:assert/strict';
 
 // Pure functional tests — no DB required
 
+const COMMENT_MAX_LENGTH = 10_000;
+
+function validateCommentBody(body: string | undefined): string | null {
+  if (!body?.trim()) return 'body required';
+  if (body.length > COMMENT_MAX_LENGTH) return `Comment body exceeds ${COMMENT_MAX_LENGTH.toLocaleString()} character limit`;
+  return null;
+}
+
 describe('Comment validation', () => {
-  it('rejects empty body after trim', () => {
+  describe('body length', () => {
+    it('accepts a body under the limit', () => {
+      assert.equal(validateCommentBody('hello'), null);
+    });
+
+    it('accepts a body exactly at the limit', () => {
+      assert.equal(validateCommentBody('a'.repeat(COMMENT_MAX_LENGTH)), null);
+    });
+
+    it('rejects a body one char over the limit', () => {
+      const err = validateCommentBody('a'.repeat(COMMENT_MAX_LENGTH + 1));
+      assert.ok(err?.includes('10,000'));
+    });
+
+    it('rejects a blank body', () => {
+      assert.equal(validateCommentBody('   '), 'body required');
+    });
+
+    it('rejects undefined body', () => {
+      assert.equal(validateCommentBody(undefined), 'body required');
+    });
+  });
+  it('rejects empty body after trim (legacy)', () => {
     const body = '   ';
     assert.equal(!body?.trim(), true);
   });
