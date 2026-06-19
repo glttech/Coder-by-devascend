@@ -158,6 +158,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             <Link href={`/projects/${project.id}/milestones`} className="btn btn-ghost btn-sm">
               Milestones
             </Link>
+            <Link href={`/projects/${project.id}/risk`} className="btn btn-ghost btn-sm">
+              Risk
+            </Link>
             <Link href={`/projects/${project.id}/edit`} className="btn btn-ghost btn-sm">
               Edit
             </Link>
