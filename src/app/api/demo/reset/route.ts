@@ -37,7 +37,7 @@ export async function POST(): Promise<NextResponse> {
     await seedDemo(prisma);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `Seed failed: ${message}` }, { status: 500 });
+    console.error('[demo/reset POST]', err);
+    return NextResponse.json({ error: 'Demo reset failed — check server logs' }, { status: 500 });
   }
 }

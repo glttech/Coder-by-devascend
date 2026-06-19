@@ -3,6 +3,33 @@ import assert from 'node:assert/strict';
 
 // Pure functional tests — no DB required
 
+type Role = 'admin' | 'reviewer';
+
+function canDeleteComment(
+  comment: { authorId: string },
+  user: { userId: string; role: Role },
+): boolean {
+  return comment.authorId === user.userId || user.role === 'admin';
+}
+
+describe('Comment delete authorization', () => {
+  it('allows the comment author to delete their own comment', () => {
+    assert.ok(canDeleteComment({ authorId: 'u1' }, { userId: 'u1', role: 'reviewer' }));
+  });
+
+  it('allows an admin to delete any comment', () => {
+    assert.ok(canDeleteComment({ authorId: 'u1' }, { userId: 'u2', role: 'admin' }));
+  });
+
+  it('denies a reviewer deleting another users comment', () => {
+    assert.equal(canDeleteComment({ authorId: 'u1' }, { userId: 'u2', role: 'reviewer' }), false);
+  });
+
+  it('denies when userId is empty', () => {
+    assert.equal(canDeleteComment({ authorId: 'u1' }, { userId: '', role: 'reviewer' }), false);
+  });
+});
+
 describe('Comment validation', () => {
   it('rejects empty body after trim', () => {
     const body = '   ';
