@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { computeStateVersion } from '@/lib/stateVersion';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,10 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
+
   const { searchParams } = new URL(request.url);
   const clientVersion = searchParams.get('stateVersion');
 
