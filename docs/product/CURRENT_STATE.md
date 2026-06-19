@@ -2,9 +2,10 @@
 
 **Date:** 2026-06-19  
 **Branch:** main  
-**Last merged PR:** #183 (all Phase 3 PRs #176–#183 merged to main)  
-**DEV deployment:** Verified (app running on DEV server)  
-**Test count:** 1328+ passing
+**Last merged PR:** #183 (Phase 3 complete)  
+**Open PRs pending merge:** #184, #185, #186, #187, #188, #189, #190 (all CI green or in progress)  
+**Test count at tip of open PRs:** 1454 passing  
+**DEV deployment:** Verified (app running on DEV server)
 
 ---
 
@@ -142,20 +143,18 @@ All migrations applied to DEV database as of 2026-06-18:
 | `20260617000002_add_execution_trace` | ExecutionTrace (append-only) |
 | `20260617000003_pr_memory_index` | PR memory search index |
 
-**Expected governance-related migrations for this sprint** (feature/phase3-pr-intelligence):
-- Incident model fields
-- PrSyncState model
-- Any new fields for intelligence aggregate caching
+**Pending migration (in PR #188):** `20260619000001_add_performance_indexes` — 5 indexes for Task, AuditLog, and GithubPR for pagination and evidence timeline queries.
 
 ---
 
 ## DEV Deployment Status
 
-- App is running on DEV server
-- All 23 migrations applied
-- Build is clean (no TypeScript errors)
-- Test suite: all tests pass (last verified on merge of PR #168)
+- App running on DEV server (last verified at PR #183 merge)
+- 24 migrations in repo (migration #188 pending DB apply)
+- Build clean (TypeScript strict, no errors)
+- Test suite: 1454 passing at tip of open PRs; 0 failures
 - Feature flags all default to `false` — no LLM keys required to run
+- `open-swe` agent tool disabled in UI with "(coming soon)" label (PR #187)
 
 ---
 
@@ -164,29 +163,33 @@ All migrations applied to DEV database as of 2026-06-18:
 ### Security
 | ID | Severity | Description |
 |----|----------|-------------|
-| ~~M1~~ | ~~Medium~~ | ~~No rate limiting on any mutation endpoint~~ — **RESOLVED** (feat/rate-limit-mutations: 4 POST endpoints now rate-limited) |
-| M2 | Medium | Read endpoints remain unrate-limited (GET requests unlimited per IP) |
+| ~~M1~~ | ~~Medium~~ | ~~No rate limiting on mutation endpoints~~ — **RESOLVED** PR #184 |
+| ~~M2~~ | ~~Medium~~ | ~~Route-level auth missing on 11 endpoints~~ — **RESOLVED** PRs #187, #188, #189, #190 |
+| ~~M3~~ | ~~Medium~~ | ~~Comment DELETE had no auth or ownership check~~ — **RESOLVED** PR #189 |
 | L1 | Low | `approverId` on Approval is self-reported in some code paths |
 | L2 | Low | AuditLog `userId` not always populated (depends on session presence) |
 | L3 | Low | Physical DB-level immutability (row-level security) not enforced |
 | L4 | Low | In-memory rate limit buckets — resets on server restart, not distributed |
+| L5 | Low | Read endpoints (GET) unrate-limited at route level (middleware handles 60/min) |
 
 ### Functional Gaps
 | Gap | Impact | Notes |
 |-----|--------|-------|
 | No incoming GitHub webhooks | Medium | PR data only updated on manual sync or import |
-| No auto-link PRs to tasks | Medium | Manual PATCH only |
+| ~~No auto-link PRs to agent runs~~ | ~~Medium~~ | **RESOLVED** PR #185 — scored discovery + one-click link |
 | No real-time PR sync | Low | Batch sync sufficient for current usage |
 | CI Dashboard UI incomplete | Low | Schema + route exist; no UI built |
 | Multi-org UI incomplete | Low | API works; UI limited to basic org page |
 | Langfuse stubbed | Low | Console fallback; no real observability on LLM calls |
 | No email/Slack notifications | Low | Preferences stored; no dispatch wired |
 | No background job runner | Medium | Full sync blocks the HTTP request; may timeout on very large repos |
+| Webhook delivery not implemented | Medium | Webhook CRUD exists but outbound delivery (`POST url`) not wired |
 
 ### Technical Debt
 | Item | Notes |
 |------|-------|
 | Full history sync is synchronous | Blocks the HTTP request; should be moved to a background job |
 | No connection pooling | Direct PostgreSQL connection; may struggle under concurrent load |
-| `open-swe` agent tool stub | Listed as an option in task creation; non-functional |
+| `open-swe` agent tool stub | Disabled in UI with "(coming soon)"; implementation not started |
 | No automated smoke tests in CI | Smoke tests are run manually post-deploy |
+| Notification preferences use inline `getIronSession` | Inconsistent with `getCurrentUser()` pattern used elsewhere |

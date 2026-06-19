@@ -114,30 +114,103 @@ Delivered the Phase 3 foundation:
 
 ---
 
-### Rate Limiting Applied to 4 Mutation Endpoints
+### PR #184 — Rate Limiting on Mutation Endpoints
 
 **Branch:** feat/rate-limit-mutations  
-**Tests:** No new tests added (rate limiter unit-tested separately in existing suite)
+**Tests at open:** 1460  
+**Status:** Open (pending merge)
 
 Applied token-bucket rate limiting (`src/lib/rateLimiter.ts`) to the four highest-risk mutation endpoints:
-- `POST /api/tasks` — 20 requests per minute per IP
-- `POST /api/agent-runs` — 20 requests per minute per IP
-- `POST /api/tasks/[id]/orchestrate` — 10 requests per minute per IP
-- `POST /api/github-prs/sync` — 5 requests per minute per IP (sync is expensive)
+- `POST /api/tasks` — 20 req/min per IP
+- `POST /api/agent-runs` — 20 req/min per IP
+- `POST /api/tasks/[id]/orchestrate` — 10 req/min per IP (LLM call)
+- `POST /api/github-prs/sync` — 5 req/min per IP (full GitHub sync)
 
-Read endpoints remain unrate-limited. Addresses security gap M1 identified in CURRENT_STATE.md.
+15 new integration tests in `rateLimitIntegration.test.ts`. Addresses security gap M1.
 
 ---
 
-### Required Product Documentation Created
+### PR #185 — Auto-Link PRs to Agent Runs
 
-**Date:** 2026-06-19  
-**Files created:**
-- `docs/product/ARCHITECTURE.md` — System overview, data flow, auth flow, decision pipeline, key models, API design, PR intelligence pipeline, security layers, feature flags, known architectural limitations.
-- `docs/product/DECISIONS.md` — 8 Architecture Decision Records (ADR-001 through ADR-008).
-- `docs/product/KNOWN_LIMITATIONS.md` — Honest account of security, scalability, functional, operational gaps, and out-of-scope items.
-- `docs/product/EXECUTION_LOG.md` — This file.
+**Branch:** feat/auto-link-prs-runs  
+**Tests at open:** 1466  
+**Status:** Open (pending merge)
 
-**Files updated:**
-- `docs/product/CURRENT_STATE.md` — Reflects all 8 PRs merged to main; Phase 3 complete; test count 1328+.
-- `docs/product/ROADMAP.md` — Phase 3 marked COMPLETE; Phase 4 marked as NEXT.
+- `GET /api/agent-runs/[id]/link-prs` — returns linked PRs + up to 5 scored suggestions (SHA match 10pts, time proximity 0-5pts, branch keyword overlap 2pts/word)
+- `POST /api/agent-runs/[id]/link-prs` — atomically sets the linked PR set scoped to the same project
+- `LinkPrsPanel` client component on the agent run detail page
+- 20 new tests in `autoLinkPrs.test.ts`
+
+---
+
+### PR #186 — Product Documentation Suite
+
+**Branch:** feat/product-docs-refresh  
+**Status:** Open (pending merge)
+
+Files created:
+- `docs/product/ARCHITECTURE.md` — System overview, auth pipeline, decision engine, API design, PR intelligence pipeline, security layers
+- `docs/product/DECISIONS.md` — 8 Architecture Decision Records (ADR-001 through ADR-008)
+- `docs/product/KNOWN_LIMITATIONS.md` — Security, scalability, functional, operational gaps and out-of-scope items
+- `docs/product/EXECUTION_LOG.md` — This file
+
+Files updated: `CURRENT_STATE.md`, `ROADMAP.md`
+
+---
+
+### PR #187 — Auth Hardening, Pagination, UI Polish
+
+**Branch:** feat/auth-limits-polish  
+**Tests at open:** 1463  
+**Status:** Open, CI green, ready for review
+
+Defense-in-depth auth on 11 routes that relied solely on middleware:
+- `GET /api/tasks`, `GET /api/github-prs`, `GET /api/ci/status` — `requireRole('any')`
+- `GET /api/billing/usage` — `requireRole('admin')` (exposes org-wide metrics)
+- `GET/POST /api/tasks/[id]/comments`, `DELETE .../[commentId]` — `requireRole('any')`
+- `GET /api/tasks/[id]/pdf`, `POST /api/runs`, `DELETE /api/share-links/[id]` — `requireRole('any')`
+- `POST /api/github-prs/[id]/refresh`, `GET /api/instructions/[id]/stale` — `requireRole('any')`
+
+Pagination added to `GET /api/tasks` (limit/cursor) and `GET /api/github-prs` (limit/cursor).  
+Fixed `authorId: 'anonymous'` bug in comments POST; now uses `user?.userId`.  
+Disabled `open-swe` in task creation UI with "(coming soon)" label.  
+18 new tests in `tasksPagination.test.ts`.
+
+---
+
+### PR #188 — Bounded Queries, Input Validation, DB Indexes
+
+**Branch:** feat/validation-indexes-hardening  
+**Tests at open:** 1450  
+**Status:** Open, CI green, ready for review
+
+- `tasks/page.tsx`: capped `findMany()` at `take: 200`; shows "Showing 200 most recent tasks" when capped
+- `comments/route.ts`: rejects comment bodies > 10,000 chars with 422
+- `keys/route.ts`: scope validation at route level; catch no longer leaks raw Prisma error messages
+- `schema.prisma` + migration: added indexes for `Task(createdAt)`, `Task(projectId, createdAt)`, `AuditLog(taskId)`, `AuditLog(createdAt)`, `GithubPR(importedAt)`
+- 5 new tests for comment body length boundary conditions
+
+---
+
+### PR #189 — Comment Delete Ownership, Demo Error Hardening, Bounded PR Health
+
+**Branch:** feat/auth-ownership-hardening  
+**Tests at open:** 1449  
+**Status:** Open, CI in progress
+
+- `comments/[commentId]/route.ts`: DELETE had zero auth; now requires `requireRole('any')` + ownership check (authorId or admin-only delete)
+- `demo/reset/route.ts`: error catch leaked raw `err.message` to client; replaced with generic message
+- `projects/[id]/page.tsx`: health query capped at `take: 1000` (was unbounded)
+- 4 new tests for `canDeleteComment` ownership logic
+
+---
+
+### PR #190 — Projects API Auth, API Key Tests
+
+**Branch:** feat/projects-api-auth  
+**Tests at open:** 1454  
+**Status:** Open, CI in progress
+
+- `GET /api/projects`: missing auth; now `requireRole('any')` + `take: 500`
+- `GET /api/projects/[id]`: missing auth; now `requireRole('any')`
+- `src/lib/__tests__/apiKeys.test.ts` (NEW): 11 tests covering `VALID_SCOPES`, scope validation, format regex, and key prefix
