@@ -1,9 +1,10 @@
 # Current State Snapshot — Coder by DevAscend
 
-**Date:** 2026-06-18  
-**Branch:** feature/phase3-pr-intelligence  
-**Active PR:** #175  
-**DEV deployment:** Verified (app running on DEV server)
+**Date:** 2026-06-19  
+**Branch:** main  
+**Last merged PR:** #183 (all Phase 3 PRs #176–#183 merged to main)  
+**DEV deployment:** Verified (app running on DEV server)  
+**Test count:** 1328+ passing
 
 ---
 
@@ -29,7 +30,7 @@
 | Task PDF export | Built | `GET /api/tasks/[id]/pdf` |
 | Task bulk operations | Built | `POST /api/tasks/bulk` |
 | Task comments | Built | `/api/tasks/[id]/comments` |
-| Task linking to PRs | Partial | Manual PATCH only |
+| Task linking to PRs | Partial | Manual PATCH only — auto-link not implemented |
 
 ### GitHub PR Intelligence
 
@@ -42,13 +43,34 @@
 | Bug state detection | Built | `src/lib/prClassifier.ts` |
 | PR memory search | Built | `GET /api/github-prs/memory` |
 | PR timeline (week/day/milestone) | Built | `src/lib/buildTimeline.ts` |
-| Governance Timeline page | Being built | `src/app/projects/[id]/timeline/page.tsx` |
+| Governance Timeline page | Built | `src/app/projects/[id]/timeline/page.tsx` |
 | Repository Intelligence API | Built | `GET /api/projects/[id]/intelligence` |
-| Repository Intelligence UI | Being built | Active sprint |
+| Repository Intelligence UI | Built | `/projects/[id]/intelligence` page |
 | PR refresh from GitHub | Built | `POST /api/github-prs/[id]/refresh` |
-| Agent run linking to PRs | Partial | Manual PATCH only |
-| LLM PR summaries | Planned | `FEATURE_REPO_MEMORY_LLM=false` |
-| GitHub webhooks (incoming) | Planned | Not started |
+| Sync progress polling | Built | `GET /api/github-prs/sync-status` + `PrSyncState` model |
+| Agent run linking to PRs | Partial | Manual PATCH only — auto-link not implemented |
+| LLM PR summaries | Planned | `FEATURE_REPO_MEMORY_LLM=false` (Phase 3 follow-up) |
+| GitHub webhooks (incoming) | Planned | Not started (Phase 3 follow-up) |
+
+### Governance Visualization (Phase 3 — COMPLETE)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Sync progress polling | Built | `GET /api/github-prs/sync-status` |
+| FullSyncButton live progress | Built | `src/components/FullSyncButton.tsx` |
+| Agent role-scoped dashboard | Built | `/dashboard` (role-filtered views) |
+| Policy risk dashboard | Built | `/projects/[id]/policy` |
+| Risk rule reference UI | Built | `/projects/[id]/policy` (rule browser) |
+| Sandbox replay comparison | Built | `/tasks/[id]/sandbox` |
+| What-if analysis panel | Built | `/tasks/[id]/sandbox` |
+| Incident postmortem view | Built | `/incidents/[id]/postmortem` |
+| Change control dashboard | Built | `/projects/[id]/change-control` |
+| Executive dashboard | Built | `/executive` (ADMIN/SENIOR only) |
+| System status page | Built | `/status` |
+| Admin settings page | Built | `/admin/settings` |
+| Onboarding page | Built | `/onboarding` |
+| Demo showcase page | Built | `/demo` |
+| Rate limiting (4 mutations) | Built | `src/lib/rateLimiter.ts` |
 
 ### Incident Management
 
@@ -142,10 +164,12 @@ All migrations applied to DEV database as of 2026-06-18:
 ### Security
 | ID | Severity | Description |
 |----|----------|-------------|
-| M1 | Medium | No rate limiting on any mutation endpoint |
+| ~~M1~~ | ~~Medium~~ | ~~No rate limiting on any mutation endpoint~~ — **RESOLVED** (feat/rate-limit-mutations: 4 POST endpoints now rate-limited) |
+| M2 | Medium | Read endpoints remain unrate-limited (GET requests unlimited per IP) |
 | L1 | Low | `approverId` on Approval is self-reported in some code paths |
 | L2 | Low | AuditLog `userId` not always populated (depends on session presence) |
 | L3 | Low | Physical DB-level immutability (row-level security) not enforced |
+| L4 | Low | In-memory rate limit buckets — resets on server restart, not distributed |
 
 ### Functional Gaps
 | Gap | Impact | Notes |
