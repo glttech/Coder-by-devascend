@@ -3,8 +3,8 @@
 **Date:** 2026-06-19  
 **Branch:** main  
 **Last merged PR:** #183 (Phase 3 complete)  
-**Open PRs pending merge:** #184, #185, #186, #187, #188, #189, #190 (all CI green or in progress)  
-**Test count at tip of open PRs:** 1454 passing  
+**Open PRs pending merge:** #184–#192 (9 open; all CI green or in progress)  
+**Test count at tip of open PRs:** ~1492 passing (local; CI verifies on merge)  
 **DEV deployment:** Verified (app running on DEV server)
 
 ---
@@ -66,7 +66,7 @@
 | What-if analysis panel | Built | `/tasks/[id]/sandbox` |
 | Incident postmortem view | Built | `/incidents/[id]/postmortem` |
 | Change control dashboard | Built | `/projects/[id]/change-control` |
-| Executive dashboard | Built | `/executive` (ADMIN/SENIOR only) |
+| Executive dashboard | Built | `/executive` (ADMIN/SENIOR only) — with `error.tsx` crash recovery |
 | System status page | Built | `/status` |
 | Admin settings page | Built | `/admin/settings` |
 | Onboarding page | Built | `/onboarding` |
@@ -152,7 +152,7 @@ All migrations applied to DEV database as of 2026-06-18:
 - App running on DEV server (last verified at PR #183 merge)
 - 24 migrations in repo (migration #188 pending DB apply)
 - Build clean (TypeScript strict, no errors)
-- Test suite: 1454 passing at tip of open PRs; 0 failures
+- Test suite: ~1492 passing at tip of open PRs; 0 failures
 - Feature flags all default to `false` — no LLM keys required to run
 - `open-swe` agent tool disabled in UI with "(coming soon)" label (PR #187)
 
@@ -164,8 +164,11 @@ All migrations applied to DEV database as of 2026-06-18:
 | ID | Severity | Description |
 |----|----------|-------------|
 | ~~M1~~ | ~~Medium~~ | ~~No rate limiting on mutation endpoints~~ — **RESOLVED** PR #184 |
-| ~~M2~~ | ~~Medium~~ | ~~Route-level auth missing on 11 endpoints~~ — **RESOLVED** PRs #187, #188, #189, #190 |
+| ~~M2~~ | ~~Medium~~ | ~~Route-level auth missing on 11 endpoints~~ — **RESOLVED** PRs #187, #188, #189, #190, #191 |
 | ~~M3~~ | ~~Medium~~ | ~~Comment DELETE had no auth or ownership check~~ — **RESOLVED** PR #189 |
+| ~~M4~~ | ~~Medium~~ | ~~GET + POST /api/operator-sessions unauthenticated~~ — **RESOLVED** PR #192 |
+| ~~M5~~ | ~~Medium~~ | ~~GET /api/incidents + several routes had unbounded findMany()~~ — **RESOLVED** PRs #188, #192 |
+| ~~M6~~ | ~~Medium~~ | ~~Webhook event names not validated against allowlist~~ — **RESOLVED** PR #192 |
 | L1 | Low | `approverId` on Approval is self-reported in some code paths |
 | L2 | Low | AuditLog `userId` not always populated (depends on session presence) |
 | L3 | Low | Physical DB-level immutability (row-level security) not enforced |
@@ -183,7 +186,7 @@ All migrations applied to DEV database as of 2026-06-18:
 | Langfuse stubbed | Low | Console fallback; no real observability on LLM calls |
 | No email/Slack notifications | Low | Preferences stored; no dispatch wired |
 | No background job runner | Medium | Full sync blocks the HTTP request; may timeout on very large repos |
-| Webhook delivery not implemented | Medium | Webhook CRUD exists but outbound delivery (`POST url`) not wired |
+| ~~Webhook delivery not implemented~~ | ~~Medium~~ | **RESOLVED** PR #191 — HMAC-signed delivery, 10 event types, auto-disable on 5 failures |
 
 ### Technical Debt
 | Item | Notes |
