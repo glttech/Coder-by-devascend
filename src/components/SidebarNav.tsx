@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 const NAV_ITEMS = [
   { href: '/',                      label: 'Dashboard',         icon: '⬡' },
+  { href: '/getting-started',       label: 'Getting Started',   icon: '▷' },
   { href: '/projects',              label: 'Projects',          icon: '⬟' },
   { href: '/tasks',                 label: 'Tasks',             icon: '◈' },
   { href: '/instructions/pending',  label: 'Review Queue', icon: '◉' },
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
   { href: '/settings/team',         label: 'Team',              icon: '◈' },
   { href: '/ci',                    label: 'CI Dashboard',      icon: '⬭' },
+  { href: '/demo',                  label: 'Demo',              icon: '◌' },
 ];
 
 interface MeResponse {
