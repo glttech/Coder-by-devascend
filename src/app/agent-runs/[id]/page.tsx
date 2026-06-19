@@ -8,6 +8,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import AgentRunActions from '@/components/AgentRunActions';
 import SandboxPreviewPanel from '@/components/SandboxPreviewPanel';
+import LinkPrsPanel from '@/components/LinkPrsPanel';
 import type { SandboxPlan } from '@/lib/sandboxPlanner';
 
 export const dynamic = 'force-dynamic';
@@ -47,7 +48,20 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
     include: {
       steps: { orderBy: { stepIndex: 'asc' } },
       evaluations: true,
-      task: { select: { id: true, title: true } },
+      task: { select: { id: true, title: true, projectId: true } },
+      githubPRs: {
+        select: {
+          id: true,
+          prNumber: true,
+          title: true,
+          state: true,
+          merged: true,
+          ciStatus: true,
+          classification: true,
+          sourceBranch: true,
+          prUrl: true,
+        },
+      },
     },
   });
   // sandboxPlan is a new column not yet reflected in generated Prisma types;
@@ -277,6 +291,16 @@ export default async function AgentRunPage({ params }: AgentRunPageProps) {
           </div>
         </div>
       )}
+
+      {/* Linked PRs */}
+      <div className="section">
+        <LinkPrsPanel
+          agentRunId={agentRun.id}
+          projectId={agentRun.task.projectId}
+          initialLinked={agentRun.githubPRs}
+          userRole={userRole}
+        />
+      </div>
 
       {/* Actions */}
       <div className="section">
