@@ -221,7 +221,7 @@ Disabled `open-swe` in task creation UI with "(coming soon)" label.
 
 **Branch:** feat/webhook-delivery-orgs-fix  
 **Tests at open:** 1459  
-**Status:** Open, CI in progress
+**Status:** Open, CI green, ready for review
 
 - `src/lib/webhookDelivery.ts` (NEW): outbound HMAC-SHA256 signed webhook delivery
   - `triggerWebhooks(event, data)` — queries enabled webhooks, signs with `X-Coder-Signature`, POSTs with 10s timeout, tracks failures, auto-disables at 5 consecutive failures
@@ -231,3 +231,24 @@ Disabled `open-swe` in task creation UI with "(coming soon)" label.
 - `GET /api/orgs`: filtered to user's memberships (was returning ALL organizations)
 - `GET /api/tasks/[id]`: now requires `requireRole('any')` (was fully unauthenticated)
 - 14 new tests in `webhookDelivery.test.ts`
+
+---
+
+### PR #192 — Operator Session Auth, Bounded Queries, Incident/Webhook Validation
+
+**Branch:** feat/operator-session-auth-bounds  
+**Tests at open:** 1496 (estimated: 1459 + 33 new + 4 from policyRules)  
+**Status:** Open, CI in progress
+
+- `GET + POST /api/operator-sessions`: both methods were fully unauthenticated; now `requireRole('any')` gates both
+- `GET /api/operator-sessions`: bounded at `take: 200`
+- `GET /api/users`: bounded at `take: 500`
+- `GET /api/orgs/[id]/members`: bounded at `take: 500`
+- `GET /api/incidents`: bounded at `take: 200`
+- `POST /api/incidents`: length limits — title ≤ 500, description ≤ 10,000, failedCommand/failedTest ≤ 5,000 chars each
+- `POST /api/webhooks`: event names validated against 10-event allowlist; URL ≤ 2,048 chars; secret ≤ 256 chars
+- `src/app/executive/error.tsx` (NEW): Next.js error boundary for the executive dashboard; shows graceful error message with retry button instead of full-page crash on DB failure
+- `src/lib/__tests__/operatorSessionAuth.test.ts` (NEW): 9 tests covering RBAC on GET + POST and agentResponse length boundary
+- `src/lib/__tests__/incidentValidation.test.ts` (NEW): 12 tests covering all new length limits and enum validation
+- `src/lib/__tests__/webhookValidation.test.ts` (NEW): 16 tests covering event allowlist, URL/secret length limits
+- `src/lib/__tests__/policyRules.test.ts` (NEW): 14 tests covering riskLevelPriority, computeRiskSummary, filterPolicyEvents
