@@ -72,9 +72,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     );
   }
 
-  // Fetch all PR health data (separate query — list page uses its own query with filters)
+  // Fetch PR health data — capped at 1000 most recent to bound memory use on large projects.
+  // Health signals are computed over this window; projects with >1000 PRs show approximate health.
   const allPRsForHealth = await prisma.githubPR.findMany({
     where: { projectId: params.id },
+    orderBy: { importedAt: 'desc' },
+    take: 1000,
     select: { id: true, prNumber: true, title: true, body: true, state: true, merged: true, ciStatus: true, importedAt: true, updatedAt: true, githubMergedAt: true },
   }) as PRHealthInputFull[];
 
