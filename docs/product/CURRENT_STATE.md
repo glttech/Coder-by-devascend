@@ -1,8 +1,10 @@
 # Current State Snapshot — Coder by DevAscend
 
-**Date:** 2026-06-18  
-**Branch:** feature/phase3-pr-intelligence  
-**Active PR:** #175  
+**Date:** 2026-06-19  
+**Branch:** main  
+**Last merged PR:** #183 (Phase 3 complete)  
+**Open PRs pending merge:** #184–#192 (9 open; all CI green or in progress)  
+**Test count at tip of open PRs:** ~1492 passing (local; CI verifies on merge)  
 **DEV deployment:** Verified (app running on DEV server)
 
 ---
@@ -29,7 +31,7 @@
 | Task PDF export | Built | `GET /api/tasks/[id]/pdf` |
 | Task bulk operations | Built | `POST /api/tasks/bulk` |
 | Task comments | Built | `/api/tasks/[id]/comments` |
-| Task linking to PRs | Partial | Manual PATCH only |
+| Task linking to PRs | Partial | Manual PATCH only — auto-link not implemented |
 
 ### GitHub PR Intelligence
 
@@ -42,13 +44,34 @@
 | Bug state detection | Built | `src/lib/prClassifier.ts` |
 | PR memory search | Built | `GET /api/github-prs/memory` |
 | PR timeline (week/day/milestone) | Built | `src/lib/buildTimeline.ts` |
-| Governance Timeline page | Being built | `src/app/projects/[id]/timeline/page.tsx` |
+| Governance Timeline page | Built | `src/app/projects/[id]/timeline/page.tsx` |
 | Repository Intelligence API | Built | `GET /api/projects/[id]/intelligence` |
-| Repository Intelligence UI | Being built | Active sprint |
+| Repository Intelligence UI | Built | `/projects/[id]/intelligence` page |
 | PR refresh from GitHub | Built | `POST /api/github-prs/[id]/refresh` |
-| Agent run linking to PRs | Partial | Manual PATCH only |
-| LLM PR summaries | Planned | `FEATURE_REPO_MEMORY_LLM=false` |
-| GitHub webhooks (incoming) | Planned | Not started |
+| Sync progress polling | Built | `GET /api/github-prs/sync-status` + `PrSyncState` model |
+| Agent run linking to PRs | Partial | Manual PATCH only — auto-link not implemented |
+| LLM PR summaries | Planned | `FEATURE_REPO_MEMORY_LLM=false` (Phase 3 follow-up) |
+| GitHub webhooks (incoming) | Planned | Not started (Phase 3 follow-up) |
+
+### Governance Visualization (Phase 3 — COMPLETE)
+
+| Feature | Status | Location |
+|---------|--------|----------|
+| Sync progress polling | Built | `GET /api/github-prs/sync-status` |
+| FullSyncButton live progress | Built | `src/components/FullSyncButton.tsx` |
+| Agent role-scoped dashboard | Built | `/dashboard` (role-filtered views) |
+| Policy risk dashboard | Built | `/projects/[id]/policy` |
+| Risk rule reference UI | Built | `/projects/[id]/policy` (rule browser) |
+| Sandbox replay comparison | Built | `/tasks/[id]/sandbox` |
+| What-if analysis panel | Built | `/tasks/[id]/sandbox` |
+| Incident postmortem view | Built | `/incidents/[id]/postmortem` |
+| Change control dashboard | Built | `/projects/[id]/change-control` |
+| Executive dashboard | Built | `/executive` (ADMIN/SENIOR only) — with `error.tsx` crash recovery |
+| System status page | Built | `/status` |
+| Admin settings page | Built | `/admin/settings` |
+| Onboarding page | Built | `/onboarding` |
+| Demo showcase page | Built | `/demo` |
+| Rate limiting (4 mutations) | Built | `src/lib/rateLimiter.ts` |
 
 ### Incident Management
 
@@ -120,20 +143,18 @@ All migrations applied to DEV database as of 2026-06-18:
 | `20260617000002_add_execution_trace` | ExecutionTrace (append-only) |
 | `20260617000003_pr_memory_index` | PR memory search index |
 
-**Expected governance-related migrations for this sprint** (feature/phase3-pr-intelligence):
-- Incident model fields
-- PrSyncState model
-- Any new fields for intelligence aggregate caching
+**Pending migration (in PR #188):** `20260619000001_add_performance_indexes` — 5 indexes for Task, AuditLog, and GithubPR for pagination and evidence timeline queries.
 
 ---
 
 ## DEV Deployment Status
 
-- App is running on DEV server
-- All 23 migrations applied
-- Build is clean (no TypeScript errors)
-- Test suite: all tests pass (last verified on merge of PR #168)
+- App running on DEV server (last verified at PR #183 merge)
+- 24 migrations in repo (migration #188 pending DB apply)
+- Build clean (TypeScript strict, no errors)
+- Test suite: ~1492 passing at tip of open PRs; 0 failures
 - Feature flags all default to `false` — no LLM keys required to run
+- `open-swe` agent tool disabled in UI with "(coming soon)" label (PR #187)
 
 ---
 
@@ -142,27 +163,36 @@ All migrations applied to DEV database as of 2026-06-18:
 ### Security
 | ID | Severity | Description |
 |----|----------|-------------|
-| M1 | Medium | No rate limiting on any mutation endpoint |
+| ~~M1~~ | ~~Medium~~ | ~~No rate limiting on mutation endpoints~~ — **RESOLVED** PR #184 |
+| ~~M2~~ | ~~Medium~~ | ~~Route-level auth missing on 11 endpoints~~ — **RESOLVED** PRs #187, #188, #189, #190, #191 |
+| ~~M3~~ | ~~Medium~~ | ~~Comment DELETE had no auth or ownership check~~ — **RESOLVED** PR #189 |
+| ~~M4~~ | ~~Medium~~ | ~~GET + POST /api/operator-sessions unauthenticated~~ — **RESOLVED** PR #192 |
+| ~~M5~~ | ~~Medium~~ | ~~GET /api/incidents + several routes had unbounded findMany()~~ — **RESOLVED** PRs #188, #192 |
+| ~~M6~~ | ~~Medium~~ | ~~Webhook event names not validated against allowlist~~ — **RESOLVED** PR #192 |
 | L1 | Low | `approverId` on Approval is self-reported in some code paths |
 | L2 | Low | AuditLog `userId` not always populated (depends on session presence) |
 | L3 | Low | Physical DB-level immutability (row-level security) not enforced |
+| L4 | Low | In-memory rate limit buckets — resets on server restart, not distributed |
+| L5 | Low | Read endpoints (GET) unrate-limited at route level (middleware handles 60/min) |
 
 ### Functional Gaps
 | Gap | Impact | Notes |
 |-----|--------|-------|
 | No incoming GitHub webhooks | Medium | PR data only updated on manual sync or import |
-| No auto-link PRs to tasks | Medium | Manual PATCH only |
+| ~~No auto-link PRs to agent runs~~ | ~~Medium~~ | **RESOLVED** PR #185 — scored discovery + one-click link |
 | No real-time PR sync | Low | Batch sync sufficient for current usage |
 | CI Dashboard UI incomplete | Low | Schema + route exist; no UI built |
 | Multi-org UI incomplete | Low | API works; UI limited to basic org page |
 | Langfuse stubbed | Low | Console fallback; no real observability on LLM calls |
 | No email/Slack notifications | Low | Preferences stored; no dispatch wired |
 | No background job runner | Medium | Full sync blocks the HTTP request; may timeout on very large repos |
+| ~~Webhook delivery not implemented~~ | ~~Medium~~ | **RESOLVED** PR #191 — HMAC-signed delivery, 10 event types, auto-disable on 5 failures |
 
 ### Technical Debt
 | Item | Notes |
 |------|-------|
 | Full history sync is synchronous | Blocks the HTTP request; should be moved to a background job |
 | No connection pooling | Direct PostgreSQL connection; may struggle under concurrent load |
-| `open-swe` agent tool stub | Listed as an option in task creation; non-functional |
+| `open-swe` agent tool stub | Disabled in UI with "(coming soon)"; implementation not started |
 | No automated smoke tests in CI | Smoke tests are run manually post-deploy |
+| Notification preferences use inline `getIronSession` | Inconsistent with `getCurrentUser()` pattern used elsewhere |

@@ -1,7 +1,7 @@
 # Product Roadmap — Coder by DevAscend
 
-**Last updated:** 2026-06-18  
-**Current branch:** feature/phase3-pr-intelligence  
+**Last updated:** 2026-06-19  
+**Current branch:** main (all Phase 3 PRs #176–#183 merged; security/quality PRs #184–#192 open)
 
 ---
 
@@ -73,8 +73,8 @@
 [x] Notification preferences  
 
 ### Partial
-[~] Task linking to PRs (manual PATCH only, no auto-link)  
-[~] Agent run linking to PRs (manual PATCH only, no auto-link)  
+[~] Task linking to PRs (manual PATCH only — auto-link deferred to Phase 4)  
+[x] Agent run linking to PRs — auto-link with scored discovery (PR #185)  
 [~] Multi-org support (schema and API exist, UI limited)  
 [~] CI Dashboard (route + schema exist, UI partial)  
 [~] Billing / usage tracking (schema + usage API; no payment gateway)  
@@ -87,45 +87,52 @@
 ---
 
 ## Phase 3 — PR Intelligence & Governance Visualization
-**Status: ACTIVE SPRINT (feature/phase3-pr-intelligence)**
+**Status: COMPLETE (PRs #176–#183, merged 2026-06-19, 1328+ tests passing)**
 
-### Built (this sprint)
+### Built and merged
 [x] Repository Intelligence API (`GET /api/projects/[id]/intelligence`)  
 [x] Governance Timeline API (`GET /api/projects/[id]/governance-timeline`)  
 [x] `FullSyncButton` component for full PR history import  
+[x] Sync progress polling endpoint (`GET /api/github-prs/sync-status`)  
+[x] FullSyncButton live progress bar (polls PrSyncState every 2 seconds)  
+[x] Agent role-scoped dashboard views (AGENT / SENIOR / ADMIN)  
+[x] Policy risk dashboard (`/projects/[id]/policy`)  
+[x] Risk rule reference UI (browsable rule descriptions)  
+[x] Sandbox replay comparison and what-if analysis panel  
+[x] Incident postmortem view (`/incidents/[id]/postmortem`)  
+[x] Change control dashboard (`/projects/[id]/change-control`)  
+[x] Executive dashboard (`/executive` — ADMIN/SENIOR only)  
+[x] System status page (`/status`)  
+[x] Admin settings page (`/admin/settings`)  
+[x] Onboarding page (`/onboarding`)  
+[x] Demo showcase page (`/demo`)  
+[x] Rate limiting on 4 mutation endpoints (feat/rate-limit-mutations)  
+[x] Product documentation (ARCHITECTURE.md, DECISIONS.md, KNOWN_LIMITATIONS.md, EXECUTION_LOG.md)  
 
-### Being built now
-[!] Repository Intelligence UI page  
-[!] Governance Timeline UI page  
-
-### Planned for this sprint (within 2 days)
-[ ] Project Health Dashboard — full wiring of intelligence + timeline on project page  
-[ ] Docs and scripts (this task)  
-[ ] Quality gates — smoke test + pre-PR checklist  
-
-### Phase 3 remaining (after this sprint, ~2–4 weeks)
-[ ] Auto-link PRs to tasks by branch name match  
-[ ] Auto-link agent runs to PRs by commit SHA  
-[ ] LLM-powered PR summaries (`FEATURE_REPO_MEMORY_LLM=true`)  
-[ ] GitHub webhooks (incoming push/PR events) — HMAC-verified receiver  
-[ ] Real-time PR sync (SSE push on webhook receipt)  
-[ ] CI Dashboard — complete the UI  
-[ ] Multi-org UI — complete member management  
-
-**Estimated timeline:** 2–4 weeks for the remaining Phase 3 items. Small team; realistic pace is 1–2 features per week.
+### Phase 3 deferred items (status as of 2026-06-19)
+[x] Auto-link agent runs to PRs — SHA match + time proximity + branch keyword scoring (PR #185)  
+[x] Outbound HMAC-signed webhook delivery — 10 event types, auto-disable on failure (PR #191)  
+[ ] Auto-link PRs to tasks by branch name match (carry to Phase 4)  
+[ ] LLM-powered PR summaries (`FEATURE_REPO_MEMORY_LLM=true`) (carry to Phase 4)  
+[ ] GitHub webhooks (incoming push/PR events) — HMAC-verified receiver (carry to Phase 4)  
+[ ] Real-time PR sync (SSE push on webhook receipt) (carry to Phase 4)  
+[ ] CI Dashboard — complete the UI (carry to Phase 4)  
+[ ] Multi-org UI — complete member management (carry to Phase 4)
 
 ---
 
 ## Phase 4 — Semi-Autonomous Sub-Agent Workflow
-**Status: NOT STARTED**
-**Estimated start:** Q3 2026 (after Phase 3 is stable)
+**Status: NEXT — NOT STARTED**
+**Estimated start:** Q3 2026 (Phase 3 is now stable on main)
 
 [ ] Autonomy policy engine — per-project auto-approve rules  
 [ ] Sub-agent role dispatch (CTO / CISO / QA / DevOps / Docs)  
 [ ] Exception queue — surface only BLOCKED + SENIOR_APPROVAL tasks  
 [ ] Real agent dispatch via Claude Code CLI or API  
 [ ] Full Langfuse trace logging (currently console stub)  
-[ ] Rate limiting on all mutation endpoints  
+[ ] Rate limiting on all read endpoints (mutation endpoints done in Phase 3)  
+[ ] Background job system for PR sync (removes HTTP blocking limitation)  
+[ ] Database connection pooling (PgBouncer or Prisma Accelerate)  
 
 **Estimated timeline:** 6–8 weeks. High risk items (real agent dispatch, autonomy policy) require careful testing before enabling.
 
