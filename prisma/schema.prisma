@@ -544,3 +544,51 @@ model Incident {
   @@index([module])
   @@index([createdAt])
 }
+
+model SecurityAlert {
+  id                   String    @id @default(uuid())
+  orgId                String
+
+  // Source
+  source               String    // 'wazuh' | 'sentry' | 'manual'
+  sourceId             String?   // original ID in source system
+  sourceRef            String?   // URL or external reference
+
+  // Normalized fields
+  title                String
+  description          String?
+  ruleId               String?
+
+  // MITRE ATT&CK
+  mitreTactic          String?
+  mitreTechniqueId     String?
+  mitreTechnique       String?
+
+  // Severity & status
+  severity             String    @default("medium")
+                                 // 'info' | 'low' | 'medium' | 'high' | 'critical'
+  status               String    @default("new")
+                                 // 'new' | 'triaging' | 'escalated' | 'closed'
+  triageScore          Float?
+  triageRecommendation String?   // 'acknowledge' | 'escalate' | 'close'
+  triageConfidence     Float?
+  triageReason         String?
+  triageBy             String?
+  triagedAt            DateTime?
+
+  // Linked incident
+  incidentId           String?
+
+  // Raw payload (for replay/debugging, never rendered as HTML)
+  rawPayload           Json?
+
+  // Timestamps
+  alertedAt            DateTime  @default(now())
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([orgId, status])
+  @@index([orgId, severity])
+  @@index([orgId, source])
+  @@index([createdAt])
+}
