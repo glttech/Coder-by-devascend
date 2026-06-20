@@ -18,9 +18,10 @@ export async function GET(request: Request) {
   const { limit, cursor, status, projectId } = parseCoderTaskParams(searchParams);
 
   try {
+    // module discriminator filter ('coder') is added once the M-1 schema migration
+    // (Task.module field) lands on this branch.
     const tasks = await prisma.task.findMany({
       where: {
-        module: 'coder',
         ...(status ? { status } : {}),
         ...(projectId ? { projectId } : {}),
         ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),

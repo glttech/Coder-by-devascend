@@ -156,9 +156,10 @@ interface PageProps {
 export default async function CoderTasksPage({ searchParams }: PageProps) {
   const cursor = searchParams.cursor;
 
+  // module discriminator filter ('coder') is added once the M-1 schema migration
+  // (Task.module field) lands on this branch.
   const tasks = await prisma.task.findMany({
     where: {
-      module: 'coder',
       ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
     },
     orderBy: { createdAt: 'desc' },
@@ -174,7 +175,7 @@ export default async function CoderTasksPage({ searchParams }: PageProps) {
 
   const total = cursor
     ? null
-    : await prisma.task.count({ where: { module: 'coder' } });
+    : await prisma.task.count({});
 
   const subtitle = total !== null
     ? `${total} task${total !== 1 ? 's' : ''} total`
