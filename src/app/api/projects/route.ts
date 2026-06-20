@@ -7,9 +7,16 @@ import { requireRole } from '@/lib/rbac';
 const VALID_REPO_URL_RE = /^https?:\/\//;
 
 export async function GET() {
+  const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'any');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   try {
     const projects = await prisma.project.findMany({
       orderBy: { createdAt: 'desc' },
+      take: 500,
       include: { _count: { select: { tasks: true, githubPRs: true } } },
     });
     return NextResponse.json(projects);
