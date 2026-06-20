@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/session.js';
-import { requireRole } from '@/lib/rbac.js';
-import { parseCoderTaskParams } from '@/lib/coder/taskParams.js';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
+import { parseCoderTaskParams } from '@/lib/coder/taskParams';
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
