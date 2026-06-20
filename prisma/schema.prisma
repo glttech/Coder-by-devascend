@@ -63,6 +63,9 @@ model Task {
   incidents         Incident[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([createdAt])
+  @@index([projectId, createdAt])
 }
 
 model Milestone {
@@ -179,6 +182,9 @@ model AuditLog {
   operatorSession   OperatorSession? @relation(fields: [operatorSessionId], references: [id])
   instruction       Instruction?     @relation(fields: [instructionId], references: [id])
   user              User?            @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([createdAt])
 }
 
 model Instruction {
@@ -344,6 +350,7 @@ model GithubPR {
   @@index([projectId, classification])
   @@index([projectId, bugState])
   @@index([projectId, githubMergedAt])
+  @@index([importedAt])
 }
 
 // Tracks incremental sync state per project — one row per project.
