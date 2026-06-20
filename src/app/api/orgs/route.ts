@@ -7,7 +7,11 @@ import prisma from '@/lib/prisma';
 export async function GET() {
   const session = await getIronSession<{ userId?: string }>(cookies(), getSessionOptions());
   if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const orgs = await prisma.organization.findMany({ orderBy: { createdAt: 'desc' } });
+  // Only return orgs the caller is a member of — prevents data leakage in multi-tenant contexts
+  const orgs = await prisma.organization.findMany({
+    where: { memberships: { some: { userId: session.userId } } },
+    orderBy: { createdAt: 'desc' },
+  });
   return NextResponse.json({ orgs });
 }
 
