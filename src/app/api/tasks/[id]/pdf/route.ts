@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { PDF_PRINT_CSS } from '@/lib/pdfStyles';
 import { buildPrompt } from '@/lib/promptBuilder';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -9,7 +11,10 @@ function escapeHtml(str: string): string {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
   const task = await prisma.task.findUnique({
     where: { id: params.id },
     include: {

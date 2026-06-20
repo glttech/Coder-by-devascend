@@ -255,7 +255,7 @@ export default function NewTaskPage() {
                 <option value="claude-code-manual">Claude Code</option>
                 <option value="codex-manual">Codex</option>
                 <option value="openclaw-manual">OpenClaw</option>
-                <option value="open-swe">Open SWE</option>
+                <option value="open-swe" disabled>Open SWE (coming soon)</option>
               </select>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>

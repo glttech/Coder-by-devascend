@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { aggregateProjectCi } from '@/lib/ci/aggregate';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
+  }
   const projects = await prisma.project.findMany({
     select: { id: true, name: true },
   });

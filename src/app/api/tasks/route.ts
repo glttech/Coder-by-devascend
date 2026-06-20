@@ -13,14 +13,33 @@ const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
 const VALID_AGENT_TOOLS = ['open-swe', 'claude-code-manual', 'codex-manual', 'openclaw-manual'];
 const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
-// GET /api/tasks – return a list of tasks in descending creation order.
-export async function GET() {
+// GET /api/tasks – return a paginated list of tasks in descending creation order.
+// Query params: limit (default 50, max 200), cursor (createdAt ISO string for next-page)
+export async function GET(request: Request) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const rawLimit = parseInt(searchParams.get('limit') ?? '50', 10);
+  const limit = isNaN(rawLimit) || rawLimit < 1 ? 50 : Math.min(rawLimit, 200);
+  const cursor = searchParams.get('cursor');
+  const projectId = searchParams.get('projectId') ?? undefined;
+
   try {
     const tasks = await prisma.task.findMany({
+      where: {
+        ...(projectId ? { projectId } : {}),
+        ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
+      take: limit,
       include: { project: true, approval: true },
     });
-    return NextResponse.json(tasks);
+    const nextCursor = tasks.length === limit ? tasks[tasks.length - 1].createdAt.toISOString() : null;
+    return NextResponse.json({ tasks, nextCursor });
   } catch (err) {
     return new NextResponse(JSON.stringify({ error: 'Failed to fetch tasks' }), { status: 500 });
   }
@@ -90,14 +109,10 @@ export async function POST(request: Request) {
     approvalRequired || policyEvaluation.blocked || policyEvaluation.requiresApproval;
 
   try {
-    // Determine which project to associate with the task.  If a projectId is
-    // provided, use it directly.  Otherwise, find or create a default project.
     let finalProjectId: string;
     if (projectId) {
       finalProjectId = projectId;
     } else {
-      // Look for an existing project to reuse.  Use the first project if
-      // available; otherwise create a new "Default Project".
       const existing = await prisma.project.findFirst();
       if (existing) {
         finalProjectId = existing.id;
