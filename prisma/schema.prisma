@@ -54,6 +54,7 @@ model Task {
   assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
   milestoneId       String?
   milestone         Milestone?         @relation(fields: [milestoneId], references: [id])
+  module            String?            @default("coder")   // "coder" | "soc"
   agentRuns         AgentRun[]
   approval          Approval?
   audits            AuditLog[]
@@ -64,6 +65,7 @@ model Task {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
+  @@index([module])
   @@index([createdAt])
   @@index([projectId, createdAt])
 }
@@ -534,6 +536,11 @@ model Incident {
   followUpAction   String?
   resolvedAt       DateTime?
   resolvedBy       String?
+  module           String?   @default("coder")  // "coder" | "soc"
+  alertId          String?   // FK to SecurityAlert (SOC incidents only)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  @@index([module])
+  @@index([createdAt])
 }
