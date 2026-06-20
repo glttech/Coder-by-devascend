@@ -1,5 +1,41 @@
 # Product Roadmap
 
+---
+
+## ⬡ Direction — Internal AI Work Control Room (Current Focus)
+
+**Updated: 2026-06-20**
+
+The primary build target is now the **Internal AI Work Control Room** — a UI for Rahul and an internal operator to track and manage Claude Code CLI work across Rahul's repos. This is not a SaaS product or multi-tenant platform; it is a single-operator internal tool.
+
+**SOC module** is paused as a secondary module. PR #198 (SecurityAlert CRUD) is parked in draft. SOC M-3+ do not start until the Work Control Room is usable.
+
+**Current workflow target:**
+Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evidence → operator action → Rahul review
+
+**CLI execution** is out of scope until W-4/W-5 security gates are in place. All W-1 through W-3 work is read-only.
+
+### W-Series: Work Control Room PRs
+
+| PR | Scope | Status |
+|---|---|---|
+| W-1 | Read-only task visibility: `/coder/tasks` page + `GET /api/coder/tasks` | **✅ In progress** |
+| W-2 | CliSession model + GET API (schema additive, no CLI execution) | Not started |
+| W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | Not started |
+| W-4 | CLI trigger + approval gate (POST creates pending session, gates on approval) | Not started |
+| W-5 | CLI runner — sandboxed subprocess, policy checked, log streamed | Not started |
+| W-6 | PR queue view (`/coder/prs`) — read-only GitHub PR metadata | Not started |
+| W-7 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
+| W-8 | Operator dashboard — aggregate stats, approval queue, session health | Not started |
+
+**W-1 detail (current PR):**
+- `/coder/tasks` — server component, reads `module='coder'` tasks from DB
+- `GET /api/coder/tasks` — cursor-paginated, filterable by status/project, auth-gated
+- Sidebar "Work Control Room" nav link
+- Read-only. No schema changes. No CLI execution. No env/secrets.
+
+---
+
 ## Phase 1 — Useful Manual Orchestrator
 **Status: COMPLETE (e37b507)**
 

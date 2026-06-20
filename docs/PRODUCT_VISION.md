@@ -1,5 +1,7 @@
 # Product Vision — AI Dev Orchestrator / Coder by DevAscend
 
+> **Direction as of 2026-06-20:** Primary focus is the **Internal AI Work Control Room** (W-1…W-8) — tracking and managing Claude Code CLI work across Rahul's repos. The SOC module is paused (secondary). See `docs/ROADMAP.md` → W-Series for current build sequence.
+
 ## What This Product Is
 
 Coder by DevAscend is a **personal AI engineering control room** — a self-hosted web application that lets one engineer (Rahul) govern AI-assisted development across multiple repositories with safety, auditability, and minimal daily intervention.
