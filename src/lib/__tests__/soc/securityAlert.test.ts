@@ -1,5 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { validateRawPayload, sanitizeRawPayload, redactSensitiveKeys, RAW_PAYLOAD_MAX_BYTES } from '../../soc/rawPayload.js';
 
 // Pure validation logic mirroring the POST /api/soc/alerts route.
 // No DB required — tests cover field validation and business rules only.
@@ -294,5 +295,153 @@ describe('alert status filter parsing', () => {
   });
   test('returns empty when all invalid', () => {
     assert.deepEqual(parseStatusFilter('pending,open'), []);
+  });
+});
+
+// ── Compound cursor ───────────────────────────────────────────────────────────
+
+describe('compound cursor parsing', () => {
+  function parseCursor(param: string | null): { date: Date; id: string } | null {
+    if (!param) return null;
+    const pipeIdx = param.lastIndexOf('|');
+    if (pipeIdx <= 0) return null;
+    const date = new Date(param.slice(0, pipeIdx));
+    const id = param.slice(pipeIdx + 1);
+    if (isNaN(date.getTime()) || !id) return null;
+    return { date, id };
+  }
+
+  function buildCursor(createdAt: Date, id: string): string {
+    return `${createdAt.toISOString()}|${id}`;
+  }
+
+  test('returns null for null input', () => assert.equal(parseCursor(null), null));
+  test('returns null for missing pipe', () => assert.equal(parseCursor('2026-01-01T00:00:00.000Z'), null));
+  test('returns null for invalid date', () => assert.equal(parseCursor('not-a-date|some-id'), null));
+  test('returns null for empty id', () => assert.equal(parseCursor('2026-01-01T00:00:00.000Z|'), null));
+  test('parses valid compound cursor', () => {
+    const result = parseCursor('2026-06-20T10:00:00.000Z|abc-123');
+    assert.ok(result !== null);
+    assert.equal(result.id, 'abc-123');
+    assert.equal(result.date.toISOString(), '2026-06-20T10:00:00.000Z');
+  });
+  test('roundtrips through buildCursor', () => {
+    const date = new Date('2026-06-20T10:00:00.000Z');
+    const id = 'test-uuid-456';
+    const cursor = buildCursor(date, id);
+    const parsed = parseCursor(cursor);
+    assert.ok(parsed !== null);
+    assert.equal(parsed.id, id);
+    assert.equal(parsed.date.toISOString(), date.toISOString());
+  });
+  test('returns null when cursor has extra pipe (date portion becomes invalid)', () => {
+    // UUIDs never contain pipes; if they did, date portion would be unparseable → null
+    const cursor = '2026-06-20T10:00:00.000Z|id-with|pipe';
+    const parsed = parseCursor(cursor);
+    assert.equal(parsed, null);
+  });
+});
+
+// ── Raw payload safety ────────────────────────────────────────────────────────
+
+describe('raw payload validation', () => {
+  test('accepts undefined payload', () => {
+    assert.deepEqual(validateRawPayload(undefined), []);
+  });
+  test('accepts null payload', () => {
+    assert.deepEqual(validateRawPayload(null), []);
+  });
+  test('accepts valid small object', () => {
+    assert.deepEqual(validateRawPayload({ event: 'login', ip: '1.2.3.4' }), []);
+  });
+  test('rejects array payload', () => {
+    const errs = validateRawPayload([{ a: 1 }]);
+    assert.ok(errs.some((e) => e.includes('JSON object')));
+  });
+  test('rejects string payload', () => {
+    const errs = validateRawPayload('{"key":"val"}');
+    assert.ok(errs.some((e) => e.includes('JSON object')));
+  });
+  test('rejects oversized payload', () => {
+    const big: Record<string, string> = {};
+    for (let i = 0; i < 1000; i++) big[`key${i}`] = 'x'.repeat(110);
+    const errs = validateRawPayload(big);
+    assert.ok(errs.some((e) => e.includes(RAW_PAYLOAD_MAX_BYTES.toLocaleString())));
+  });
+  test('accepts payload at boundary (just under limit)', () => {
+    // Build a payload that serializes to just under RAW_PAYLOAD_MAX_BYTES
+    const val = 'x'.repeat(RAW_PAYLOAD_MAX_BYTES - 15);
+    const errs = validateRawPayload({ v: val });
+    assert.deepEqual(errs, []);
+  });
+});
+
+describe('raw payload sensitive key redaction', () => {
+  test('redacts password key', () => {
+    const result = redactSensitiveKeys({ password: 'secret123', user: 'alice' });
+    assert.deepEqual(result, { password: '[REDACTED]', user: 'alice' });
+  });
+  test('redacts token key (case-insensitive)', () => {
+    const result = redactSensitiveKeys({ Token: 'abc', name: 'test' });
+    assert.deepEqual(result, { Token: '[REDACTED]', name: 'test' });
+  });
+  test('redacts api_key variant', () => {
+    const result = redactSensitiveKeys({ api_key: 'sk-xyz', source: 'wazuh' });
+    assert.deepEqual(result, { api_key: '[REDACTED]', source: 'wazuh' });
+  });
+  test('redacts nested sensitive keys', () => {
+    const result = redactSensitiveKeys({ meta: { secret: 'abc', label: 'ok' } });
+    assert.deepEqual(result, { meta: { secret: '[REDACTED]', label: 'ok' } });
+  });
+  test('does not redact non-sensitive keys', () => {
+    const input = { event: 'login', severity: 'high', ip: '10.0.0.1' };
+    assert.deepEqual(redactSensitiveKeys(input), input);
+  });
+  test('handles arrays inside payload', () => {
+    const result = redactSensitiveKeys({ items: [{ password: 'x' }, { label: 'y' }] });
+    assert.deepEqual(result, { items: [{ password: '[REDACTED]' }, { label: 'y' }] });
+  });
+  test('sanitizeRawPayload returns null for null', () => {
+    assert.equal(sanitizeRawPayload(null), null);
+  });
+  test('sanitizeRawPayload returns null for undefined', () => {
+    assert.equal(sanitizeRawPayload(undefined), null);
+  });
+});
+
+// ── Org scope enforcement ─────────────────────────────────────────────────────
+
+describe('org scope enforcement', () => {
+  // Mirrors the access check in GET and PATCH /api/soc/alerts/[id]
+  function canAccessAlert(alertOrgId: string, userOrgId: string): boolean {
+    return alertOrgId === userOrgId;
+  }
+
+  test('allows access when orgIds match', () => {
+    assert.ok(canAccessAlert('org_abc', 'org_abc'));
+  });
+  test('denies access when orgIds differ', () => {
+    assert.ok(!canAccessAlert('org_abc', 'org_xyz'));
+  });
+  test('denies access for default org vs custom org', () => {
+    assert.ok(!canAccessAlert('org_default', 'org_custom'));
+  });
+  test('allows access when both are org_default', () => {
+    assert.ok(canAccessAlert('org_default', 'org_default'));
+  });
+  test('is case-sensitive', () => {
+    assert.ok(!canAccessAlert('Org_ABC', 'org_abc'));
+  });
+
+  // Mirrors archivedAt filter logic
+  function isActiveAlert(archivedAt: Date | null): boolean {
+    return archivedAt === null;
+  }
+
+  test('active alert has null archivedAt', () => {
+    assert.ok(isActiveAlert(null));
+  });
+  test('archived alert has non-null archivedAt', () => {
+    assert.ok(!isActiveAlert(new Date()));
   });
 });

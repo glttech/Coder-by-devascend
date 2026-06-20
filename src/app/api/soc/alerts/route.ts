@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
 import { writeAudit } from '@/lib/audit';
 import { checkLimit, getClientIp, Bucket } from '@/lib/rateLimiter';
+import { getOrgId } from '@/lib/orgScope';
+import { validateRawPayload, sanitizeRawPayload } from '@/lib/soc/rawPayload';
 
 const _alertCreateBuckets = new Map<string, Bucket>();
 
@@ -12,7 +15,7 @@ const VALID_SEVERITIES = ['info', 'low', 'medium', 'high', 'critical'] as const;
 const VALID_STATUSES = ['new', 'triaging', 'escalated', 'closed'] as const;
 
 // GET /api/soc/alerts — paginated list of security alerts.
-// Query params: limit (default 50, max 200), cursor (createdAt ISO), status, severity, source
+// Query params: limit (default 50, max 200), cursor (<createdAt ISO>|<id>), status, severity, source
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   const auth = requireRole(user, 'any');
@@ -20,11 +23,31 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
   }
 
+  const orgId = await getOrgId(user?.userId);
   const { searchParams } = new URL(request.url);
 
   const rawLimit = parseInt(searchParams.get('limit') ?? '50', 10);
   const limit = isNaN(rawLimit) || rawLimit < 1 ? 50 : Math.min(rawLimit, 200);
-  const cursor = searchParams.get('cursor');
+
+  // Compound cursor: "<createdAt ISO>|<id>" ensures stable ordering when
+  // multiple rows share the same createdAt timestamp.
+  const cursorParam = searchParams.get('cursor');
+  let cursorFilter: Record<string, unknown> = {};
+  if (cursorParam) {
+    const pipeIdx = cursorParam.lastIndexOf('|');
+    if (pipeIdx > 0) {
+      const cursorDate = new Date(cursorParam.slice(0, pipeIdx));
+      const cursorId = cursorParam.slice(pipeIdx + 1);
+      if (!isNaN(cursorDate.getTime()) && cursorId) {
+        cursorFilter = {
+          OR: [
+            { createdAt: { lt: cursorDate } },
+            { AND: [{ createdAt: cursorDate }, { id: { lt: cursorId } }] },
+          ],
+        };
+      }
+    }
+  }
 
   // Multi-value filters (comma-separated)
   const statusParam = searchParams.get('status');
@@ -42,24 +65,24 @@ export async function GET(request: Request) {
     ? sourceParam.split(',').filter((s) => VALID_SOURCES.includes(s as typeof VALID_SOURCES[number]))
     : undefined;
 
-  // Derive orgId from session (fall back to org_default for single-tenant setups)
-  const orgId = 'org_default';
-
   try {
     const alerts = await prisma.securityAlert.findMany({
       where: {
         orgId,
+        archivedAt: null,
         ...(statusFilter?.length ? { status: { in: statusFilter } } : {}),
         ...(severityFilter?.length ? { severity: { in: severityFilter } } : {}),
         ...(sourceFilter?.length ? { source: { in: sourceFilter } } : {}),
-        ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+        ...cursorFilter,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
     });
 
     const nextCursor =
-      alerts.length === limit ? alerts[alerts.length - 1].createdAt.toISOString() : null;
+      alerts.length === limit
+        ? `${alerts[alerts.length - 1].createdAt.toISOString()}|${alerts[alerts.length - 1].id}`
+        : null;
 
     return NextResponse.json({ alerts, nextCursor });
   } catch (err) {
@@ -68,7 +91,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/soc/alerts — create a single security alert manually.
+// POST /api/soc/alerts — create a single security alert manually. Requires admin role.
 export async function POST(request: Request) {
   const ip = getClientIp(
     request.headers.get('x-forwarded-for'),
@@ -110,6 +133,7 @@ export async function POST(request: Request) {
     mitreTechnique,
     severity,
     alertedAt,
+    rawPayload,
   } = body;
 
   const errors: string[] = [];
@@ -139,11 +163,13 @@ export async function POST(request: Request) {
     }
   }
 
+  errors.push(...validateRawPayload(rawPayload));
+
   if (errors.length > 0) {
     return NextResponse.json({ error: errors.join('; ') }, { status: 422 });
   }
 
-  const orgId = 'org_default';
+  const orgId = await getOrgId(user?.userId);
 
   try {
     const alert = await prisma.securityAlert.create({
@@ -160,6 +186,7 @@ export async function POST(request: Request) {
         mitreTechnique: typeof mitreTechnique === 'string' ? mitreTechnique : undefined,
         severity: (severity as string) ?? 'medium',
         alertedAt: alertedAt ? new Date(alertedAt as string) : undefined,
+        rawPayload: (sanitizeRawPayload(rawPayload) as Prisma.InputJsonValue) ?? undefined,
       },
     });
 

@@ -44,7 +44,16 @@ model SecurityAlert {
   triageBy              String?   // userId who actioned it
   triagedAt             DateTime?
 
-  // Raw payload (for replay/debugging)
+  // Triage
+  triageRecommendation  String?   // 'acknowledge' | 'escalate' | 'close'
+  triageConfidence      Float?    // 0.0–1.0
+  triageReason          String?
+  triageBy              String?   // userId who actioned it
+  triagedAt             DateTime?
+
+  // Raw payload (for replay/debugging, never rendered as HTML)
+  // Max 100 KB serialized. Sensitive keys (password, token, secret, etc.) are
+  // automatically redacted before storage by src/lib/soc/rawPayload.ts.
   rawPayload        Json?
 
   // Relations
@@ -54,6 +63,8 @@ model SecurityAlert {
   alertedAt         DateTime  @default(now())  // when the alert fired externally
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  // Soft-delete: set by DELETE /api/soc/alerts/[id]; null = active
+  archivedAt        DateTime?
 
   @@index([orgId, status])
   @@index([orgId, severity])
@@ -128,8 +139,14 @@ CREATE INDEX IF NOT EXISTS "SecurityAlert_orgId_source_idx" ON "SecurityAlert"("
 CREATE INDEX IF NOT EXISTS "SecurityAlert_createdAt_idx" ON "SecurityAlert"("createdAt" DESC);
 ```
 
+### Migration 3: `20260621000003_security_alert_hardening`
+```sql
+ALTER TABLE "SecurityAlert"
+  ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3);
+```
+
 **Rules:**
-- Both migrations are additive; no existing data is touched
+- All migrations are additive; no existing data is touched
 - Run in sequence; never together
 - Require Rahul approval before executing on any live database
 
@@ -143,16 +160,18 @@ CREATE INDEX IF NOT EXISTS "SecurityAlert_createdAt_idx" ON "SecurityAlert"("cre
 
 **Query params:**
 - `limit` — integer, 1–200, default 50
-- `cursor` — ISO date string (createdAt), for cursor pagination
+- `cursor` — compound cursor `<createdAt ISO>|<id>` for stable pagination (no duplicates on tied timestamps)
 - `status` — filter by status (comma-separated: `new,triaging`)
 - `severity` — filter by severity (comma-separated: `high,critical`)
 - `source` — filter by source (`wazuh`, `sentry`, `manual`)
+
+**Notes:** Archived alerts (`archivedAt IS NOT NULL`) are always excluded. Order is `createdAt DESC, id DESC`.
 
 **Response:**
 ```json
 {
   "alerts": [ SecurityAlert[] ],
-  "nextCursor": "2026-06-20T12:00:00.000Z" | null
+  "nextCursor": "2026-06-20T12:00:00.000Z|<uuid>" | null
 }
 ```
 
@@ -179,16 +198,29 @@ CREATE INDEX IF NOT EXISTS "SecurityAlert_createdAt_idx" ON "SecurityAlert"("cre
 - `source` must be one of: `wazuh`, `sentry`, `manual`
 - `description` optional, max 10,000 chars
 - `alertedAt` optional ISO date; defaults to `now()`
+- `rawPayload` optional JSON object; max 100 KB serialized; sensitive keys auto-redacted before storage
 
 **Response:** `{ "alert": SecurityAlert }` — HTTP 201
 
 ### 3.3 `PATCH /api/soc/alerts/[id]`
 
-**Auth:** `requireRole(user, 'any')`
+**Auth:** `requireRole(user, 'admin')`
+
+**Org scope:** `alert.orgId` must match caller's org (cross-org access returns 404)
 
 **Allowed fields:** `status`, `triageRecommendation`, `incidentId`
 
+**Notes:** Archived alerts return 404.
+
 **Response:** Updated `SecurityAlert`
+
+### 3.3b `DELETE /api/soc/alerts/[id]`
+
+**Auth:** `requireRole(user, 'admin')`
+
+**Behavior:** Soft-delete — sets `archivedAt = now()`. Alert is excluded from all list/get queries. No hard delete in MVP.
+
+**Response:** `{ "alert": SecurityAlert }` (with archivedAt set)
 
 ### 3.4 `POST /api/soc/alerts/ingest/manual`
 
@@ -211,7 +243,9 @@ CREATE INDEX IF NOT EXISTS "SecurityAlert_createdAt_idx" ON "SecurityAlert"("cre
 
 **Auth:** `X-Wazuh-Token` header (API key with `soc:ingest` scope)
 
-**Gated by:** `process.env.FEATURE_WAZUH_INTAKE !== 'true'` → return 501 Not Implemented
+**Gated by:** `process.env.FEATURE_WAZUH_INTAKE !== 'true'` → return 503 Service Unavailable
+
+**Important:** MVP scope is static sample-format parsing only. No live Wazuh connection, no new runtime env vars, no DEV deployment. Enabling the flag requires separate approval from Rahul.
 
 **Body:** Standard Wazuh 4.x webhook alert payload:
 ```json

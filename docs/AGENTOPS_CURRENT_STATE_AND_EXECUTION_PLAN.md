@@ -79,22 +79,42 @@ These features are complete, tested, and have full CI coverage:
 | Sandbox replay | SandboxPreviewPanel, routes exist | sandboxPlan JSON schema not finalized |
 | PR sync (incremental) | PrSyncState table, sync route | Background job / cron not set up |
 
+### SOC Module Progress
+
+| Milestone | Status | PR | Notes |
+|---|---|---|---|
+| M-1: Module discriminator (Task, Incident) | ✅ Merged | #197 | `module='coder'` default on all existing rows |
+| M-2: SecurityAlert model + CRUD API | 🔄 Draft PR #198 | #198 | Pending Rahul approval; all 73 tests pass, typecheck clean |
+| M-3: Alert normalization + triage engine | Not started | — | Next after M-2 merge |
+| M-4: Manual JSON/CSV import | Not started | — | — |
+| M-5: Wazuh sample-format intake (feature-flagged) | Not started | — | Static format only; no live webhook |
+| M-6–M-10: UI, incidents, reports, seed | Not started | — | — |
+
+**M-2 hardening changes (vs original draft):**
+- PATCH tightened to `admin`-only (was `any`)
+- DELETE is soft-delete via `archivedAt` (no hard delete)
+- Org scope enforced on all reads/writes via `getOrgId()` helper
+- Compound cursor `createdAt|id` for stable pagination
+- rawPayload: 100 KB size limit + sensitive-key redaction before storage
+- `getOrgId(userId)` added to `src/lib/orgScope.ts`
+- `src/lib/soc/rawPayload.ts` new validation/sanitization library
+
 ### Planned but Not Built
 
 | Feature | Status |
 |---|---|
-| SOC module (Wazuh/Sentry intake) | Not started |
-| AI triage service for security alerts | Not started |
-| Security incident lifecycle | Not started |
-| Severity scoring (security-specific) | Not started |
-| Remediation task tracking (SOC) | Not started |
-| CEO/CISO evidence pack export | Not started |
-| Client-facing security summary | Not started |
+| AI triage service for security alerts | Not started — FEATURE_SOC_AI_TRIAGE=false |
+| Security incident lifecycle (SOC module) | Planned M-8 |
+| Severity scoring (security-specific, deterministic) | Planned M-3 |
+| Remediation task tracking (SOC) | Post-MVP |
+| CEO/CISO evidence pack export | Planned M-9 |
+| Client-facing security summary | Post-MVP |
 | MCP connectors | Planned Phase 2 |
 | Durable workflows | Planned Phase 2 |
 | GraphRAG | Planned Phase 4 |
-| Module navigation (Coder vs SOC split) | Not started |
-| Viewer role (read-only, no reviewer) | Planned |
+| Module navigation (Coder vs SOC split) | Planned M-6 |
+| Viewer role (read-only, no reviewer) | Post-MVP |
+| Sentry intake | Locked out of MVP (Rahul decision) |
 
 ### Risky or Unclear
 

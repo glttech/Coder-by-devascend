@@ -328,13 +328,29 @@ Use this as the primary reference before editing any feature.
 
 ---
 
-## SOC Module (In Progress)
+## SOC Module
+
+### Implemented (M-1, M-2)
+
+| Layer | File | Status |
+|---|---|---|
+| Org ID resolution | `src/lib/orgScope.ts` → `getOrgId(userId)` | ✅ M-2 |
+| Raw payload safety | `src/lib/soc/rawPayload.ts` | ✅ M-2 |
+| Security alert CRUD | `src/app/api/soc/alerts/route.ts` | ✅ M-2 |
+| Security alert detail/triage/archive | `src/app/api/soc/alerts/[id]/route.ts` | ✅ M-2 |
+| Schema — SecurityAlert + archivedAt | `prisma/schema.prisma` | ✅ M-2 |
+| Migration — SecurityAlert table | `prisma/migrations/20260621000002_add_security_alert/` | ✅ M-2 |
+| Migration — archivedAt soft-delete | `prisma/migrations/20260621000003_security_alert_hardening/` | ✅ M-2 |
+| Schema — module discriminator | `prisma/schema.prisma` → `Task.module`, `Incident.module` | ✅ M-1 |
+| Tests — 73 unit tests | `src/lib/__tests__/soc/securityAlert.test.ts` | ✅ M-2 |
+| Module discriminator helpers | `src/lib/__tests__/moduleDiscriminator.test.ts` | ✅ M-1 |
+
+### Planned (M-3 through M-10)
 
 | Layer | Planned File |
 |---|---|
-| Security alert CRUD | `src/app/api/soc/alerts/route.ts`, `[id]/route.ts` |
 | Alert ingest (manual) | `src/app/api/soc/alerts/ingest/manual/route.ts` |
-| Alert ingest (Wazuh sample) | `src/app/api/soc/alerts/ingest/wazuh/route.ts` |
+| Alert ingest (Wazuh sample, feature-flagged) | `src/app/api/soc/alerts/ingest/wazuh/route.ts` |
 | Alert normalizer | `src/lib/soc/alertNormalizer.ts` |
 | MITRE ATT&CK lookup | `src/lib/soc/mitre.ts` |
 | Triage engine (deterministic) | `src/lib/soc/triageEngine.ts` |
@@ -349,8 +365,6 @@ Use this as the primary reference before editing any feature.
 | Incident detail | `src/app/soc/incidents/[id]/page.tsx` |
 | Executive report | `src/app/soc/reports/executive/page.tsx` |
 | SOC demo seed | `src/lib/demo/socSeed.ts` |
-| Schema additions | `prisma/schema.prisma` → `SecurityAlert`, `Incident.module` |
-| Tests | `src/lib/__tests__/soc/` (all SOC tests) |
 
 ---
 

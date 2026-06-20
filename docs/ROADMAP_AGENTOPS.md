@@ -32,18 +32,22 @@ Each PR is small, tested, and CI-gated. Merge order is strict.
 ### PR M-2 — SOC: SecurityAlert Model + CRUD API
 
 **Title:** `feat(soc): SecurityAlert model and CRUD API`  
-**Goal:** Core alert entity and management endpoints  
+**Goal:** Core alert entity and management endpoints with auth, org-scope, and payload safety  
 **Files:**
-- `prisma/schema.prisma` — add `SecurityAlert` model
+- `prisma/schema.prisma` — add `SecurityAlert` model with `archivedAt` soft-delete field
 - `prisma/migrations/20260621000002_add_security_alert/migration.sql`
-- `src/app/api/soc/alerts/route.ts` — GET (paginated) + POST (create)
-- `src/app/api/soc/alerts/[id]/route.ts` — GET detail + PATCH status
+- `prisma/migrations/20260621000003_security_alert_hardening/migration.sql` — add `archivedAt` column
+- `src/app/api/soc/alerts/route.ts` — GET (compound-cursor paginated, org-scoped, archived-excluded) + POST (admin-only, rawPayload validated + redacted)
+- `src/app/api/soc/alerts/[id]/route.ts` — GET (org-scoped, archived-aware) + PATCH (admin-only, org-scoped) + DELETE (soft-delete, admin-only)
+- `src/lib/orgScope.ts` — added `getOrgId(userId)` helper (Membership lookup → org_default fallback)
+- `src/lib/soc/rawPayload.ts` — payload size guard (100 KB) + sensitive-key redaction
 
-**Schema impact:** New `SecurityAlert` table  
+**Schema impact:** New `SecurityAlert` table; `archivedAt` soft-delete field  
 **UI impact:** None (API only)  
-**Tests:** `src/lib/__tests__/soc/securityAlert.test.ts` — validation, status transitions, pagination  
+**Auth:** POST/PATCH/DELETE require `admin`; GET requires any authenticated user  
+**Tests:** `src/lib/__tests__/soc/securityAlert.test.ts` — 73 tests: validation, status transitions, compound cursor, rawPayload, org scope, soft-delete logic  
 **Risk:** Low  
-**Acceptance:** CRUD works; GET returns paginated results; POST validates severity/source; audit log written on create
+**Acceptance:** CRUD works; GET returns paginated results with compound cursor; POST validates severity/source/payload; audit log written on create/triage/archive; cross-org access returns 404
 
 ---
 
@@ -82,19 +86,20 @@ Each PR is small, tested, and CI-gated. Merge order is strict.
 
 ---
 
-### PR M-5 — SOC: Wazuh Sample Alert Intake
+### PR M-5 — SOC: Wazuh Sample-Format Alert Intake (Feature-Flagged)
 
-**Title:** `feat(soc): Wazuh webhook alert intake endpoint`  
-**Goal:** Primary integration for pilot customers with Wazuh deployments  
+**Title:** `feat(soc): Wazuh sample-format alert intake behind feature flag`  
+**Goal:** Accept Wazuh-format JSON payloads for pilot customers — no live Wazuh connection, no env changes, no DEV deploy  
+**Important:** This is static sample-format parsing only. No live webhook, no new env vars required at runtime, no external connectivity. The endpoint exists behind `FEATURE_WAZUH_INTAKE=false` (already in .env.example). Separate approval required before enabling in any environment.  
 **Files:**
-- `src/app/api/soc/alerts/ingest/wazuh/route.ts` — POST with X-Wazuh-Token header auth
-- `.env.example` — add `FEATURE_WAZUH_INTAKE=false`
+- `src/app/api/soc/alerts/ingest/wazuh/route.ts` — POST accepting Wazuh 4.x JSON structure; returns 503 when feature flag off
+- `src/lib/soc/wazuhNormalizer.ts` — maps Wazuh rule.level to severity, extracts mitreTactic/mitreTechniqueId
 
 **Schema impact:** None  
 **UI impact:** None  
-**Tests:** `wazuhIngest.test.ts` — valid payload, invalid payload, missing token, feature flag off returns 501  
-**Risk:** Medium (external format parsing)  
-**Acceptance:** Valid Wazuh 4.x payload → SecurityAlert with correct severity mapping; feature flag off → 501; invalid token → 401
+**Tests:** `wazuhIngest.test.ts` — valid Wazuh payload, missing fields, feature flag off returns 503, severity mapping table  
+**Risk:** Low (no runtime changes until flag enabled; flag default is false)  
+**Acceptance:** Valid Wazuh 4.x sample payload → SecurityAlert with correct severity mapping; FEATURE_WAZUH_INTAKE=false → 503; no live connectivity required
 
 ---
 

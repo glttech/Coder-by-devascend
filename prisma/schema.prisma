@@ -586,6 +586,8 @@ model SecurityAlert {
   alertedAt            DateTime  @default(now())
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  // Soft-delete — set by DELETE /api/soc/alerts/[id]; null = active
+  archivedAt           DateTime?
 
   @@index([orgId, status])
   @@index([orgId, severity])
