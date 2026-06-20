@@ -40,10 +40,30 @@ The shared platform provides: RBAC, audit log, approval workflow, evidence layer
 | Approval flow | `src/lib/approvalGuard.ts`, `src/app/api/approvals/route.ts` |
 | Incident model | `src/lib/incidents.ts`, `prisma/schema.prisma` → Incident model |
 | Audit anything | `src/lib/audit.ts` |
-| SOC module | `docs/SOC_MODULE_TRD.md`, `docs/SOC_MODULE_PRD.md` |
+| SOC module | `docs/SOC_MODULE_TRD.md` (source of truth), `docs/SOC_MODULE_PRD.md`, `docs/SOC_ARCHITECTURE.md` |
 | Schema additions | `docs/SOC_MODULE_TRD.md` → Schema section + existing `prisma/schema.prisma` |
 | New routes | `src/middleware.ts` (understand public vs protected paths) |
 | Navigation | `src/components/SidebarNav.tsx` |
+
+---
+
+## SOC Doc Index
+
+The SOC module is governed by these documents. The TRD is the source of truth for
+schema/API; if code and TRD disagree, that is a divergence to log in the conformance report.
+
+| Doc | Purpose |
+|---|---|
+| `docs/SOC_MODULE_PRD.md` | Product scope, personas, locked decisions |
+| `docs/SOC_MODULE_TRD.md` | **Authoritative** schema, API contracts, libraries, feature flags |
+| `docs/ROADMAP_AGENTOPS.md` | M-1…M-12 PR sequence + post-MVP phases |
+| `docs/SOC_ARCHITECTURE.md` | Validated Mermaid: component, data-flow, lifecycle |
+| `docs/SOC_IMPLEMENTATION_CONFORMANCE.md` | Code-vs-doc cross-check; divergence log (D-1…D-7) |
+| `docs/FEATURE_CODE_MAP.md` | Feature → exact file map (SOC section) |
+| `docs/AGENTOPS_CURRENT_STATE_AND_EXECUTION_PLAN.md` | Platform audit + autonomy contract (§4 historical, see D-6) |
+
+**Status (2026-06-20):** M-1 merged (#197). M-2 draft (#198), conformance-verified, mainline
+merge blocked pending approval. Docs and M-1/M-2 code are consistent after D-1…D-7 resolution.
 
 ---
 

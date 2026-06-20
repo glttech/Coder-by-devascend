@@ -296,6 +296,14 @@ The following existing features can be **shared across both Coder and SOC module
 
 ## 4. Gap Analysis for SOC Module
 
+> **⚠️ Superseded (conformance D-6):** Section 4 is the *pre-decision* gap analysis written
+> before the SOC data model was locked. Some proposals here — e.g. a 5-value status including
+> `'remediated'`, and field names `normalizedTitle` / `normalizedDescription` / `mitreId` —
+> were **not** adopted. The authoritative, implemented model is the **4-status** lifecycle
+> (`new` → `triaging` → `escalated` → `closed`) with fields `title` / `description` /
+> `mitreTechniqueId`, as defined in `SOC_MODULE_TRD.md` §1.1 and verified in
+> `SOC_IMPLEMENTATION_CONFORMANCE.md`. Read Section 4 as historical context only.
+
 ### 4.1 Alert Intake (Missing Entirely)
 
 **Wazuh alert intake:**

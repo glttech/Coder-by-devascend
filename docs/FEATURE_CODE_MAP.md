@@ -366,6 +366,17 @@ Use this as the primary reference before editing any feature.
 | Executive report | `src/app/soc/reports/executive/page.tsx` |
 | SOC demo seed | `src/lib/demo/socSeed.ts` |
 
+### SOC Planning Docs (authoritative)
+
+| Doc | Path | Role |
+|---|---|---|
+| Product requirements | `docs/SOC_MODULE_PRD.md` | What/why/scope, locked decisions |
+| Technical requirements | `docs/SOC_MODULE_TRD.md` | Schema, API contracts, libs, flags (source of truth) |
+| Roadmap | `docs/ROADMAP_AGENTOPS.md` | M-1…M-12 PR sequence |
+| Architecture + data flow | `docs/SOC_ARCHITECTURE.md` | Validated Mermaid: component, sequence, lifecycle |
+| Conformance report | `docs/SOC_IMPLEMENTATION_CONFORMANCE.md` | Code-vs-doc cross-check, divergence log (D-1…D-7) |
+| Current state / execution plan | `docs/AGENTOPS_CURRENT_STATE_AND_EXECUTION_PLAN.md` | Audit + autonomy contract (§4 historical) |
+
 ---
 
 *Last updated: 2026-06-20. Update this file whenever a new feature or route is added.*

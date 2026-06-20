@@ -67,10 +67,15 @@ The sellable MVP must enable a SOC analyst to:
 
 ### Priority 2: Wazuh Sample Import
 - POST endpoint at `/api/soc/alerts/ingest/wazuh`
-- Accepts Wazuh alert JSON format (standard Wazuh 4.x webhook payload)
+- Accepts Wazuh alert JSON format (standard Wazuh 4.x payload), posted to the endpoint
 - Normalizes to `SecurityAlert` schema automatically
 - Protected by `X-Wazuh-Token` header (API key scoped to `soc:ingest`)
-- Gated by `FEATURE_WAZUH_INTAKE=false` env flag (default off)
+- Gated by `FEATURE_WAZUH_INTAKE=false` env flag (default off; flag created in M-5)
+
+> **Scope note (conformance D-7):** MVP delivers the **receiving endpoint** only. The user
+> story "Wazuh alerts appear automatically" (§5) additionally requires the customer to
+> configure their Wazuh integrator to POST to this endpoint — a **deployment step**, outside
+> MVP code scope, requiring separate approval (no env/DEV changes are made in the MVP build).
 
 ### Priority 3: Sentry (Post-MVP)
 - Sentry issue webhook receiver

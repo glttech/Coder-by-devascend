@@ -32,7 +32,8 @@ model SecurityAlert {
   mitreTechnique    String?   // e.g. "Valid Accounts"
 
   // Severity & status
-  severity          String    // 'info' | 'low' | 'medium' | 'high' | 'critical'
+  severity          String    @default("medium")
+                              // 'info' | 'low' | 'medium' | 'high' | 'critical'
   status            String    @default("new")
                               // 'new' | 'triaging' | 'escalated' | 'closed'
   triageScore       Float?    // 0.0–1.0 computed by severityScorer
@@ -68,21 +69,26 @@ model SecurityAlert {
 
 ### 1.2 Extend `Incident` (existing model)
 
-Add two nullable fields (non-breaking, default null/`'coder'`):
+Add two nullable fields (non-breaking, default null/`'coder'`) plus indexes:
 
 ```prisma
 // Add to existing Incident model:
 module  String?  @default("coder")  // 'coder' | 'soc'
 alertId String?                     // FK to SecurityAlert (SOC only)
+
+@@index([module])
+@@index([createdAt])
 ```
 
 ### 1.3 Extend `Task` (existing model)
 
-Add module discriminator (non-breaking):
+Add module discriminator (non-breaking) plus index:
 
 ```prisma
 // Add to existing Task model:
 module  String?  @default("coder")  // 'coder' | 'soc'
+
+@@index([module])
 ```
 
 ---
@@ -91,9 +97,16 @@ module  String?  @default("coder")  // 'coder' | 'soc'
 
 ### Migration 1: `20260621000001_add_module_discriminator`
 ```sql
-ALTER TABLE "Task" ADD COLUMN IF NOT EXISTS "module" TEXT DEFAULT 'coder';
-ALTER TABLE "Incident" ADD COLUMN IF NOT EXISTS "module" TEXT DEFAULT 'coder';
-ALTER TABLE "Incident" ADD COLUMN IF NOT EXISTS "alertId" TEXT;
+ALTER TABLE "Task"
+  ADD COLUMN IF NOT EXISTS "module" TEXT DEFAULT 'coder';
+
+ALTER TABLE "Incident"
+  ADD COLUMN IF NOT EXISTS "module" TEXT DEFAULT 'coder',
+  ADD COLUMN IF NOT EXISTS "alertId" TEXT;
+
+CREATE INDEX IF NOT EXISTS "Task_module_idx" ON "Task"("module");
+CREATE INDEX IF NOT EXISTS "Incident_module_idx" ON "Incident"("module");
+CREATE INDEX IF NOT EXISTS "Incident_createdAt_idx" ON "Incident"("createdAt" DESC);
 ```
 
 ### Migration 2: `20260621000002_add_security_alert`
@@ -110,7 +123,7 @@ CREATE TABLE "SecurityAlert" (
   "mitreTactic"          TEXT,
   "mitreTechniqueId"     TEXT,
   "mitreTechnique"       TEXT,
-  "severity"             TEXT NOT NULL,
+  "severity"             TEXT NOT NULL DEFAULT 'medium',
   "status"               TEXT NOT NULL DEFAULT 'new',
   "triageScore"          DOUBLE PRECISION,
   "triageRecommendation" TEXT,
@@ -171,6 +184,8 @@ ALTER TABLE "SecurityAlert"
 ### 3.2 `POST /api/soc/alerts`
 
 **Auth:** `requireRole(user, 'admin')`
+
+**Rate limit:** 20 requests per IP window (`checkLimit(_alertCreateBuckets, ip, 20)`); over-limit → 429 with `Retry-After`.
 
 **Body:**
 ```json
@@ -440,16 +455,17 @@ User's active module stored in `localStorage` (client-side preference, not serve
 
 ## 7. Audit Events (SOC)
 
-| Event | Trigger |
-|---|---|
-| `soc_alert_created` | New SecurityAlert created (any source) |
-| `soc_alert_triaged` | Alert status changed by analyst |
-| `soc_alert_escalated` | Alert linked to a security incident |
-| `soc_incident_created` | Security incident opened |
-| `soc_incident_status_changed` | Status transition |
-| `soc_incident_resolved` | Incident closed |
-| `soc_report_generated` | Executive or client report generated |
-| `soc_alert_ingested_batch` | Bulk import (N alerts) |
+| Event | Trigger | Status |
+|---|---|---|
+| `soc_alert_created` | New SecurityAlert created (any source) | ✅ emitted (M-2) |
+| `soc_alert_triaged` | Alert status / triage / incidentId changed via PATCH | ✅ emitted (M-2) |
+| `soc_alert_archived` | Alert soft-deleted via DELETE (`archivedAt` set) | ✅ emitted (M-2) |
+| `soc_alert_escalated` | Alert linked to a security incident | ⏳ planned (M-8) — **not yet emitted**; M-2 PATCH currently logs `soc_alert_triaged` even when `incidentId` is set |
+| `soc_incident_created` | Security incident opened | ⏳ planned (M-8) |
+| `soc_incident_status_changed` | Status transition | ⏳ planned (M-8) |
+| `soc_incident_resolved` | Incident closed | ⏳ planned (M-8) |
+| `soc_report_generated` | Executive or client report generated | ⏳ planned (M-9) |
+| `soc_alert_ingested_batch` | Bulk import (N alerts) | ⏳ planned (M-4) |
 
 All events use existing `writeAudit()` — same table, same pattern, `event` field prefixed with `soc_`.
 
@@ -457,11 +473,17 @@ All events use existing `writeAudit()` — same table, same pattern, `event` fie
 
 ## 8. Feature Flags
 
-| Flag | Default | Controls |
-|---|---|---|
-| `FEATURE_WAZUH_INTAKE` | `false` | Enable `/api/soc/alerts/ingest/wazuh` endpoint |
-| `FEATURE_SENTRY_INTAKE` | `false` | Enable `/api/soc/alerts/ingest/sentry` endpoint (post-MVP) |
-| `FEATURE_SOC_AI_TRIAGE` | `false` | Enable LLM-powered triage (post-MVP) |
+| Flag | Default | Controls | Present? |
+|---|---|---|---|
+| `FEATURE_WAZUH_INTAKE` | `false` | Enable `/api/soc/alerts/ingest/wazuh` endpoint | ❌ **added in M-5** |
+| `FEATURE_SENTRY_INTAKE` | `false` | Enable `/api/soc/alerts/ingest/sentry` endpoint (post-MVP) | ❌ post-MVP |
+| `FEATURE_SOC_AI_TRIAGE` | `false` | Enable LLM-powered triage (post-MVP) | ❌ post-MVP |
+
+> **Conformance note (D-5):** As of M-2, **none** of these SOC flags exist. `.env.example`
+> currently defines only `FEATURE_BILLING`, `FEATURE_AGENT_LLM`, `FEATURE_RAG_EMBED`, and
+> `src/lib/featureFlags.ts` defines no SOC flags. `FEATURE_WAZUH_INTAKE` must be **created in
+> M-5** by adding it to both `.env.example` and `src/lib/featureFlags.ts` (extend the
+> `FeatureFlags` interface + `getFeatureFlags()`). Until then, no SOC endpoint is flag-gated.
 
 All checked via `src/lib/featureFlags.ts`. Adding new flags requires updating that file and `.env.example`.
 

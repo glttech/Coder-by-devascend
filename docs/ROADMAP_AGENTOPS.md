@@ -90,10 +90,15 @@ Each PR is small, tested, and CI-gated. Merge order is strict.
 
 **Title:** `feat(soc): Wazuh sample-format alert intake behind feature flag`  
 **Goal:** Accept Wazuh-format JSON payloads for pilot customers — no live Wazuh connection, no env changes, no DEV deploy  
-**Important:** This is static sample-format parsing only. No live webhook, no new env vars required at runtime, no external connectivity. The endpoint exists behind `FEATURE_WAZUH_INTAKE=false` (already in .env.example). Separate approval required before enabling in any environment.  
+**Important:** This is static sample-format parsing only. No live webhook, no external connectivity, no DEV deploy. The endpoint is gated behind `FEATURE_WAZUH_INTAKE=false`. **This flag does not exist yet** — M-5 must create it (it is NOT currently in `.env.example` or `featureFlags.ts`; see conformance D-5). Separate approval required before enabling in any environment.
+
+> **Clarification (conformance D-7):** "Wazuh alerts appear automatically" (PRD §5) is delivered in two parts. M-5 ships the **receiving endpoint** only. Making alerts flow automatically requires the customer to point their Wazuh integrator at the endpoint — a deployment step, outside MVP code scope, requiring separate approval.
+
 **Files:**
 - `src/app/api/soc/alerts/ingest/wazuh/route.ts` — POST accepting Wazuh 4.x JSON structure; returns 503 when feature flag off
 - `src/lib/soc/wazuhNormalizer.ts` — maps Wazuh rule.level to severity, extracts mitreTactic/mitreTechniqueId
+- `.env.example` — **add** `FEATURE_WAZUH_INTAKE=false`
+- `src/lib/featureFlags.ts` — **add** `wazuhIntakeEnabled` to the `FeatureFlags` interface + `getFeatureFlags()`
 
 **Schema impact:** None  
 **UI impact:** None  
