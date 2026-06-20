@@ -72,9 +72,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     );
   }
 
-  // Fetch all PR health data (separate query — list page uses its own query with filters)
+  // Fetch PR health data — capped at 1000 most recent to bound memory use on large projects.
+  // Health signals are computed over this window; projects with >1000 PRs show approximate health.
   const allPRsForHealth = await prisma.githubPR.findMany({
     where: { projectId: params.id },
+    orderBy: { importedAt: 'desc' },
+    take: 1000,
     select: { id: true, prNumber: true, title: true, body: true, state: true, merged: true, ciStatus: true, importedAt: true, updatedAt: true, githubMergedAt: true },
   }) as PRHealthInputFull[];
 
@@ -146,15 +149,27 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         }
         actions={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Link href={`/projects/${project.id}/intelligence`} className="btn btn-ghost btn-sm">
+              Intelligence
+            </Link>
+            <Link href={`/projects/${project.id}/governance-timeline`} className="btn btn-ghost btn-sm">
+              Timeline
+            </Link>
             <Link href={`/projects/${project.id}/board`} className="btn btn-ghost btn-sm">
               Board
             </Link>
             <Link href={`/projects/${project.id}/milestones`} className="btn btn-ghost btn-sm">
               Milestones
             </Link>
+            <Link href={`/projects/${project.id}/risk`} className="btn btn-ghost btn-sm">
+              Risk
+            </Link>
             <Link href={`/projects/${project.id}/edit`} className="btn btn-ghost btn-sm">
               Edit
             </Link>
+            <a href={`/api/projects/${project.id}/report`} target="_blank" className="btn btn-ghost btn-sm">
+              Download Report
+            </a>
           </div>
         }
       />

@@ -5,6 +5,7 @@ import { checkApprovalAllowed } from '@/lib/approvalGuard';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
+import { triggerWebhooks } from '@/lib/webhookDelivery';
 
 // POST /api/approvals – record an approval decision for a task.
 // Body: { taskId: string, approved: boolean }
@@ -103,6 +104,13 @@ export async function POST(request: Request) {
         userId: currentUser?.userId ?? null,
       });
     }
+
+    // Fire-and-forget webhook delivery
+    triggerWebhooks(approved ? 'approval.granted' : 'approval.rejected', {
+      taskId,
+      approved,
+      approverId: currentUser?.userId ?? null,
+    }).catch(() => {});
 
     return NextResponse.json(approval, { status: 200 });
   } catch (err) {

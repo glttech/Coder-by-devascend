@@ -7,6 +7,6 @@ import prisma from '@/lib/prisma';
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getIronSession<{ userId?: string }>(cookies(), getSessionOptions());
   if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const members = await prisma.membership.findMany({ where: { orgId: params.id } });
+  const members = await prisma.membership.findMany({ where: { orgId: params.id }, take: 500 });
   return NextResponse.json({ members });
 }

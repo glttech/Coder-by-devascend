@@ -5,6 +5,9 @@ import { requireRole } from '@/lib/rbac';
 import { getFeatureFlags } from '@/lib/featureFlags';
 import { resolveDispatch } from '@/lib/dispatchGate';
 import { writeAudit } from '@/lib/audit';
+import { checkLimit, getClientIp, Bucket } from '@/lib/rateLimiter';
+
+const _agentRunCreateBuckets = new Map<string, Bucket>();
 
 // GET /api/agent-runs?taskId=<optional>
 // Auth: admin or reviewer
@@ -42,6 +45,14 @@ export async function GET(request: Request) {
 // Auth: admin only
 // Dispatches a new agent run for the given task, applying the approval gate.
 export async function POST(request: Request) {
+  const ip = getClientIp(request.headers.get('x-forwarded-for'), request.headers.get('x-real-ip'));
+  const rl = checkLimit(_agentRunCreateBuckets, ip, 20);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Too many requests — try again shortly' }, {
+      status: 429, headers: { 'Retry-After': String(rl.retryAfter) },
+    });
+  }
+
   const user = await getCurrentUser();
   if (!user || user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

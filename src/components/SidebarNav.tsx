@@ -6,14 +6,23 @@ import { useEffect, useState } from 'react';
 
 const NAV_ITEMS = [
   { href: '/',                      label: 'Dashboard',         icon: '⬡' },
+  { href: '/getting-started',       label: 'Getting Started',   icon: '▷' },
   { href: '/projects',              label: 'Projects',          icon: '⬟' },
   { href: '/tasks',                 label: 'Tasks',             icon: '◈' },
   { href: '/instructions/pending',  label: 'Review Queue', icon: '◉' },
+  { href: '/providers/scorecard',   label: 'Scorecard',         icon: '◑' },
+  { href: '/agent-roles',           label: 'Agent Roles',       icon: '◭' },
   { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
-  { href: '/diagrams',             label: 'Diagrams',          icon: '◆' },
+  { href: '/diagrams',              label: 'Diagrams',          icon: '◆' },
+  { href: '/incidents',             label: 'Incidents',         icon: '⚠' },
+  { href: '/change-control',        label: 'Change Control',    icon: '◭' },
+  { href: '/executive',             label: 'Executive',         icon: '◈' },
   { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
   { href: '/settings/team',         label: 'Team',              icon: '◈' },
   { href: '/ci',                    label: 'CI Dashboard',      icon: '⬭' },
+  { href: '/demo',                  label: 'Demo',              icon: '◌' },
+  { href: '/status',                label: 'System Status',     icon: '◎' },
+  { href: '/settings/admin',        label: 'Admin',             icon: '⬡' },
 ];
 
 interface MeResponse {

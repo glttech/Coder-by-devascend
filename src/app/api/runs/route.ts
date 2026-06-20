@@ -3,18 +3,21 @@ import prisma from '@/lib/prisma';
 import { evaluateResponse } from '@/lib/promptEvaluator';
 import { createTrace, logObservation } from '@/lib/langfuse';
 import { writeAudit } from '@/lib/audit';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
-// POST /api/runs – record an agent run.  Expects JSON with taskId,
-// generatedPrompt, selectedTool, and response.  Performs basic evaluation
-// using built‑in heuristics and logs prompt/response to Langfuse.
+// POST /api/runs – record an agent run.
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), { status: auth.status });
+
   const data = await request.json();
   const { taskId, generatedPrompt, selectedTool, response } = data;
   if (!taskId || !generatedPrompt || !selectedTool) {
     return new NextResponse(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
   }
   try {
-    // Create a new agent run record
     const now = new Date();
     const run = await prisma.agentRun.create({
       data: {
@@ -33,7 +36,6 @@ export async function POST(request: Request) {
       details: JSON.stringify({ selectedTool, hasResponse: !!response, status: run.status, at: new Date().toISOString() }),
       userId: null,
     });
-    // Create evaluation results if a response was supplied
     if (response) {
       const evaluations = evaluateResponse(generatedPrompt, response);
       await Promise.all(
@@ -49,9 +51,6 @@ export async function POST(request: Request) {
           }),
         ),
       );
-      // Send observations to Langfuse.  Create a trace tied to the task/run and
-      // log the prompt and response.  The stubbed functions will simply log to
-      // console in this MVP.
       const trace = await createTrace(taskId, run.id, { agentTool: selectedTool });
       await logObservation(trace, 'prompt', generatedPrompt, { agentRunId: run.id });
       await logObservation(trace, 'response', response, { agentRunId: run.id });

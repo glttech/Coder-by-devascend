@@ -14,11 +14,22 @@ import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { requireRole } from '@/lib/rbac';
 import { runOrchestrator } from '@/lib/agents/orchestrator';
+import { checkLimit, getClientIp, Bucket } from '@/lib/rateLimiter';
+
+const _orchestrateBuckets = new Map<string, Bucket>();
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } },
 ) {
+  const ip = getClientIp(request.headers.get('x-forwarded-for'), request.headers.get('x-real-ip'));
+  const rl = checkLimit(_orchestrateBuckets, ip, 10);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Too many requests — try again shortly' }, {
+      status: 429, headers: { 'Retry-After': String(rl.retryAfter) },
+    });
+  }
+
   // Auth
   const user = await getCurrentUser();
   const auth = requireRole(user, 'any');

@@ -54,27 +54,34 @@ model Task {
   assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
   milestoneId       String?
   milestone         Milestone?         @relation(fields: [milestoneId], references: [id])
+  module            String?            @default("coder")   // "coder" | "soc"
   agentRuns         AgentRun[]
   approval          Approval?
   audits            AuditLog[]
   operatorSessions  OperatorSession[]
   instructions      Instruction[]
   comments          Comment[]
+  incidents         Incident[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([module])
+  @@index([createdAt])
+  @@index([projectId, createdAt])
 }
 
 model Milestone {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
+  project     Project    @relation(fields: [projectId], references: [id])
   title       String
   description String?
   targetDate  DateTime?
-  status      String    @default("open") // "open" | "completed"
+  status      String     @default("open") // "open" | "completed"
   tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  githubPRs   GithubPR[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model PromptTemplate {
@@ -109,11 +116,12 @@ model AgentRun {
   commandsRun      String?
   testResult       String?
   commitHash       String?
-  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled
-  status           String         @default("pending") // "pending", "running", "succeeded", "failed"
+  // Intended lifecycle: draft → awaiting_approval → queued → running → succeeded | failed | blocked | cancelled | preview
+  status           String         @default("pending") // "pending", "running", "succeeded", "failed", "preview"
+  sandboxPlan      String?        // JSON: { plannedFiles, plannedCommands, estimatedRisk, warnings }
   startedAt        DateTime       @default(now())
   endedAt          DateTime?
-  // Agent Role System (PR 1.1) — all nullable/defaulted, additive only
+  // Agent Role System — all nullable/defaulted, additive only
   roleKey          String?
   modelUsed        String?
   structuredOutput String?        @db.Text
@@ -124,6 +132,8 @@ model AgentRun {
   evaluations      Evaluation[]
   audits           AuditLog[]
   steps            AgentStep[]
+  githubPRs        GithubPR[]
+  incidents        Incident[]
 }
 
 model AgentStep {
@@ -174,6 +184,9 @@ model AuditLog {
   operatorSession   OperatorSession? @relation(fields: [operatorSessionId], references: [id])
   instruction       Instruction?     @relation(fields: [instructionId], references: [id])
   user              User?            @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([createdAt])
 }
 
 model Instruction {
@@ -304,6 +317,10 @@ model GithubPR {
   projectId         String
   project           Project   @relation(fields: [projectId], references: [id])
   taskId            String?
+  milestoneId       String?
+  milestone         Milestone? @relation(fields: [milestoneId], references: [id])
+  agentRunId        String?
+  agentRun          AgentRun?  @relation(fields: [agentRunId], references: [id])
   prNumber          Int
   title             String
   body              String?
@@ -321,10 +338,32 @@ model GithubPR {
   githubCreatedAt   DateTime?
   githubUpdatedAt   DateTime?
   githubMergedAt    DateTime?
+  // PR Memory Index (Feature 1) — auto-populated on import/refresh
+  classification       String?  // "feature"|"bug_fix"|"security"|"migration"|"deployment"|"rollback"|"incident"|"chore"|"test"|"docs"
+  classificationSource String?  // "auto_title"|"auto_label"|"auto_files"|"manual"
+  bugState             String?  // null|"known_issue"|"fixed"|"regression_risk"|"needs_retest"
+  reviewDecision       String?  // "approved"|"changes_requested"|"dismissed"|null
+  commentCount         Int?
+  syncedAt             DateTime?
   importedAt        DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   @@unique([projectId, prNumber])
+  @@index([projectId, classification])
+  @@index([projectId, bugState])
+  @@index([projectId, githubMergedAt])
+  @@index([importedAt])
+}
+
+// Tracks incremental sync state per project — one row per project.
+model PrSyncState {
+  projectId          String   @id
+  lastSyncedAt       DateTime?
+  lastSyncedPrNumber Int?
+  totalSynced        Int      @default(0)
+  syncStatus         String   @default("idle") // "idle"|"running"|"error"
+  errorMessage       String?
+  updatedAt          DateTime @updatedAt
 }
 
 model Diagram {
@@ -476,4 +515,82 @@ model EvidenceChunk {
 
   @@index([orgId, taskId])
   @@index([sourceType])
+}
+
+model Incident {
+  id               String    @id @default(uuid())
+  taskId           String?
+  task             Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  agentRunId       String?
+  agentRun         AgentRun? @relation(fields: [agentRunId], references: [id], onDelete: SetNull)
+  title            String
+  description      String?
+  trigger          String    // "ci_failure" | "reviewer_block" | "policy_block" | "run_failure" | "manual_rollback"
+  severity         String    @default("medium")
+  status           String    @default("open")
+  timeline         String?   // JSON: Array<{ timestamp: string, event: string, actor?: string }>
+  failedCommand    String?
+  failedTest       String?
+  riskCategory     String?
+  reviewerDecision String?
+  followUpAction   String?
+  resolvedAt       DateTime?
+  resolvedBy       String?
+  module           String?   @default("coder")  // "coder" | "soc"
+  alertId          String?   // FK to SecurityAlert (SOC incidents only)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([module])
+  @@index([createdAt])
+}
+
+model SecurityAlert {
+  id                   String    @id @default(uuid())
+  orgId                String
+
+  // Source
+  source               String    // 'wazuh' | 'sentry' | 'manual'
+  sourceId             String?   // original ID in source system
+  sourceRef            String?   // URL or external reference
+
+  // Normalized fields
+  title                String
+  description          String?
+  ruleId               String?
+
+  // MITRE ATT&CK
+  mitreTactic          String?
+  mitreTechniqueId     String?
+  mitreTechnique       String?
+
+  // Severity & status
+  severity             String    @default("medium")
+                                 // 'info' | 'low' | 'medium' | 'high' | 'critical'
+  status               String    @default("new")
+                                 // 'new' | 'triaging' | 'escalated' | 'closed'
+  triageScore          Float?
+  triageRecommendation String?   // 'acknowledge' | 'escalate' | 'close'
+  triageConfidence     Float?
+  triageReason         String?
+  triageBy             String?
+  triagedAt            DateTime?
+
+  // Linked incident
+  incidentId           String?
+
+  // Raw payload (for replay/debugging, never rendered as HTML)
+  rawPayload           Json?
+
+  // Timestamps
+  alertedAt            DateTime  @default(now())
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  // Soft-delete — set by DELETE /api/soc/alerts/[id]; null = active
+  archivedAt           DateTime?
+
+  @@index([orgId, status])
+  @@index([orgId, severity])
+  @@index([orgId, source])
+  @@index([createdAt])
 }

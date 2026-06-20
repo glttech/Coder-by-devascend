@@ -31,6 +31,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'at least one scope is required' }, { status: 400 });
   }
 
+  // Validate scopes before calling createApiKey so unknown errors aren't leaked
+  const invalidScopes = body.scopes.filter(s => !VALID_SCOPES.includes(s as (typeof VALID_SCOPES)[number]));
+  if (invalidScopes.length > 0) {
+    return NextResponse.json({ error: `Invalid scopes: ${invalidScopes.join(', ')}` }, { status: 400 });
+  }
+
   try {
     const result = await createApiKey({
       orgId: 'org_default',
@@ -41,6 +47,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to create key' }, { status: 400 });
+    console.error('[keys POST]', err);
+    return NextResponse.json({ error: 'Failed to create API key' }, { status: 500 });
   }
 }

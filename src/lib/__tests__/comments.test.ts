@@ -3,7 +3,65 @@ import assert from 'node:assert/strict';
 
 // Pure functional tests — no DB required
 
+type Role = 'admin' | 'reviewer';
+
+function canDeleteComment(
+  comment: { authorId: string },
+  user: { userId: string; role: Role },
+): boolean {
+  return comment.authorId === user.userId || user.role === 'admin';
+}
+
+const COMMENT_MAX_LENGTH = 10_000;
+
+function validateCommentBody(body: string | undefined): string | null {
+  if (!body?.trim()) return 'body required';
+  if (body.length > COMMENT_MAX_LENGTH) return `Comment body exceeds ${COMMENT_MAX_LENGTH.toLocaleString()} character limit`;
+  return null;
+}
+
+describe('Comment delete authorization', () => {
+  it('allows the comment author to delete their own comment', () => {
+    assert.ok(canDeleteComment({ authorId: 'u1' }, { userId: 'u1', role: 'reviewer' }));
+  });
+
+  it('allows an admin to delete any comment', () => {
+    assert.ok(canDeleteComment({ authorId: 'u1' }, { userId: 'u2', role: 'admin' }));
+  });
+
+  it('denies a reviewer deleting another users comment', () => {
+    assert.equal(canDeleteComment({ authorId: 'u1' }, { userId: 'u2', role: 'reviewer' }), false);
+  });
+
+  it('denies when userId is empty', () => {
+    assert.equal(canDeleteComment({ authorId: 'u1' }, { userId: '', role: 'reviewer' }), false);
+  });
+});
+
 describe('Comment validation', () => {
+  describe('body length', () => {
+    it('accepts a body under the limit', () => {
+      assert.equal(validateCommentBody('hello'), null);
+    });
+
+    it('accepts a body exactly at the limit', () => {
+      assert.equal(validateCommentBody('a'.repeat(COMMENT_MAX_LENGTH)), null);
+    });
+
+    it('rejects a body one char over the limit', () => {
+      const err = validateCommentBody('a'.repeat(COMMENT_MAX_LENGTH + 1));
+      assert.ok(err?.includes('10,000'));
+    });
+
+    it('rejects a blank body', () => {
+      assert.equal(validateCommentBody('   '), 'body required');
+    });
+
+    it('rejects undefined body', () => {
+      assert.equal(validateCommentBody(undefined), 'body required');
+    });
+  });
+
   it('rejects empty body after trim', () => {
     const body = '   ';
     assert.equal(!body?.trim(), true);

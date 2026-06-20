@@ -8,6 +8,12 @@ export async function GET(
   _request: Request,
   { params }: { params: { id: string } },
 ) {
+  const currentUser = await getCurrentUser();
+  const roleCheck = requireRole(currentUser, 'any');
+  if (!roleCheck.ok) {
+    return NextResponse.json({ error: roleCheck.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: roleCheck.status });
+  }
+
   try {
     const project = await prisma.project.findUnique({
       where: { id: params.id },

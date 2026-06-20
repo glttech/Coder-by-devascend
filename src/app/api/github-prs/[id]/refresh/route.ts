@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchGithubPR, resolveGithubCoords, userSafeErrorMessage } from '@/lib/githubClient';
 import { writeAudit } from '@/lib/audit';
+import { buildClassificationFields } from '@/lib/prClassifier';
+import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 interface RouteContext {
   params: { id: string };
@@ -34,7 +37,6 @@ export interface RefreshErrorResponse {
 
 export type RefreshResponse = RefreshSuccessResponse | RefreshErrorResponse;
 
-/** Map GithubClientError codes to our public RefreshErrorCode. */
 function toRefreshErrorCode(githubCode: string): RefreshErrorCode {
   switch (githubCode) {
     case 'RATE_LIMITED':   return 'RATE_LIMITED';
@@ -56,10 +58,12 @@ const HTTP_STATUS_MAP: Partial<Record<RefreshErrorCode, number>> = {
 };
 
 // POST /api/github-prs/[id]/refresh — re-fetch PR metadata from GitHub and update stored record
-export async function POST(_request: Request, { params }: RouteContext) {
+export async function POST(request: Request, { params }: RouteContext) {
+  const user = await getCurrentUser();
+  const auth = requireRole(user, 'any');
+  if (!auth.ok) return NextResponse.json({ error: 'Unauthorized' }, { status: auth.status });
   const { id } = params;
 
-  // Load the stored PR and its project's repo coordinates
   let pr: {
     id: string; projectId: string; prNumber: number; prUrl: string | null;
     project: { repoOwner: string | null; repoName: string | null };
@@ -103,7 +107,6 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json(body, { status: 422 });
   }
 
-  // Fetch latest data from GitHub — token server-side only, never returned to client
   const token = process.env.GITHUB_TOKEN || undefined;
   const result = await fetchGithubPR(coords.owner, coords.repo, coords.prNumber, token);
 
@@ -118,6 +121,23 @@ export async function POST(_request: Request, { params }: RouteContext) {
   }
 
   const d = result.data;
+
+  const existingPr = await prisma.githubPR.findUnique({
+    where: { id },
+    select: { classificationSource: true },
+  });
+
+  const classificationUpdate =
+    existingPr?.classificationSource !== 'manual'
+      ? buildClassificationFields({
+          title: d.title,
+          body: d.body,
+          labels: d.labels,
+          filesChanged: d.filesChanged,
+          ciStatus: d.ciStatus,
+          state: d.state,
+        })
+      : {};
 
   try {
     const updated = await prisma.githubPR.update({
@@ -136,6 +156,8 @@ export async function POST(_request: Request, { params }: RouteContext) {
         filesChanged: d.filesChanged,
         ciStatus: d.ciStatus,
         prUrl: d.prUrl,
+        ...classificationUpdate,
+        syncedAt: new Date(),
         githubUpdatedAt: d.githubUpdatedAt ? new Date(d.githubUpdatedAt) : null,
         githubMergedAt: d.githubMergedAt ? new Date(d.githubMergedAt) : null,
       },
