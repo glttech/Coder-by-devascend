@@ -4,6 +4,9 @@ import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
 import { evaluatePolicy } from '@/lib/policyGates';
+import { checkLimit, getClientIp, Bucket } from '@/lib/rateLimiter';
+
+const _taskCreateBuckets = new Map<string, Bucket>();
 
 const VALID_RISK_LEVELS = ['low', 'medium', 'high'];
 const VALID_ENVIRONMENTS = ['local', 'dev', 'staging', 'production'];
@@ -27,6 +30,14 @@ export async function GET() {
 // Task model fields (except id, status and timestamps).  Returns the
 // created task.
 export async function POST(request: Request) {
+  const ip = getClientIp(request.headers.get('x-forwarded-for'), request.headers.get('x-real-ip'));
+  const rl = checkLimit(_taskCreateBuckets, ip, 20);
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Too many requests — try again shortly' }, {
+      status: 429, headers: { 'Retry-After': String(rl.retryAfter) },
+    });
+  }
+
   const currentUser = await getCurrentUser();
   const roleCheck = requireRole(currentUser, 'admin');
   if (!roleCheck.ok) {
