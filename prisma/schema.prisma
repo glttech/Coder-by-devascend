@@ -60,6 +60,7 @@ model Task {
   operatorSessions  OperatorSession[]
   instructions      Instruction[]
   comments          Comment[]
+  cliSessions       CliSession[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -476,4 +477,29 @@ model EvidenceChunk {
 
   @@index([orgId, taskId])
   @@index([sourceType])
+}
+
+// ---------------------------------------------------------------------------
+// Work Control Room — W-2
+// Tracks individual Claude Code CLI executions. Written by the runner (W-5);
+// read here by the API and log viewer (W-3). No PII or secrets stored.
+// ---------------------------------------------------------------------------
+
+model CliSession {
+  id          String    @id @default(uuid())
+  taskId      String?
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  command     String                                              // e.g. "claude --print ..."
+  workingDir  String    @default("")                             // absolute path, scoped to RUNNER_BASE_DIR
+  status      String    @default("pending")                     // "pending"|"running"|"completed"|"failed"|"cancelled"
+  exitCode    Int?
+  logLines    Json?                                              // JSON array of { ts: ISO, line: string }
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([taskId])
+  @@index([status])
+  @@index([createdAt])
 }
