@@ -44,13 +44,6 @@ model SecurityAlert {
   triageBy              String?   // userId who actioned it
   triagedAt             DateTime?
 
-  // Triage
-  triageRecommendation  String?   // 'acknowledge' | 'escalate' | 'close'
-  triageConfidence      Float?    // 0.0–1.0
-  triageReason          String?
-  triageBy              String?   // userId who actioned it
-  triagedAt             DateTime?
-
   // Raw payload (for replay/debugging, never rendered as HTML)
   // Max 100 KB serialized. Sensitive keys (password, token, secret, etc.) are
   // automatically redacted before storage by src/lib/soc/rawPayload.ts.
