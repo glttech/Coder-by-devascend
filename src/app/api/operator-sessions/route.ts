@@ -7,11 +7,18 @@ import { generateNextPrompt } from '@/lib/nextPromptGenerator';
 import { parseLines, enrichSession } from '@/lib/sessionHelpers';
 import { writeAudit } from '@/lib/audit';
 import { getCurrentUser } from '@/lib/session';
+import { requireRole } from '@/lib/rbac';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/operator-sessions?taskId=xxx
 export async function GET(request: Request) {
+  const currentUser = await getCurrentUser();
+  const auth = requireRole(currentUser, 'any');
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: auth.status });
+  }
+
   const { searchParams } = new URL(request.url);
   const taskId = searchParams.get('taskId');
   if (!taskId) {
@@ -21,6 +28,7 @@ export async function GET(request: Request) {
     const sessions = await prisma.operatorSession.findMany({
       where: { taskId },
       orderBy: { createdAt: 'desc' },
+      take: 200,
     });
     return NextResponse.json({ sessions: sessions.map(enrichSession) });
   } catch (err) {
@@ -32,6 +40,10 @@ export async function GET(request: Request) {
 // POST /api/operator-sessions
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
+  const auth = requireRole(currentUser, 'any');
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.status === 401 ? 'Unauthorized' : 'Forbidden' }, { status: auth.status });
+  }
   let body: Record<string, unknown>;
   try {
     body = await request.json();
