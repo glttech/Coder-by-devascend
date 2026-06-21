@@ -26,7 +26,19 @@ Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evi
 | W-5 | Control Room Timeline (`/coder/control-room`) | **✅ Complete (PR #204)** |
 | W-6 | Claude Session Intelligence (duration, PR link, summary, failure reason) | **✅ Complete (PR #205)** |
 | W-7 | Executive Dashboard (active sessions, open tasks, risk summary) | **✅ Complete (PR #207)** |
-| W-8 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
+| W-8 | Command policy gates (allowlist, workdir scoping, log scrubbing) | **✅ Complete (PR #208)** |
+
+**W-8 detail:**
+- `CommandPolicy` Prisma model: orgId, name, commandPrefixes[], allowedWorkdirs[], scrubLogs, enabled
+- Migration `20260621000003_command_policy` (new table, no breaking changes)
+- `isCommandAllowed(command, allowlist)` — prefix-based allowlist check with separator guard
+- `isWorkdirAllowed(dir, bases)` — absolute path scoping with boundary attack prevention
+- `scrubLogLine(line)` / `scrubLogLines(lines[])` — redacts 9 secret patterns (API keys, PATs, tokens, env vars)
+- `validateCommandPolicyBody` / `validateCommandPolicyPatch` — validated CRUD bodies
+- `GET/POST /api/coder/policies` + `GET/PATCH/DELETE /api/coder/policies/[id]`
+- `/coder/policies` list page + `/coder/policies/new` form + `/coder/policies/[id]` edit page with delete
+- "Cmd Policies" added to SidebarNav
+- 43 new unit tests (1300 total); `tsc --noEmit` clean
 
 **W-7 detail:**
 - `/coder/dashboard` — Executive Dashboard server component
