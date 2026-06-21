@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 const NAV_ITEMS = [
   { href: '/',                      label: 'Dashboard',         icon: '⬡' },
+  { href: '/coder/dashboard',       label: 'Exec Dashboard',    icon: '◈' },
   { href: '/coder/tasks',           label: 'Work Control Room', icon: '◈' },
   { href: '/coder/control-room',    label: 'Control Room',      icon: '◎' },
   { href: '/coder/sessions',        label: 'CLI Sessions',       icon: '▶' },
