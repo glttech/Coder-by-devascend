@@ -24,9 +24,20 @@ Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evi
 | W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | **✅ Complete (PR #202)** |
 | W-4 | Repository registry + GitHub PR sync | **✅ Complete (PR #203)** |
 | W-5 | Control Room Timeline (`/coder/control-room`) | **✅ Complete (PR #204)** |
-| W-6 | Claude Session Intelligence (duration, PR link, summary, failure reason) | Not started |
+| W-6 | Claude Session Intelligence (duration, PR link, summary, failure reason) | **✅ Complete (PR #205)** |
 | W-7 | Executive Dashboard (active sessions, open tasks, risk summary) | Not started |
 | W-8 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
+
+**W-6 detail:**
+- `summary String?`, `failureReason String?`, `filesChanged String[]` added to `CliSession` schema
+- `cliSessionId String?` FK added to `RepositoryPR` (links PRs created by a session)
+- Migration `20260621000002_cli_session_intelligence` (additive, all nullable/default)
+- `PATCH /api/coder/sessions/[id]` — write intelligence fields (admin-gated)
+- `GET /api/coder/sessions/[id]` enhanced — includes `repository`, `repositoryPRs` (with CI status, branch, PR URL)
+- Session detail page intelligence panel: summary, failure reason, files changed (collapsible), linked PRs
+- Session list: summary preview, file count column, repo link, exit code inline
+- `validateSessionIntelligencePatch` — validated patch with length/count limits
+- 27 new unit tests (1232 total)
 
 **W-4 detail:**
 - `Repository` + `RepositoryPR` Prisma models (migration `20260621000001_add_repository`)

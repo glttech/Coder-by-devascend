@@ -15,12 +15,25 @@ export default async function SessionDetailPage({ params }: PageProps) {
     where: { id: params.id },
     include: {
       task: { select: { id: true, title: true, projectId: true } },
+      repository: { select: { id: true, fullName: true } },
+      repositoryPRs: {
+        select: {
+          id: true,
+          prNumber: true,
+          title: true,
+          state: true,
+          merged: true,
+          ciStatus: true,
+          prUrl: true,
+          sourceBranch: true,
+        },
+        orderBy: { prNumber: 'desc' },
+      },
     },
   });
 
   if (!session) notFound();
 
-  // Serialise Prisma model to a plain object for the client component.
   const initial = {
     id: session.id,
     command: session.command,
@@ -32,6 +45,11 @@ export default async function SessionDetailPage({ params }: PageProps) {
     completedAt: session.completedAt?.toISOString() ?? null,
     createdAt: session.createdAt.toISOString(),
     task: session.task,
+    repository: session.repository,
+    summary: session.summary,
+    failureReason: session.failureReason,
+    filesChanged: session.filesChanged,
+    repositoryPRs: session.repositoryPRs,
   };
 
   const title = `Session ${session.id.slice(0, 8)}`;

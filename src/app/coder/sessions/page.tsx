@@ -79,6 +79,7 @@ export default async function CoderSessionsPage({ searchParams }: PageProps) {
     take: PAGE_SIZE,
     include: {
       task: { select: { id: true, title: true } },
+      repository: { select: { id: true, fullName: true } },
     },
   });
 
@@ -112,13 +113,13 @@ export default async function CoderSessionsPage({ searchParams }: PageProps) {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Command</th>
-                  <th className="col-hide-mobile">Task</th>
+                  <th>Command / Summary</th>
+                  <th className="col-hide-mobile">Repo / Task</th>
                   <th>Status</th>
                   <th className="col-hide-mobile">Duration</th>
-                  <th className="col-hide-mobile">Exit</th>
+                  <th className="col-hide-mobile">Files</th>
                   <th className="col-hide-mobile">Started</th>
-                  <th>Logs</th>
+                  <th>View</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,9 +127,14 @@ export default async function CoderSessionsPage({ searchParams }: PageProps) {
                   <tr key={session.id}>
                     <td>
                       <code style={{ fontSize: 12 }}>
-                        {truncate(session.command, 60)}
+                        {truncate(session.command, 50)}
                       </code>
-                      {session.workingDir && (
+                      {session.summary && (
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, fontStyle: 'italic' }}>
+                          {truncate(session.summary, 80)}
+                        </div>
+                      )}
+                      {!session.summary && session.workingDir && (
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                           {truncate(session.workingDir, 50)}
                         </div>
@@ -136,34 +142,43 @@ export default async function CoderSessionsPage({ searchParams }: PageProps) {
                     </td>
 
                     <td className="col-hide-mobile" style={{ fontSize: 12 }}>
+                      {session.repository ? (
+                        <Link
+                          href={`/coder/repositories/${session.repository.id}`}
+                          style={{ color: 'var(--blue)', fontWeight: 500, display: 'block' }}
+                        >
+                          {session.repository.fullName}
+                        </Link>
+                      ) : null}
                       {session.task ? (
                         <Link
                           href={`/tasks/${session.task.id}`}
-                          style={{ color: 'var(--blue)', fontWeight: 500 }}
+                          style={{ color: 'var(--text-muted)', fontSize: 11 }}
                         >
-                          {truncate(session.task.title, 40)}
+                          {truncate(session.task.title, 35)}
                         </Link>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        !session.repository && <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
 
                     <td>
                       <StatusBadge status={session.status} />
+                      {session.exitCode !== null && (
+                        <div style={{ fontSize: 11, marginTop: 2, color: session.exitCode === 0 ? '#16a34a' : '#dc2626' }}>
+                          exit {session.exitCode}
+                        </div>
+                      )}
                     </td>
 
                     <td className="col-hide-mobile" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                       {formatDuration(session.startedAt, session.completedAt)}
                     </td>
 
-                    <td className="col-hide-mobile" style={{ fontSize: 12 }}>
-                      {session.exitCode !== null ? (
-                        <code style={{ color: session.exitCode === 0 ? '#16a34a' : '#dc2626' }}>
-                          {session.exitCode}
-                        </code>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
-                      )}
+                    <td className="col-hide-mobile" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {session.filesChanged.length > 0 ? (
+                        <span title={session.filesChanged.join('\n')}>{session.filesChanged.length}</span>
+                      ) : '—'}
                     </td>
 
                     <td className="col-hide-mobile" style={{ fontSize: 12, color: 'var(--text-muted)' }}>

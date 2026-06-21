@@ -487,20 +487,25 @@ model EvidenceChunk {
 // ---------------------------------------------------------------------------
 
 model CliSession {
-  id          String      @id @default(uuid())
-  taskId      String?
-  task        Task?       @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  repoId      String?
-  repository  Repository? @relation(fields: [repoId], references: [id], onDelete: SetNull)
-  command     String                                              // e.g. "claude --print ..."
-  workingDir  String    @default("")                             // absolute path, scoped to RUNNER_BASE_DIR
-  status      String    @default("pending")                     // "pending"|"running"|"completed"|"failed"|"cancelled"
-  exitCode    Int?
-  logLines    Json?                                              // JSON array of { ts: ISO, line: string }
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String         @id @default(uuid())
+  taskId        String?
+  task          Task?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  repoId        String?
+  repository    Repository?    @relation(fields: [repoId], references: [id], onDelete: SetNull)
+  command       String                                              // e.g. "claude --print ..."
+  workingDir    String         @default("")                        // absolute path, scoped to RUNNER_BASE_DIR
+  status        String         @default("pending")                 // "pending"|"running"|"completed"|"failed"|"cancelled"
+  exitCode      Int?
+  logLines      Json?                                              // JSON array of { ts: ISO, line: string }
+  startedAt     DateTime?
+  completedAt   DateTime?
+  // W-6: Session intelligence fields
+  summary       String?                                            // human-readable summary of what the session did
+  failureReason String?                                            // why it failed (populated on failed/cancelled)
+  filesChanged  String[]       @default([])                        // list of file paths touched
+  repositoryPRs RepositoryPR[]                                    // PRs created/linked by this session
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([taskId])
   @@index([repoId])
@@ -543,6 +548,8 @@ model RepositoryPR {
   repository        Repository  @relation(fields: [repoId], references: [id], onDelete: Cascade)
   taskId            String?
   task              Task?       @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  cliSessionId      String?                                        // W-6: session that created this PR
+  cliSession        CliSession? @relation(fields: [cliSessionId], references: [id], onDelete: SetNull)
   prNumber          Int
   title             String
   body              String?
@@ -565,5 +572,6 @@ model RepositoryPR {
   @@unique([repoId, prNumber])
   @@index([repoId])
   @@index([taskId])
+  @@index([cliSessionId])
   @@index([state])
 }
