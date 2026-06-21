@@ -25,8 +25,19 @@ Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evi
 | W-4 | Repository registry + GitHub PR sync | **✅ Complete (PR #203)** |
 | W-5 | Control Room Timeline (`/coder/control-room`) | **✅ Complete (PR #204)** |
 | W-6 | Claude Session Intelligence (duration, PR link, summary, failure reason) | **✅ Complete (PR #205)** |
-| W-7 | Executive Dashboard (active sessions, open tasks, risk summary) | Not started |
+| W-7 | Executive Dashboard (active sessions, open tasks, risk summary) | **✅ Complete (PR #207)** |
 | W-8 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
+
+**W-7 detail:**
+- `/coder/dashboard` — Executive Dashboard server component
+- Stat cards: Active Sessions, Open Tasks, Open PRs, Repos (with contextual sub-labels)
+- Risk bar: open tasks segmented by risk level with colour-coded proportional bar
+- Active sessions panel: live running sessions with command, summary, duration, repo/task links
+- Open tasks table: status, risk badge, project, relative updated time, approval state
+- Recent PRs table: PR title + link, state badge, CI status, repo, relative updated time
+- `src/lib/coder/dashboardStats.ts` — pure stat-builder functions (testable, no Prisma)
+- "Exec Dashboard" added to SidebarNav
+- 25 new unit tests (1257 total); `tsc --noEmit` clean
 
 **W-6 detail:**
 - `summary String?`, `failureReason String?`, `filesChanged String[]` added to `CliSession` schema
