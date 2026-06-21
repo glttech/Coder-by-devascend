@@ -23,7 +23,7 @@ Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evi
 | W-2 | CliSession model + GET API (schema additive, no CLI execution) | **✅ Complete (PR #200)** |
 | W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | **✅ Complete (PR #202)** |
 | W-4 | Repository registry + GitHub PR sync | **✅ Complete (PR #203)** |
-| W-5 | Control Room Timeline (`/coder/control-room`) | Not started |
+| W-5 | Control Room Timeline (`/coder/control-room`) | **✅ Complete (PR #204)** |
 | W-6 | Claude Session Intelligence (duration, PR link, summary, failure reason) | Not started |
 | W-7 | Executive Dashboard (active sessions, open tasks, risk summary) | Not started |
 | W-8 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
