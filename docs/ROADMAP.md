@@ -19,14 +19,26 @@ Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evi
 
 | PR | Scope | Status |
 |---|---|---|
-| W-1 | Read-only task visibility: `/coder/tasks` page + `GET /api/coder/tasks` | **✅ In progress** |
-| W-2 | CliSession model + GET API (schema additive, no CLI execution) | Not started |
-| W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | Not started |
-| W-4 | CLI trigger + approval gate (POST creates pending session, gates on approval) | Not started |
-| W-5 | CLI runner — sandboxed subprocess, policy checked, log streamed | Not started |
-| W-6 | PR queue view (`/coder/prs`) — read-only GitHub PR metadata | Not started |
-| W-7 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
-| W-8 | Operator dashboard — aggregate stats, approval queue, session health | Not started |
+| W-1 | Read-only task visibility: `/coder/tasks` page + `GET /api/coder/tasks` | **✅ Complete (PR #199)** |
+| W-2 | CliSession model + GET API (schema additive, no CLI execution) | **✅ Complete (PR #200)** |
+| W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | **✅ Complete (PR #202)** |
+| W-4 | Repository registry + GitHub PR sync | **✅ Complete (PR #203)** |
+| W-5 | Control Room Timeline (`/coder/control-room`) | Not started |
+| W-6 | Claude Session Intelligence (duration, PR link, summary, failure reason) | Not started |
+| W-7 | Executive Dashboard (active sessions, open tasks, risk summary) | Not started |
+| W-8 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
+
+**W-4 detail:**
+- `Repository` + `RepositoryPR` Prisma models (migration `20260621000001_add_repository`)
+- `repoId` FK added to `CliSession` (additive, nullable)
+- `GET/POST /api/coder/repositories` — list + register
+- `GET/PATCH /api/coder/repositories/[id]` — detail + update
+- `POST /api/coder/repositories/[id]/sync` — GitHub PR sync (uses `GITHUB_TOKEN`, gracefully degrades)
+- `/coder/repositories` list + `/coder/repositories/new` form + `/coder/repositories/[id]` detail with PR table
+- SyncButton client component with live result feedback
+- SidebarNav "Repositories" link
+- Tasks empty-state CTA → "Add your first repository"
+- 39 new unit tests (1180 total)
 
 **W-1 detail (current PR):**
 - `/coder/tasks` — server component, reads `module='coder'` tasks from DB
