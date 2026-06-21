@@ -19,16 +19,29 @@ Task → repo → Claude Code CLI run → logs → branch/PR → CI → risk/evi
 
 | PR | Scope | Status |
 |---|---|---|
-| W-1 | Read-only task visibility: `/coder/tasks` page + `GET /api/coder/tasks` | **✅ In progress** |
-| W-2 | CliSession model + GET API (schema additive, no CLI execution) | Not started |
-| W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | Not started |
-| W-4 | CLI trigger + approval gate (POST creates pending session, gates on approval) | Not started |
+| W-1 | Read-only task visibility: `/coder/tasks` page + `GET /api/coder/tasks` | **✅ Complete** |
+| W-2 | CliSession model + GET API (schema additive, no CLI execution) | **✅ Complete** |
+| W-3 | Live log viewer UI (`/coder/sessions/[id]`) — SSE/polling, read-only | **✅ Complete** |
+| W-4 | Multi-tenant repository registry + GitHub PR sync | **✅ Complete** |
 | W-5 | CLI runner — sandboxed subprocess, policy checked, log streamed | Not started |
 | W-6 | PR queue view (`/coder/prs`) — read-only GitHub PR metadata | Not started |
 | W-7 | Command policy gates (allowlist, workdir scoping, log scrubbing) | Not started |
 | W-8 | Operator dashboard — aggregate stats, approval queue, session health | Not started |
 
-**W-1 detail (current PR):**
+**W-4 detail (this PR):**
+- `Repository` model — multi-tenant registry of GitHub repos, with orgId scoping, sync status tracking
+- `RepositoryPR` model — per-repo PR cache synced from GitHub API, linked to Task and CliSession
+- `CliSession.repoId` — FK linking sessions to registered repositories
+- `GET/POST /api/coder/repositories` — list and register repositories (admin: write, any-auth: read)
+- `GET/PATCH /api/coder/repositories/[id]` — detail and update
+- `POST /api/coder/repositories/[id]/sync` — trigger GitHub PR sync (admin only)
+- `/coder/repositories` — server-rendered list page with sync status badges and pagination
+- `/coder/repositories/new` — client-side registration form
+- `/coder/repositories/[id]` — detail page with PR table and SyncButton client component
+- Sidebar "Repositories" nav entry
+- 20+ unit tests covering param parsing and validation logic
+
+**W-1 detail:**
 - `/coder/tasks` — server component, reads `module='coder'` tasks from DB
 - `GET /api/coder/tasks` — cursor-paginated, filterable by status/project, auth-gated
 - Sidebar "Work Control Room" nav link

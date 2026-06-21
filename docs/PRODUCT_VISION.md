@@ -77,6 +77,32 @@ Running Claude Code or any AI coding agent on a real project is fast but dangero
 
 ---
 
+## Work Control Room — Completed Features (W-1 through W-4)
+
+**W-1: Task Visibility**
+- `/coder/tasks` server page with status/risk/approval table
+- `GET /api/coder/tasks` cursor-paginated, filterable, auth-gated
+
+**W-2: CliSession Model**
+- `CliSession` Prisma model tracking individual Claude Code CLI executions
+- `GET /api/coder/sessions` + `GET /api/coder/sessions/[id]` read-only API
+
+**W-3: Live Log Viewer**
+- `/coder/sessions` list page
+- `/coder/sessions/[id]` live log viewer with SSE/polling
+
+**W-4: Repository Registry + GitHub PR Sync** _(complete as of 2026-06-21)_
+- `Repository` model with multi-tenant orgId scoping, sync status tracking
+- `RepositoryPR` model caching GitHub PR metadata, linked to Task and CliSession
+- `CliSession.repoId` FK connecting sessions to registered repositories
+- Full CRUD API: `GET/POST /api/coder/repositories`, `GET/PATCH /api/coder/repositories/[id]`
+- GitHub sync endpoint: `POST /api/coder/repositories/[id]/sync`
+- UI pages: `/coder/repositories`, `/coder/repositories/new`, `/coder/repositories/[id]`
+- Sidebar navigation entry for Repositories
+- 20+ unit tests for param parsing and validation
+
+---
+
 ## Phase 2 — GitHub-Aware Orchestrator
 
 **Goal:** Connect the orchestrator to real GitHub repos so it can read PRs, commits, CI status, and diff evidence automatically instead of requiring manual paste-in.

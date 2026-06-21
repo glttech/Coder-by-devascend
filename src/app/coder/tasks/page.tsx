@@ -189,7 +189,8 @@ export default async function CoderTasksPage({ searchParams }: PageProps) {
         <EmptyState
           icon="◈"
           title="No Coder tasks yet."
-          description="This is where Claude Code work items will appear. Create a task and run Claude Code to see it here."
+          description="No tasks yet. Start by registering a repository and creating a task."
+          action={<Link href="/coder/repositories/new" className="btn btn-primary btn-sm">Register a Repository</Link>}
         />
       ) : (
         <>

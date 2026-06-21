@@ -61,6 +61,7 @@ model Task {
   instructions      Instruction[]
   comments          Comment[]
   cliSessions       CliSession[]
+  repositoryPRs     RepositoryPR[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -486,20 +487,83 @@ model EvidenceChunk {
 // ---------------------------------------------------------------------------
 
 model CliSession {
-  id          String    @id @default(uuid())
+  id          String      @id @default(uuid())
   taskId      String?
-  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  task        Task?       @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  repoId      String?
+  repository  Repository? @relation(fields: [repoId], references: [id], onDelete: SetNull)
   command     String                                              // e.g. "claude --print ..."
-  workingDir  String    @default("")                             // absolute path, scoped to RUNNER_BASE_DIR
-  status      String    @default("pending")                     // "pending"|"running"|"completed"|"failed"|"cancelled"
+  workingDir  String      @default("")                           // absolute path, scoped to RUNNER_BASE_DIR
+  status      String      @default("pending")                   // "pending"|"running"|"completed"|"failed"|"cancelled"
   exitCode    Int?
   logLines    Json?                                              // JSON array of { ts: ISO, line: string }
   startedAt   DateTime?
   completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([taskId])
+  @@index([repoId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Work Control Room — W-4
+// Repository registry: tracks GitHub repos registered for AI work tracking.
+// ---------------------------------------------------------------------------
+
+model Repository {
+  id            String          @id @default(cuid())
+  orgId         String          @default("org_default")
+  name          String
+  owner         String
+  repo          String
+  fullName      String
+  defaultBranch String          @default("main")
+  private       Boolean         @default(false)
+  description   String?
+  enabled       Boolean         @default(true)
+  syncStatus    String          @default("idle")   // idle | syncing | synced | error
+  syncedAt      DateTime?
+  lastSyncError String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  repositoryPRs RepositoryPR[]
+  cliSessions   CliSession[]
+
+  @@unique([orgId, owner, repo])
+  @@index([orgId])
+}
+
+model RepositoryPR {
+  id                String      @id @default(cuid())
+  repoId            String
+  repository        Repository  @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  taskId            String?
+  task              Task?       @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  prNumber          Int
+  title             String
+  body              String?
+  author            String?
+  sourceBranch      String?
+  baseBranch        String?
+  state             String      // "open" | "closed"
+  merged            Boolean     @default(false)
+  mergeSha          String?
+  labels            String[]    @default([])
+  filesChangedCount Int?
+  ciStatus          String?     // "pending" | "success" | "failure" | "neutral"
+  prUrl             String?
+  githubCreatedAt   DateTime?
+  githubUpdatedAt   DateTime?
+  githubMergedAt    DateTime?
+  syncedAt          DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@unique([repoId, prNumber])
+  @@index([repoId])
+  @@index([taskId])
+  @@index([state])
 }
