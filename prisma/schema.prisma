@@ -575,3 +575,26 @@ model RepositoryPR {
   @@index([cliSessionId])
   @@index([state])
 }
+
+// ---------------------------------------------------------------------------
+// Work Control Room — W-8
+// Command policy gates: allowlist, workdir scoping, log scrubbing config.
+// CLI execution enforcement uses these records at dispatch time (W-9+).
+// ---------------------------------------------------------------------------
+
+model CommandPolicy {
+  id               String   @id @default(cuid())
+  orgId            String   @default("org_default")
+  name             String
+  description      String?
+  commandPrefixes  String[] @default([])   // allowed command prefixes (e.g. "claude --print")
+  allowedWorkdirs  String[] @default([])   // allowed absolute base paths
+  scrubLogs        Boolean  @default(true) // redact secrets from stored logLines
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([orgId, name])
+  @@index([orgId])
+  @@index([enabled])
+}

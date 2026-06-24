@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/coder/control-room',    label: 'Control Room',      icon: '◎' },
   { href: '/coder/sessions',        label: 'CLI Sessions',       icon: '▶' },
   { href: '/coder/repositories',    label: 'Repositories',       icon: '⬟' },
+  { href: '/coder/policies',        label: 'Cmd Policies',       icon: '◉' },
   { href: '/projects',              label: 'Projects',          icon: '⬟' },
   { href: '/tasks',                 label: 'Tasks',             icon: '◈' },
   { href: '/instructions/pending',  label: 'Review Queue', icon: '◉' },
