@@ -1391,3 +1391,235 @@ select:focus-visible {
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM DESIGN SYSTEM — AI Work Control Room
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Typography tokens ───────────────────────────────────────────────────── */
+:root {
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 14px;
+  --text-md:   15px;
+  --text-lg:   17px;
+  --text-xl:   20px;
+  --text-2xl:  28px;
+  --text-3xl:  40px;
+
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+
+  /* Accent palette */
+  --accent-purple: #8b5cf6;
+  --accent-cyan:   #06b6d4;
+  --accent-amber:  #f59e0b;
+  --accent-green:  #22c55e;
+  --accent-red:    #ef4444;
+  --accent-blue:   #3b82f6;
+  --accent-indigo: #6366f1;
+}
+
+/* ── Metric cards ────────────────────────────────────────────────────────── */
+.metric-card {
+  --metric-accent: var(--accent-indigo);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--metric-accent);
+  border-radius: 10px;
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.metric-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card--blue   { --metric-accent: var(--accent-blue); }
+.metric-card--purple { --metric-accent: var(--accent-purple); }
+.metric-card--cyan   { --metric-accent: var(--accent-cyan); }
+.metric-card--green  { --metric-accent: var(--accent-green); }
+.metric-card--red    { --metric-accent: var(--accent-red); }
+.metric-card--amber  { --metric-accent: var(--accent-amber); }
+.metric-card--slate  { --metric-accent: #64748b; }
+.metric-card--indigo { --metric-accent: var(--accent-indigo); }
+
+.metric-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+.metric-card-value {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--metric-accent);
+}
+.metric-card-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* ── Sidebar section grouping ────────────────────────────────────────────── */
+.sidebar-section {
+  padding-bottom: 4px;
+}
+.sidebar-section + .sidebar-section {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+.sidebar-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(148,163,184,0.45);
+  padding: 6px 12px 3px;
+}
+
+/* ── Sidebar brand (dark sidebar) ────────────────────────────────────────── */
+.sidebar-brand-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+.sidebar-brand-label {
+  font-size: 10px;
+  color: rgba(148,163,184,0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 1px;
+}
+
+/* ── Feed card ───────────────────────────────────────────────────────────── */
+.feed-card {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.feed-card:hover {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Section header ──────────────────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.section-header-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.section-header-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-hover, rgba(0,0,0,0.04));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+.section-header-link {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+.section-header-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Status dot ──────────────────────────────────────────────────────────── */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot--running  { background: var(--accent-blue); animation: pulse-running 1.4s ease-in-out infinite; }
+.status-dot--pending  { background: #64748b; }
+.status-dot--success  { background: var(--accent-green); }
+.status-dot--failed   { background: var(--accent-red); }
+.status-dot--neutral  { background: #94a3b8; }
+
+@keyframes pulse-running {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
+  50%       { opacity: 0.85; box-shadow: 0 0 0 4px rgba(59,130,246,0); }
+}
+
+/* ── Risk bar ────────────────────────────────────────────────────────────── */
+.risk-bar-track {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--border);
+  gap: 1px;
+  margin-bottom: 8px;
+}
+.risk-bar-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.risk-bar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Skeleton loading ────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+.skeleton-text  { height: 12px; width: 60%; }
+.skeleton-value { height: 36px; width: 40%; }
+
+/* ── Dark theme overrides ────────────────────────────────────────────────── */
+[data-theme="dark"] .metric-card {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .feed-card {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .feed-card:hover {
+  border-color: var(--accent-blue);
+}
+[data-theme="dark"] .section-header-count {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.1);
+}
