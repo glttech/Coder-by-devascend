@@ -495,18 +495,9 @@ export default async function ControlRoomPage({ searchParams }: PageProps) {
         />
       ) : (
         <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {page.map((entry, i) => (
-              <div
-                key={`${entry.kind}-${i}`}
-                style={{
-                  padding: '14px 16px',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  marginBottom: 6,
-                }}
-              >
+              <div key={`${entry.kind}-${i}`} className="feed-card">
                 {entry.kind === 'task' && <TaskCard data={entry.data} ts={entry.ts} />}
                 {entry.kind === 'session' && <SessionCard data={entry.data} ts={entry.ts} />}
                 {entry.kind === 'pr' && <PrCard data={entry.data} ts={entry.ts} />}

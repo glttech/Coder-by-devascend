@@ -183,7 +183,15 @@ export default async function CoderTasksPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      <PageHeader title="Work Control Room" subtitle={subtitle} />
+      <PageHeader
+        title="Work Control Room"
+        subtitle={subtitle}
+        actions={
+          <Link href="/tasks/new" className="btn btn-ghost btn-sm">
+            + New Task
+          </Link>
+        }
+      />
 
       {tasks.length === 0 && !cursor ? (
         <EmptyState

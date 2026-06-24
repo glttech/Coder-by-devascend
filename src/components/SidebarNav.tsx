@@ -4,22 +4,42 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const NAV_ITEMS = [
-  { href: '/',                      label: 'Dashboard',         icon: '⬡' },
-  { href: '/coder/dashboard',       label: 'Exec Dashboard',    icon: '◈' },
-  { href: '/coder/tasks',           label: 'Work Control Room', icon: '◈' },
-  { href: '/coder/control-room',    label: 'Control Room',      icon: '◎' },
-  { href: '/coder/sessions',        label: 'CLI Sessions',       icon: '▶' },
-  { href: '/coder/repositories',    label: 'Repositories',       icon: '⬟' },
-  { href: '/coder/policies',        label: 'Cmd Policies',       icon: '◉' },
-  { href: '/projects',              label: 'Projects',          icon: '⬟' },
-  { href: '/tasks',                 label: 'Tasks',             icon: '◈' },
-  { href: '/instructions/pending',  label: 'Review Queue', icon: '◉' },
-  { href: '/audit',                 label: 'Audit Log',         icon: '◎' },
-  { href: '/diagrams',             label: 'Diagrams',          icon: '◆' },
-  { href: '/settings/billing',      label: 'Billing',           icon: '◇' },
-  { href: '/settings/team',         label: 'Team',              icon: '◈' },
-  { href: '/ci',                    label: 'CI Dashboard',      icon: '⬭' },
+const NAV_SECTIONS = [
+  {
+    title: 'AI Work Control',
+    items: [
+      { href: '/coder/dashboard',    label: 'Exec Dashboard',    icon: '◈' },
+      { href: '/coder/tasks',        label: 'Work Control Room', icon: '◈' },
+      { href: '/coder/control-room', label: 'Control Room',      icon: '◎' },
+      { href: '/coder/sessions',     label: 'CLI Sessions',       icon: '▶' },
+    ],
+  },
+  {
+    title: 'Infrastructure',
+    items: [
+      { href: '/coder/repositories', label: 'Repositories', icon: '⬟' },
+      { href: '/coder/policies',     label: 'Cmd Policies', icon: '◉' },
+      { href: '/ci',                 label: 'CI Dashboard', icon: '⬭' },
+    ],
+  },
+  {
+    title: 'Platform',
+    items: [
+      { href: '/',                     label: 'Dashboard',    icon: '⬡' },
+      { href: '/projects',             label: 'Projects',     icon: '⬟' },
+      { href: '/tasks',                label: 'Tasks',        icon: '◈' },
+      { href: '/instructions/pending', label: 'Review Queue', icon: '◉' },
+      { href: '/audit',                label: 'Audit Log',    icon: '◎' },
+      { href: '/diagrams',             label: 'Diagrams',     icon: '◆' },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { href: '/settings/billing', label: 'Billing', icon: '◇' },
+      { href: '/settings/team',    label: 'Team',    icon: '◈' },
+    ],
+  },
 ];
 
 interface MeResponse {
@@ -47,9 +67,9 @@ function UserBadge() {
   }
 
   return (
-    <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', marginTop: 8 }}>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
-        Signed in as <strong style={{ color: 'var(--text-secondary)' }}>{me.username}</strong>
+    <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.6)', marginBottom: 6 }}>
+        Signed in as <strong style={{ color: 'rgba(148,163,184,0.9)' }}>{me.username}</strong>
       </div>
       <button
         onClick={handleLogout}
@@ -65,24 +85,28 @@ function UserBadge() {
 export default function SidebarNav() {
   const pathname = usePathname();
 
+  function isActive(href: string): boolean {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  }
+
   return (
     <nav className="sidebar-nav">
-      <div className="sidebar-section-label">Navigation</div>
-      {NAV_ITEMS.map((item) => {
-        const isActive = item.href === '/'
-          ? pathname === '/'
-          : pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`sidebar-link${isActive ? ' active' : ''}`}
-          >
-            <span className="sidebar-link-icon">{item.icon}</span>
-            {item.label}
-          </Link>
-        );
-      })}
+      {NAV_SECTIONS.map((section) => (
+        <div key={section.title} className="sidebar-section">
+          <div className="sidebar-section-title">{section.title}</div>
+          {section.items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`sidebar-link${isActive(item.href) ? ' active' : ''}`}
+            >
+              <span className="sidebar-link-icon">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      ))}
       <UserBadge />
     </nav>
   );

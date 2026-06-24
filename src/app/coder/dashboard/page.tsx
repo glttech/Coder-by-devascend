@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { MetricCard } from '@/components/ui/MetricCard';
 import { buildSessionStats, buildTaskStats, buildPrStatsFromList, todayUTC } from '@/lib/coder/dashboardStats';
 
 export const dynamic = 'force-dynamic';
@@ -57,28 +58,6 @@ function formatDuration(start: Date | null, end: Date | null): string {
   return `${mins}m ${secs % 60}s`;
 }
 
-// ── Stat card ────────────────────────────────────────────────────────────────
-
-interface StatCardProps {
-  label: string;
-  value: number | string;
-  sub?: string;
-  accent?: string;
-  href?: string;
-}
-
-function StatCard({ label, value, sub, accent = 'var(--blue)', href }: StatCardProps) {
-  const inner = (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '18px 22px', minWidth: 140, flex: 1 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>{label}</div>
-      <div style={{ fontSize: 32, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{sub}</div>}
-    </div>
-  );
-  if (href) return <Link href={href} style={{ textDecoration: 'none', display: 'contents' }}>{inner}</Link>;
-  return inner;
-}
-
 // ── Risk bar ─────────────────────────────────────────────────────────────────
 
 function RiskBar({ byRisk }: { byRisk: { low: number; medium: number; high: number; unknown: number } }) {
@@ -94,15 +73,15 @@ function RiskBar({ byRisk }: { byRisk: { low: number; medium: number; high: numb
 
   return (
     <div>
-      <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
+      <div className="risk-bar-track">
         {segments.map((s) => (
           <div key={s.label} style={{ flex: s.count / total, background: s.color, minWidth: 4 }} title={`${s.label}: ${s.count}`} />
         ))}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      <div className="risk-bar-legend">
         {segments.map((s) => (
-          <span key={s.label} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block' }} />
+          <span key={s.label} className="risk-bar-legend-item">
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
             <span style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
             <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.count}</span>
           </span>
@@ -116,9 +95,12 @@ function RiskBar({ byRisk }: { byRisk: { low: number; medium: number; high: numb
 
 function SectionHeader({ title, href, count }: { title: string; href?: string; count?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-      <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{title}{count !== undefined && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>({count})</span>}</h2>
-      {href && <Link href={href} style={{ fontSize: 12, color: 'var(--blue)' }}>View all →</Link>}
+    <div className="section-header">
+      <span className="section-header-title">
+        {title}
+        {count !== undefined && <span className="section-header-count">({count})</span>}
+      </span>
+      {href && <Link href={href} className="section-header-link">View all →</Link>}
     </div>
   );
 }
@@ -210,42 +192,42 @@ export default async function CoderDashboardPage() {
         subtitle={`Work Control Room overview · ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`}
       />
 
-      {/* ── Stat cards ── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
-        <StatCard
+      {/* ── Metric grid ── */}
+      <div className="metric-grid">
+        <MetricCard
           label="Active Sessions"
           value={sessionStats.active}
           sub={sessionStats.pending > 0 ? `${sessionStats.pending} pending` : 'none pending'}
-          accent={sessionStats.active > 0 ? '#2563eb' : 'var(--text-muted)'}
+          accent={sessionStats.active > 0 ? 'blue' : 'slate'}
           href="/coder/sessions?status=running"
         />
-        <StatCard
+        <MetricCard
           label="Open Tasks"
           value={taskStats.open}
-          sub={taskStats.pendingApproval > 0 ? `${taskStats.pendingApproval} need approval` : 'none pending approval'}
-          accent={taskStats.open > 0 ? '#7c3aed' : 'var(--text-muted)'}
+          sub={taskStats.pendingApproval > 0 ? `${taskStats.pendingApproval} need approval` : 'all clear'}
+          accent={taskStats.open > 0 ? 'purple' : 'slate'}
           href="/coder/tasks"
         />
-        <StatCard
+        <MetricCard
           label="Open PRs"
           value={prStats.open}
-          sub={prStats.ciFailure > 0 ? `${prStats.ciFailure} CI failure` : prStats.mergedToday > 0 ? `${prStats.mergedToday} merged today` : 'all CI green'}
-          accent={prStats.ciFailure > 0 ? '#dc2626' : prStats.open > 0 ? '#0891b2' : 'var(--text-muted)'}
+          sub={prStats.ciFailure > 0 ? `${prStats.ciFailure} CI failure` : prStats.mergedToday > 0 ? `${prStats.mergedToday} merged today` : 'CI green'}
+          accent={prStats.ciFailure > 0 ? 'red' : prStats.open > 0 ? 'cyan' : 'slate'}
           href="/coder/control-room"
         />
-        <StatCard
+        <MetricCard
           label="Repos"
           value={repoCount}
           sub={`${sessionStats.completedToday} sessions done today`}
-          accent="var(--text-secondary)"
+          accent="indigo"
           href="/coder/repositories"
         />
         {sessionStats.failedToday > 0 && (
-          <StatCard
+          <MetricCard
             label="Failed Today"
             value={sessionStats.failedToday}
             sub="sessions"
-            accent="#dc2626"
+            accent="red"
             href="/coder/sessions?status=failed"
           />
         )}
@@ -272,7 +254,7 @@ export default async function CoderDashboardPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {activeSessions.map((s) => (
                 <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', flexShrink: 0, marginTop: 4 }} />
+                  <span className="status-dot status-dot--running" style={{ marginTop: 4 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Link href={`/coder/sessions/${s.id}`} style={{ fontSize: 12, color: 'var(--blue)', fontWeight: 500, display: 'block', wordBreak: 'break-all' }}>
                       <code>{s.command.slice(0, 60)}{s.command.length > 60 ? '…' : ''}</code>

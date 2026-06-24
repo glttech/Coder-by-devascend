@@ -1391,3 +1391,206 @@ select:focus-visible {
     display: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PREMIUM DESIGN SYSTEM — Control Room Extension
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Typography & shadow tokens ──────────────────────────────────────────── */
+:root {
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 14px;
+  --text-lg:   16px;
+  --text-xl:   20px;
+  --text-2xl:  28px;
+  --text-3xl:  40px;
+
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+
+  --accent-purple: #7c3aed;
+  --accent-cyan:   #0891b2;
+  --accent-amber:  #d97706;
+  --accent-green:  #16a34a;
+  --accent-red:    #dc2626;
+  --accent-blue:   #2563eb;
+  --accent-indigo: #4f46e5;
+}
+
+/* ── Metric card ─────────────────────────────────────────────────────────── */
+.metric-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--metric-accent, var(--brand));
+  border-radius: 10px;
+  padding: 20px 22px 18px;
+  min-width: 140px;
+  flex: 1;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.metric-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+a:has(.metric-card) { display: flex; text-decoration: none; }
+
+.metric-card--blue   { --metric-accent: #2563eb; }
+.metric-card--purple { --metric-accent: #7c3aed; }
+.metric-card--cyan   { --metric-accent: #0891b2; }
+.metric-card--green  { --metric-accent: #16a34a; }
+.metric-card--red    { --metric-accent: #dc2626; }
+.metric-card--amber  { --metric-accent: #d97706; }
+.metric-card--slate  { --metric-accent: #64748b; }
+.metric-card--indigo { --metric-accent: var(--brand); }
+
+.metric-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.metric-card-value {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--metric-accent, var(--brand));
+  letter-spacing: -0.02em;
+}
+.metric-card-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ── Metric grid ─────────────────────────────────────────────────────────── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+/* ── Sidebar sections ────────────────────────────────────────────────────── */
+.sidebar-section {
+  padding: 0 0 4px 0;
+}
+.sidebar-section + .sidebar-section {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+.sidebar-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(148,163,184,0.45);
+  padding: 8px 14px 3px;
+  user-select: none;
+}
+
+/* ── Brand upgrade ───────────────────────────────────────────────────────── */
+.sidebar-brand-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+.sidebar-brand-label {
+  font-size: 10px;
+  color: rgba(148,163,184,0.6);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* ── Control room feed cards ─────────────────────────────────────────────── */
+.feed-card {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.feed-card:hover {
+  border-color: rgba(148,163,184,0.35);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ── Section header (panel title row) ────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.section-header-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-header-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.section-header-link {
+  font-size: 12px;
+  color: var(--blue);
+}
+.section-header-link:hover { text-decoration: underline; }
+
+/* ── Status dot (animated) ───────────────────────────────────────────────── */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot--running { background: #2563eb; animation: pulse-running 2s infinite; }
+.status-dot--pending { background: #d97706; }
+.status-dot--success { background: #16a34a; }
+.status-dot--failed  { background: #dc2626; }
+.status-dot--neutral { background: #94a3b8; }
+
+@keyframes pulse-running {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(37,99,235,0.4); }
+  50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(37,99,235,0); }
+}
+
+/* ── Skeleton loading states ─────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--border) 25%,
+    rgba(148,163,184,0.08) 50%,
+    var(--border) 75%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+.skeleton-text        { height: 12px; margin-bottom: 6px; }
+.skeleton-text--wide  { width: 80%; }
+.skeleton-text--mid   { width: 55%; }
+.skeleton-text--short { width: 35%; }
+.skeleton-value       { height: 36px; width: 70px; border-radius: 6px; }
+
+/* ── Dark theme overrides ────────────────────────────────────────────────── */
+[data-theme="dark"] .metric-card { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+[data-theme="dark"] .feed-card:hover { border-color: rgba(148,163,184,0.2); }

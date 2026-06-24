@@ -23,8 +23,8 @@ export default function AppShell({ children, notificationsEnabled = false }: App
       <aside className="sidebar">
         <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div className="sidebar-brand-name">AI Dev Orchestrator</div>
-            <div className="sidebar-brand-label">Internal Tool</div>
+            <div className="sidebar-brand-name">Coder / by DevAscend</div>
+            <div className="sidebar-brand-label">AI Work Control Room</div>
           </div>
           <NotificationBell enabled={notificationsEnabled} />
         </div>
