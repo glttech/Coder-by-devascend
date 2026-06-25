@@ -17,9 +17,10 @@ const NAV_SECTIONS = [
   {
     title: 'Review & Approval',
     items: [
-      { href: '/instructions/pending', label: 'Review Queue',   icon: '◉' },
-      { href: '/incidents',            label: 'Incidents',       icon: '⚠' },
-      { href: '/change-control',       label: 'Change Control',  icon: '◭' },
+      { href: '/review',               label: 'Review Center',   icon: '◉' },
+      { href: '/instructions/pending', label: 'Review Queue',    icon: '◈' },
+      { href: '/incidents',            label: 'Incidents',        icon: '⚠' },
+      { href: '/change-control',       label: 'Change Control',   icon: '◭' },
     ],
   },
   {
