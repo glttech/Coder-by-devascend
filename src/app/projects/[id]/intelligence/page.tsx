@@ -4,6 +4,13 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { getCurrentUser } from '@/lib/session';
 import { requireRole } from '@/lib/rbac';
 import FullSyncButton from '@/components/FullSyncButton';
+import {
+  analyzePrImportance,
+  summarizeTriage,
+  compareByImportance,
+  PRIORITY_META,
+  TRIAGE_META,
+} from '@/lib/prIntelligence';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +102,25 @@ export default async function IntelligencePage({ params }: PageProps) {
     prisma.agentRun.count({ where: { task: { projectId: params.id } } }),
   ]);
 
+  // ── PR Intelligence: triage all open PRs by importance ──────────────────────
+  const openPRsForTriage = await prisma.githubPR.findMany({
+    where: { projectId: params.id, state: 'open' },
+    orderBy: { githubUpdatedAt: 'desc' },
+    take: 200,
+    select: {
+      id: true, prNumber: true, title: true, body: true,
+      state: true, merged: true, ciStatus: true, classification: true,
+      labels: true, filesChanged: true, filesChangedCount: true,
+    },
+  });
+
+  const triaged = openPRsForTriage
+    .map((pr) => ({ pr, intel: analyzePrImportance(pr) }))
+    .sort((a, b) => compareByImportance(a.intel, b.intel));
+
+  const triageCounts = summarizeTriage(triaged.map((t) => t.intel));
+  const needsAttention = triaged.filter((t) => t.intel.triage !== 'safe');
+
   const classBreakdown = classRows
     .map((r) => ({ label: r.classification ?? 'unclassified', count: r._count._all }))
     .sort((a, b) => b.count - a.count);
@@ -161,6 +187,98 @@ export default async function IntelligencePage({ params }: PageProps) {
             <div className="stat-card-value" style={{ fontSize: 14, fontWeight: 500 }}>{lastSynced}</div>
           </div>
         </div>
+      </div>
+
+      {/* Needs Attention — PR triage */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Needs Attention</span>
+          <Link href={`/projects/${params.id}/prs?state=open`} style={{ fontSize: 12, color: 'var(--blue)' }}>
+            View all open PRs →
+          </Link>
+        </div>
+
+        {triaged.length === 0 ? (
+          <div className="card" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            No open PRs to triage.
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+              <span className="badge badge-sev-high" title="CI failing or env/secrets change">
+                {triageCounts.blocked} blocked
+              </span>
+              <span className="badge badge-warning" title="High-importance change needing review">
+                {triageCounts.needsReview} needs review
+              </span>
+              <span className="badge badge-success" style={{ opacity: 0.8 }}>
+                {triageCounts.safe} safe
+              </span>
+            </div>
+
+            {needsAttention.length === 0 ? (
+              <div className="card" style={{ fontSize: 13, color: 'var(--green)' }}>
+                ✓ All {triaged.length} open PR{triaged.length === 1 ? '' : 's'} look safe — no blocking risk signals detected.
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Priority</th>
+                      <th>PR</th>
+                      <th>Title</th>
+                      <th>Triage</th>
+                      <th>Top signal</th>
+                      <th>CI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {needsAttention.slice(0, 25).map(({ pr, intel }) => {
+                      const pmeta = PRIORITY_META[intel.priority];
+                      const tmeta = TRIAGE_META[intel.triage];
+                      const top = intel.signals[0];
+                      return (
+                        <tr key={pr.id}>
+                          <td>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: pmeta.color }} title={`Importance ${intel.importanceScore}/100`}>
+                              {pmeta.label}
+                            </span>
+                          </td>
+                          <td>
+                            <Link href={`/projects/${params.id}/prs/${pr.id}`} style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--blue)' }}>
+                              #{pr.prNumber}
+                            </Link>
+                          </td>
+                          <td style={{ maxWidth: 260 }}>
+                            <Link href={`/projects/${params.id}/prs/${pr.id}`} style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}>
+                              {pr.title.length > 56 ? pr.title.slice(0, 56) + '…' : pr.title}
+                            </Link>
+                          </td>
+                          <td>
+                            <span className={`badge ${tmeta.badge}`}>{tmeta.label}</span>
+                          </td>
+                          <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 220 }}>
+                            {top ? top.label : '—'}
+                          </td>
+                          <td>
+                            {pr.ciStatus ? (
+                              <span
+                                className={`badge badge-${pr.ciStatus === 'success' ? 'success' : pr.ciStatus === 'failure' ? 'sev-high' : 'neutral'}`}
+                              >
+                                {pr.ciStatus}
+                              </span>
+                            ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Classification Breakdown */}

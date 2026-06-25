@@ -1,9 +1,15 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { summarisePR } from '@/lib/prSummary';
 import { buildPRFilters, normaliseStateFilter, normaliseCIFilter } from '@/lib/prFilters';
 import { computeCISummary } from '@/lib/projectHealth';
+import {
+  analyzePrImportance,
+  summarizeTriage,
+  compareByImportance,
+  PRIORITY_META,
+  TRIAGE_META,
+} from '@/lib/prIntelligence';
 import DiscoverPRsButton from '@/components/DiscoverPRsButton';
 import FullSyncButton from '@/components/FullSyncButton';
 
@@ -22,13 +28,6 @@ const CI_BADGE: Record<string, string> = {
   failure: 'badge-sev-high',
   pending: 'badge-neutral',
   neutral: 'badge-neutral',
-};
-
-const RISK_COLOR: Record<string, string> = {
-  low: 'var(--green)',
-  medium: 'var(--amber)',
-  high: 'var(--red)',
-  unknown: 'var(--text-muted)',
 };
 
 export default async function ProjectPRListPage({ params, searchParams }: PageProps) {
@@ -55,18 +54,25 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
     ...buildPRFilters({ state: stateFilter, ci: ciFilter, q }),
   };
 
-  const prs = await prisma.githubPR.findMany({
+  const prsRaw = await prisma.githubPR.findMany({
     where,
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true, prNumber: true, title: true, body: true,
       state: true, merged: true, mergeSha: true,
       ciStatus: true, importedAt: true, updatedAt: true,
+      labels: true, filesChanged: true, filesChangedCount: true, classification: true,
     },
   });
 
+  // Compute PR intelligence for each PR, then sort the most important to the top.
+  const prs = prsRaw
+    .map((pr) => ({ pr, intel: analyzePrImportance(pr) }))
+    .sort((a, b) => compareByImportance(a.intel, b.intel));
+
+  const triageSummary = summarizeTriage(prs.map((p) => p.intel));
   const totalCount = project._count.githubPRs;
-  const ciSummary = computeCISummary(prs);
+  const ciSummary = computeCISummary(prsRaw);
   const repoUrl = project.repoOwner && project.repoName
     ? `https://github.com/${project.repoOwner}/${project.repoName}`
     : null;
@@ -202,6 +208,26 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
         </div>
       )}
 
+      {/* Triage Summary — Safe / Needs Review / Blocked */}
+      {prs.length > 0 && (
+        <div className="section" style={{ paddingTop: 0 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>
+              Triage
+            </span>
+            <span className="badge badge-sev-high" title="CI failing or env/secrets change — cannot safely merge">
+              {triageSummary.blocked} blocked
+            </span>
+            <span className="badge badge-warning" title="High-importance change that needs a human review">
+              {triageSummary.needsReview} needs review
+            </span>
+            <span className="badge badge-success" style={{ opacity: 0.8 }} title="No important risk signals and CI not failing">
+              {triageSummary.safe} safe
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* PR Table */}
       <div className="section">
         {prs.length === 0 ? (
@@ -215,24 +241,31 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Priority</th>
                   <th>PR</th>
                   <th>Title</th>
+                  <th>Triage</th>
                   <th>State</th>
                   <th>CI</th>
-                  <th>Risk</th>
-                  <th>Merge SHA</th>
                   <th>Last refreshed</th>
                 </tr>
               </thead>
               <tbody>
-                {prs.map((pr) => {
-                  const summary = summarisePR(pr.title, pr.body ?? null);
+                {prs.map(({ pr, intel }) => {
                   const lastRefreshed = pr.updatedAt > pr.importedAt ? pr.updatedAt : pr.importedAt;
                   const isStale =
                     pr.state === 'open' &&
                     Date.now() - lastRefreshed.getTime() > STALE_THRESHOLD_MS;
+                  const pmeta = PRIORITY_META[intel.priority];
+                  const tmeta = TRIAGE_META[intel.triage];
+                  const topSignal = intel.signals[0];
                   return (
                     <tr key={pr.id}>
+                      <td>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: pmeta.color }} title={`Importance score ${intel.importanceScore}/100`}>
+                          {pmeta.label}
+                        </span>
+                      </td>
                       <td>
                         <Link
                           href={`/projects/${params.id}/prs/${pr.id}`}
@@ -241,13 +274,13 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                           #{pr.prNumber}
                         </Link>
                       </td>
-                      <td style={{ maxWidth: 300 }}>
+                      <td style={{ maxWidth: 320 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <Link
                             href={`/projects/${params.id}/prs/${pr.id}`}
                             style={{ color: 'var(--text)', fontWeight: 500, fontSize: 13 }}
                           >
-                            {pr.title.length > 72 ? pr.title.slice(0, 72) + '…' : pr.title}
+                            {pr.title.length > 64 ? pr.title.slice(0, 64) + '…' : pr.title}
                           </Link>
                           {isStale && (
                             <span
@@ -259,6 +292,15 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                             </span>
                           )}
                         </div>
+                        {topSignal && (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }} title={topSignal.evidence}>
+                            ⚑ {topSignal.label}
+                            {intel.signals.length > 1 ? ` +${intel.signals.length - 1} more` : ''}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${tmeta.badge}`}>{tmeta.label}</span>
                       </td>
                       <td>
                         <span className={`badge badge-${pr.merged ? 'success' : pr.state === 'open' ? 'pending_approval' : 'neutral'}`}>
@@ -269,12 +311,6 @@ export default async function ProjectPRListPage({ params, searchParams }: PagePr
                         {pr.ciStatus ? (
                           <span className={`badge ${CI_BADGE[pr.ciStatus] ?? 'badge-neutral'}`}>{pr.ciStatus}</span>
                         ) : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
-                      </td>
-                      <td style={{ fontSize: 12, fontWeight: 600, color: RISK_COLOR[summary.riskLevel] }}>
-                        {summary.riskLevel.toUpperCase()}
-                      </td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>
-                        {pr.mergeSha ? pr.mergeSha.slice(0, 8) : '—'}
                       </td>
                       <td style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                         {lastRefreshed.toLocaleDateString()}
