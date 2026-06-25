@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
+import { analyzePrImportance, PRIORITY_META, TRIAGE_META, type SignalSeverity } from '@/lib/prIntelligence';
 import RefreshPRButton from '@/components/RefreshPRButton';
 import { generatePrDiffDiagram } from '@/lib/diagrams/prDiff';
 
@@ -32,6 +33,13 @@ const CI_BADGE: Record<string, string> = {
   neutral: 'badge-neutral',
 };
 
+const SEVERITY_COLOR: Record<SignalSeverity, string> = {
+  critical: 'var(--red)',
+  high: 'var(--amber)',
+  medium: 'var(--blue)',
+  low: 'var(--text-muted)',
+};
+
 export default async function PRDetailPage({ params }: PageProps) {
   const pr = await prisma.githubPR.findUnique({
     where: { id: params.prId },
@@ -50,6 +58,9 @@ export default async function PRDetailPage({ params }: PageProps) {
 
   const summary = summarisePR(pr.title, pr.body ?? null);
   const qs = QUALITY_STYLES[summary.evidenceQuality] ?? QUALITY_STYLES.missing;
+  const intel = analyzePrImportance(pr);
+  const pmeta = PRIORITY_META[intel.priority];
+  const tmeta = TRIAGE_META[intel.triage];
   const diagram = generatePrDiffDiagram(pr.prNumber, pr.filesChanged);
   const repoUrl = pr.project.repoOwner && pr.project.repoName
     ? `https://github.com/${pr.project.repoOwner}/${pr.project.repoName}`
@@ -133,6 +144,86 @@ export default async function PRDetailPage({ params }: PageProps) {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* PR Intelligence */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">PR Intelligence</span>
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: pmeta.color }} title={`Importance score ${intel.importanceScore}/100`}>
+              {pmeta.label} priority
+            </span>
+            <span className={`badge ${tmeta.badge}`}>{tmeta.label}</span>
+          </span>
+        </div>
+        <div className="card">
+          {/* Needs-review / merge-readiness banner */}
+          {intel.mergeReadiness.ready ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, marginBottom: 14 }}>
+              <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: 13 }}>✓ Ready to merge</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>CI is green and no blocking risk signals were detected.</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: intel.mergeReadiness.blockers.length > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${intel.mergeReadiness.blockers.length > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}`, borderRadius: 6, marginBottom: 14 }}>
+              <span style={{ color: intel.mergeReadiness.blockers.length > 0 ? 'var(--red)' : 'var(--amber)', fontWeight: 700, fontSize: 13 }}>
+                {intel.mergeReadiness.blockers.length > 0 ? '⛔ Needs review before merge' : '⚠ Review recommended'}
+              </span>
+            </div>
+          )}
+
+          {/* Risk signals */}
+          {intel.signals.length > 0 ? (
+            <div style={{ marginBottom: intel.mergeReadiness.blockers.length || intel.mergeReadiness.warnings.length ? 16 : 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 8 }}>
+                Risk Signals ({intel.signals.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {intel.signals.map((s) => (
+                  <div key={s.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span
+                      style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: SEVERITY_COLOR[s.severity], flexShrink: 0, width: 56, paddingTop: 1 }}
+                    >
+                      {s.severity}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{s.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{s.evidence}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              No importance signals detected — this PR looks routine.
+            </div>
+          )}
+
+          {/* Blockers */}
+          {intel.mergeReadiness.blockers.length > 0 && (
+            <div style={{ marginBottom: intel.mergeReadiness.warnings.length ? 12 : 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--red)', marginBottom: 6 }}>
+                Blockers
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {intel.mergeReadiness.blockers.map((b) => <li key={b}>{b}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {/* Warnings */}
+          {intel.mergeReadiness.warnings.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--amber)', marginBottom: 6 }}>
+                Before Merge
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {intel.mergeReadiness.warnings.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
