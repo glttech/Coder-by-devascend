@@ -226,6 +226,70 @@ describe('summarizeTriage & compareByImportance', () => {
   });
 });
 
+// ── requiredDecision & nextAction ────────────────────────────────────────────
+
+describe('analyzePrImportance — requiredDecision & nextAction', () => {
+  test('CI failure → decision says block, nextAction mentions CI', () => {
+    const r = analyze({ ciStatus: 'failure', state: 'open' });
+    assert.match(r.requiredDecision, /block|failing/i);
+    assert.match(r.nextAction, /CI/i);
+  });
+
+  test('env/secrets file → decision requires explicit approval', () => {
+    const r = analyze({ filesChanged: ['.env.production'], ciStatus: 'success', state: 'open' });
+    assert.match(r.requiredDecision, /approval|secrets/i);
+    assert.match(r.nextAction, /audit|secrets/i);
+  });
+
+  test('migration file needs review → decision mentions migration', () => {
+    const r = analyze({ filesChanged: ['prisma/migrations/20260101/migration.sql'], ciStatus: 'success', state: 'open' });
+    assert.match(r.requiredDecision, /migration/i);
+    assert.match(r.nextAction, /migration|backward|dev/i);
+  });
+
+  test('auth path needs review → decision mentions security', () => {
+    const r = analyze({ filesChanged: ['src/lib/auth/login.ts'], ciStatus: 'success', state: 'open' });
+    assert.match(r.requiredDecision, /security|review/i);
+    assert.ok(r.nextAction.length > 10);
+  });
+
+  test('billing path needs review → decision mentions billing', () => {
+    const r = analyze({ filesChanged: ['src/app/billing/stripe.ts'], ciStatus: 'success', state: 'open' });
+    assert.match(r.requiredDecision, /billing|careful/i);
+  });
+
+  test('infra change needs review → decision mentions infra or Ops', () => {
+    const r = analyze({ filesChanged: ['Dockerfile'], ciStatus: 'success', state: 'open' });
+    assert.match(r.requiredDecision, /infrastructure|Ops/i);
+  });
+
+  test('CI pending → decision says waiting on CI', () => {
+    const r = analyze({ filesChanged: ['README.md'], ciStatus: 'pending', state: 'open' });
+    assert.match(r.requiredDecision, /waiting|CI/i);
+  });
+
+  test('clean PR with CI success → decision says ready', () => {
+    const r = analyze({ filesChanged: ['README.md'], ciStatus: 'success', state: 'open' });
+    assert.match(r.requiredDecision, /ready|merge/i);
+    assert.match(r.nextAction, /merge/i);
+  });
+
+  test('requiredDecision and nextAction are always non-empty strings', () => {
+    const cases: Partial<PrIntelInput>[] = [
+      {},
+      { ciStatus: 'failure' },
+      { ciStatus: 'success', filesChanged: ['.env'] },
+      { ciStatus: 'success', filesChanged: ['README.md'] },
+      { ciStatus: 'pending', filesChanged: ['src/app/api/route.ts'] },
+    ];
+    for (const c of cases) {
+      const r = analyze(c);
+      assert.ok(r.requiredDecision.length > 0, `requiredDecision empty for ${JSON.stringify(c)}`);
+      assert.ok(r.nextAction.length > 0, `nextAction empty for ${JSON.stringify(c)}`);
+    }
+  });
+});
+
 // ── Robustness ───────────────────────────────────────────────────────────────
 
 describe('analyzePrImportance — robustness', () => {

@@ -56,6 +56,10 @@ export interface PrIntelligence {
   triage: PrTriage;
   needsReview: boolean;
   mergeReadiness: MergeReadiness;
+  /** What human decision is required (one sentence). */
+  requiredDecision: string;
+  /** Concrete, immediate next step for the reviewer. */
+  nextAction: string;
 }
 
 export interface PrIntelInput {
@@ -384,6 +388,50 @@ export function analyzePrImportance(input: PrIntelInput): PrIntelligence {
     blockers.length === 0 &&
     (ci === 'success' || ci === 'neutral');
 
+  // ── Required decision & next action ──────────────────────────────────────
+  let requiredDecision: string;
+  let nextAction: string;
+
+  const hasEnvSecretsBlocker = signals.some((s) => s.category === 'env_secrets');
+  const hasCiFailure = ci === 'failure';
+
+  if (hasCiFailure && blockers.length > 0) {
+    requiredDecision = 'Block merge — CI is failing.';
+    nextAction = 'Investigate the failing CI checks and push a fix before this can merge.';
+  } else if (hasEnvSecretsBlocker) {
+    requiredDecision = 'Explicit approval required — env/secrets file changed.';
+    nextAction = 'Audit every secrets-file change. Confirm nothing sensitive is committed, then approve.';
+  } else if (blockers.length > 0) {
+    requiredDecision = 'Resolve blockers before merging.';
+    nextAction = blockers[0];
+  } else if (triage === 'needs_review') {
+    if (signals.some((s) => s.category === 'migration')) {
+      requiredDecision = 'Migration review required — validate and run before merging.';
+      nextAction = 'Confirm the migration is backward-compatible and has been tested in a dev environment.';
+    } else if (signals.some((s) => s.category === 'auth_security' || s.category === 'rbac_permission')) {
+      requiredDecision = 'Security-path change — requires senior review.';
+      nextAction = 'Verify auth logic and access-control rules are correct before approving.';
+    } else if (signals.some((s) => s.category === 'billing')) {
+      requiredDecision = 'Billing code change — requires careful review.';
+      nextAction = 'Review payment logic and test in staging before merging.';
+    } else if (signals.some((s) => s.category === 'infra_deploy')) {
+      requiredDecision = 'Infrastructure change — coordinate with Ops before merging.';
+      nextAction = 'Review deploy config changes and confirm rollback plan exists.';
+    } else {
+      requiredDecision = 'Review before merging — high-importance change.';
+      nextAction = 'Check the signal evidence below, then approve or request changes.';
+    }
+  } else if (ready) {
+    requiredDecision = 'Ready to merge — no critical signals.';
+    nextAction = 'Approve and merge.';
+  } else if (ci === 'pending' || ci === '') {
+    requiredDecision = 'Waiting on CI — do not merge yet.';
+    nextAction = 'Wait for all CI checks to complete, then re-evaluate.';
+  } else {
+    requiredDecision = 'No critical signals — safe to merge at discretion.';
+    nextAction = 'Review at your discretion or merge if changes look correct.';
+  }
+
   return {
     signals,
     importanceScore,
@@ -391,6 +439,8 @@ export function analyzePrImportance(input: PrIntelInput): PrIntelligence {
     triage,
     needsReview,
     mergeReadiness: { ready, blockers, warnings },
+    requiredDecision,
+    nextAction,
   };
 }
 
