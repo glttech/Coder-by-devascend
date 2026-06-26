@@ -26,6 +26,7 @@ const NAV_SECTIONS = [
   {
     title: 'Intelligence',
     items: [
+      { href: '/reports',             label: 'Reports',      icon: '◈' },
       { href: '/providers/scorecard', label: 'Scorecard',    icon: '◑' },
       { href: '/agent-roles',         label: 'Agent Roles',  icon: '◭' },
       { href: '/ci',                  label: 'CI Dashboard', icon: '⬭' },

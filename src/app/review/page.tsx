@@ -13,6 +13,7 @@ import {
   TRIAGE_META,
   type SignalCategory,
 } from '@/lib/prIntelligence';
+import { evaluatePrPolicy, VERDICT_META, APPROVER_LABEL, type PrPolicyResult } from '@/lib/prPolicyEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,7 +104,11 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
   });
 
   const analysed = openPRs
-    .map((pr) => ({ pr, intel: analyzePrImportance(pr) }))
+    .map((pr) => {
+      const intel = analyzePrImportance(pr);
+      const policy = evaluatePrPolicy({ ...pr, _intel: intel });
+      return { pr, intel, policy };
+    })
     .sort((a, b) => compareByImportance(a.intel, b.intel));
 
   const triageCounts = summarizeTriage(analysed.map((t) => t.intel));
@@ -311,7 +316,7 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
                 </Link>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {blockedItems.map(({ pr, intel }) => {
+                {blockedItems.map(({ pr, intel, policy }) => {
                   const project = projectMap.get(pr.projectId);
                   const repoLabel = project?.repoOwner && project?.repoName
                     ? `${project.repoOwner}/${project.repoName}`
@@ -322,6 +327,7 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
                       key={pr.id}
                       pr={pr}
                       intel={intel}
+                      policy={policy}
                       repoLabel={repoLabel}
                       projectId={pr.projectId}
                       pmeta={pmeta}
@@ -347,7 +353,7 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
                 </Link>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {reviewItems.map(({ pr, intel }) => {
+                {reviewItems.map(({ pr, intel, policy }) => {
                   const project = projectMap.get(pr.projectId);
                   const repoLabel = project?.repoOwner && project?.repoName
                     ? `${project.repoOwner}/${project.repoName}`
@@ -358,6 +364,7 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
                       key={pr.id}
                       pr={pr}
                       intel={intel}
+                      policy={policy}
                       repoLabel={repoLabel}
                       projectId={pr.projectId}
                       pmeta={pmeta}
@@ -388,17 +395,19 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
                       <th>Repo</th>
                       <th>Title</th>
                       <th style={{ width: 80 }}>CI</th>
+                      <th style={{ width: 90 }}>Policy</th>
                       <th style={{ width: 160 }}>Next Action</th>
                       <th style={{ width: 100 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {safeItems.map(({ pr, intel }) => {
+                    {safeItems.map(({ pr, intel, policy }) => {
                       const project = projectMap.get(pr.projectId);
                       const repoLabel = project?.repoOwner && project?.repoName
                         ? `${project.repoOwner}/${project.repoName}`
                         : project?.name ?? '—';
                       const pmeta = PRIORITY_META[intel.priority];
+                      const vmeta = VERDICT_META[policy.verdict];
                       return (
                         <tr key={pr.id}>
                           <td>
@@ -434,6 +443,11 @@ export default async function ReviewCenterPage({ searchParams }: PageProps) {
                             ) : (
                               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
                             )}
+                          </td>
+                          <td>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: vmeta.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              {vmeta.label}
+                            </span>
                           </td>
                           <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                             {intel.nextAction.length > 40
@@ -479,6 +493,7 @@ interface PrEvidenceCardProps {
     filesChangedCount: number | null;
   };
   intel: ReturnType<typeof analyzePrImportance>;
+  policy: PrPolicyResult;
   repoLabel: string;
   projectId: string;
   pmeta: { label: string; color: string };
@@ -489,12 +504,14 @@ interface PrEvidenceCardProps {
 function PrEvidenceCard({
   pr,
   intel,
+  policy,
   repoLabel,
   projectId,
   pmeta,
   dotClass,
   borderAccent,
 }: PrEvidenceCardProps) {
+  const vmeta = VERDICT_META[policy.verdict];
   return (
     <div
       className="feed-card"
@@ -622,6 +639,53 @@ function PrEvidenceCard({
             {intel.nextAction}
           </div>
         </div>
+      </div>
+
+      {/* ── Policy verdict ── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 16,
+          alignItems: 'flex-start',
+          padding: '8px 10px',
+          background: policy.verdict === 'blocked' ? 'rgba(239,68,68,0.06)' : policy.verdict === 'review_required' ? 'rgba(245,158,11,0.06)' : 'var(--surface-2)',
+          border: `1px solid ${policy.verdict === 'blocked' ? 'rgba(239,68,68,0.2)' : policy.verdict === 'review_required' ? 'rgba(245,158,11,0.2)' : 'var(--border)'}`,
+          borderRadius: 6,
+          marginBottom: 8,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ minWidth: 90 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+            Policy
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: vmeta.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {vmeta.label}
+          </div>
+          {policy.requiredApprover !== 'none' && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+              Approver: {APPROVER_LABEL[policy.requiredApprover]}
+            </div>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+            Policy Reason
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            {policy.founderExplanation}
+          </div>
+        </div>
+        {policy.recommendedNextAction && (
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
+              Recommended
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              {policy.recommendedNextAction}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Action buttons ── */}

@@ -11,6 +11,7 @@ import {
   PRIORITY_META,
   TRIAGE_META,
 } from '@/lib/prIntelligence';
+import { evaluatePrPolicy, VERDICT_META } from '@/lib/prPolicyEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,8 +78,15 @@ export default async function ExecutivePage() {
   });
 
   const analysed = allOpenPRs
-    .map((pr) => ({ pr, intel: analyzePrImportance(pr) }))
+    .map((pr) => {
+      const intel = analyzePrImportance(pr);
+      const policy = evaluatePrPolicy({ ...pr, _intel: intel });
+      return { pr, intel, policy };
+    })
     .sort((a, b) => compareByImportance(a.intel, b.intel));
+
+  const policyBlockedCount = analysed.filter((i) => i.policy.verdict === 'blocked').length;
+  const policyReviewCount = analysed.filter((i) => i.policy.verdict === 'review_required').length;
 
   // Section 1: Action Required — blocked PRs (triage === 'blocked')
   const blockedPRs = analysed.filter((item) => item.intel.triage === 'blocked');
@@ -134,6 +142,7 @@ export default async function ExecutivePage() {
       blocked: prs.filter((i) => i.intel.triage === 'blocked').length,
       needsReview: prs.filter((i) => i.intel.triage === 'needs_review').length,
       failedCI: prs.filter((i) => i.pr.ciStatus === 'failure').length,
+      policyBlocked: prs.filter((i) => i.policy.verdict === 'blocked').length,
     };
   }).filter((r) => r.total > 0);
 
@@ -195,6 +204,20 @@ export default async function ExecutivePage() {
             href="/review"
           />
           <MetricCard
+            label="Policy Blocked"
+            value={policyBlockedCount}
+            sub="policy engine verdict"
+            accent={policyBlockedCount > 0 ? 'red' : 'green'}
+            href="/review?triage=blocked"
+          />
+          <MetricCard
+            label="Policy Review"
+            value={policyReviewCount}
+            sub="requires approver"
+            accent={policyReviewCount > 0 ? 'amber' : 'green'}
+            href="/review?triage=needs_review"
+          />
+          <MetricCard
             label="Active Incidents"
             value={totalIncidents}
             sub="open or investigating"
@@ -238,8 +261,9 @@ export default async function ExecutivePage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {blockedPRs.slice(0, 8).map(({ pr, intel }) => {
+            {blockedPRs.slice(0, 8).map(({ pr, intel, policy }) => {
               const pmeta = PRIORITY_META[intel.priority];
+              const vmeta = VERDICT_META[policy.verdict];
               return (
                 <div key={pr.id} className="feed-card" style={{ borderLeft: '3px solid var(--red)', paddingLeft: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -262,6 +286,9 @@ export default async function ExecutivePage() {
                     <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                       {pr.project.name}
                     </span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: vmeta.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {vmeta.label}
+                    </span>
                     <CiBadge status={pr.ciStatus} />
                   </div>
                   {/* All signals with evidence */}
@@ -274,6 +301,12 @@ export default async function ExecutivePage() {
                       <span style={{ flex: 1 }}>{sig.evidence}</span>
                     </div>
                   ))}
+                  {/* Policy founder explanation */}
+                  {policy.verdict !== 'pass' && (
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 24, marginTop: 4, fontStyle: 'italic' }}>
+                      Policy: {policy.founderExplanation}
+                    </div>
+                  )}
                   {/* All blockers */}
                   {intel.mergeReadiness.blockers.map((b, i) => (
                     <div key={i} style={{ fontSize: 11, color: 'var(--red)', paddingLeft: 24, marginTop: 3, display: 'flex', gap: 6 }}>
@@ -318,9 +351,10 @@ export default async function ExecutivePage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {reviewNeededPRs.slice(0, 6).map(({ pr, intel }) => {
+            {reviewNeededPRs.slice(0, 6).map(({ pr, intel, policy }) => {
               const pmeta = PRIORITY_META[intel.priority];
               const tmeta = TRIAGE_META[intel.triage];
+              const vmeta = VERDICT_META[policy.verdict];
               return (
                 <div key={pr.id} className="feed-card" style={{ borderLeft: '3px solid var(--amber)', paddingLeft: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -345,6 +379,9 @@ export default async function ExecutivePage() {
                     </span>
                     <span className={`badge ${tmeta.badge}`} style={{ fontSize: 10 }}>
                       {tmeta.label}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: vmeta.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {vmeta.label}
                     </span>
                   </div>
                   {intel.signals.slice(0, 2).map((sig) => (
@@ -475,13 +512,15 @@ export default async function ExecutivePage() {
                   <th>Title / Signal</th>
                   <th>Project</th>
                   <th>Triage</th>
+                  <th>Policy</th>
                   <th>CI</th>
                 </tr>
               </thead>
               <tbody>
-                {atRiskPRs.slice(0, 10).map(({ pr, intel }) => {
+                {atRiskPRs.slice(0, 10).map(({ pr, intel, policy }) => {
                   const pmeta = PRIORITY_META[intel.priority];
                   const tmeta = TRIAGE_META[intel.triage];
+                  const vmeta = VERDICT_META[policy.verdict];
                   const topSignal = intel.signals[0];
                   return (
                     <tr key={pr.id}>
@@ -517,6 +556,11 @@ export default async function ExecutivePage() {
                         <span className={`badge ${tmeta.badge}`}>{tmeta.label}</span>
                       </td>
                       <td>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: vmeta.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {vmeta.label}
+                        </span>
+                      </td>
+                      <td>
                         <CiBadge status={pr.ciStatus} />
                       </td>
                     </tr>
@@ -549,15 +593,16 @@ export default async function ExecutivePage() {
                   <th style={{ width: 80, textAlign: 'right' }}>Blocked</th>
                   <th style={{ width: 100, textAlign: 'right' }}>Needs Review</th>
                   <th style={{ width: 80, textAlign: 'right' }}>Failed CI</th>
+                  <th style={{ width: 90, textAlign: 'right' }}>Policy</th>
                   <th style={{ width: 80 }}>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {repoHealth.map(({ project, total, blocked, needsReview, failedCI }) => {
+                {repoHealth.map(({ project, total, blocked, needsReview, failedCI, policyBlocked }) => {
                   const repoLabel = project.repoOwner && project.repoName
                     ? `${project.repoOwner}/${project.repoName}`
                     : project.name;
-                  const isClean = blocked === 0 && failedCI === 0;
+                  const isClean = blocked === 0 && failedCI === 0 && policyBlocked === 0;
                   return (
                     <tr key={project.id}>
                       <td>
@@ -590,10 +635,17 @@ export default async function ExecutivePage() {
                           <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>0</span>
                         )}
                       </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {policyBlocked > 0 ? (
+                          <span style={{ fontWeight: 700, color: 'var(--red)', fontSize: 13 }}>{policyBlocked}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>
+                        )}
+                      </td>
                       <td>
                         {isClean ? (
                           <span className="badge badge-success" style={{ fontSize: 10 }}>Healthy</span>
-                        ) : blocked > 0 ? (
+                        ) : policyBlocked > 0 || blocked > 0 ? (
                           <span className="badge badge-sev-high" style={{ fontSize: 10 }}>Blocked</span>
                         ) : (
                           <span className="badge badge-warning" style={{ fontSize: 10 }}>At Risk</span>
