@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { summarisePR } from '@/lib/prSummary';
 import { analyzePrImportance, PRIORITY_META, TRIAGE_META, type SignalSeverity } from '@/lib/prIntelligence';
+import { evaluatePrPolicy, VERDICT_META, APPROVER_LABEL, CATEGORY_LABEL, SEVERITY_META } from '@/lib/prPolicyEngine';
 import RefreshPRButton from '@/components/RefreshPRButton';
 import { generatePrDiffDiagram } from '@/lib/diagrams/prDiff';
 
@@ -59,8 +60,10 @@ export default async function PRDetailPage({ params }: PageProps) {
   const summary = summarisePR(pr.title, pr.body ?? null);
   const qs = QUALITY_STYLES[summary.evidenceQuality] ?? QUALITY_STYLES.missing;
   const intel = analyzePrImportance(pr);
+  const policy = evaluatePrPolicy({ ...pr, _intel: intel });
   const pmeta = PRIORITY_META[intel.priority];
   const tmeta = TRIAGE_META[intel.triage];
+  const vmeta = VERDICT_META[policy.verdict];
   const diagram = generatePrDiffDiagram(pr.prNumber, pr.filesChanged);
   const repoUrl = pr.project.repoOwner && pr.project.repoName
     ? `https://github.com/${pr.project.repoOwner}/${pr.project.repoName}`
@@ -224,6 +227,118 @@ export default async function PRDetailPage({ params }: PageProps) {
               </ul>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Policy Engine */}
+      <div className="section">
+        <div className="section-header">
+          <span className="section-title">Policy Engine</span>
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: vmeta.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {vmeta.label}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Score: {policy.policyScore}/100
+            </span>
+          </span>
+        </div>
+        <div className="card">
+          {/* Verdict banner */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            padding: '10px 14px',
+            background: policy.verdict === 'blocked'
+              ? 'rgba(239,68,68,0.08)'
+              : policy.verdict === 'review_required'
+              ? 'rgba(245,158,11,0.08)'
+              : 'rgba(34,197,94,0.08)',
+            border: `1px solid ${policy.verdict === 'blocked' ? 'rgba(239,68,68,0.3)' : policy.verdict === 'review_required' ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.3)'}`,
+            borderRadius: 6,
+            marginBottom: 16,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: vmeta.color, marginBottom: 4 }}>
+                {vmeta.label}
+                {policy.mergeRecommendation === 'safe_to_merge' && ' — Safe to merge'}
+                {policy.mergeRecommendation === 'review_first' && ' — Review before merging'}
+                {policy.mergeRecommendation === 'do_not_merge' && ' — Do not merge'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                {policy.founderExplanation}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140 }}>
+              {policy.requiredApprover !== 'none' && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  <span style={{ fontWeight: 700 }}>Approver: </span>
+                  {APPROVER_LABEL[policy.requiredApprover]}
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                <span style={{ fontWeight: 700 }}>Confidence: </span>
+                {policy.confidenceLevel}
+              </div>
+            </div>
+          </div>
+
+          {/* Violated policies */}
+          {policy.violatedPolicies.length > 0 ? (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 8 }}>
+                Policy Violations ({policy.violatedPolicies.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {policy.violatedPolicies.map((v) => {
+                  const smeta = SEVERITY_META[v.severity];
+                  return (
+                    <div key={v.ruleId} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 10px', background: 'var(--surface-2)', borderRadius: 6, borderLeft: `3px solid ${smeta.color}` }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: smeta.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            {v.severity}
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{v.ruleName}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: 3 }}>
+                            {CATEGORY_LABEL[v.category]}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>{v.reason}</div>
+                        {v.evidence && (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                            Evidence: {v.evidence}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+              No policy violations detected.
+            </div>
+          )}
+
+          {/* Recommended next action + audit summary */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>
+                Recommended Next Action
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text)' }}>{policy.recommendedNextAction}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>
+                Audit Summary
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic' }}>{policy.auditSummary}</div>
+            </div>
+          </div>
         </div>
       </div>
 
