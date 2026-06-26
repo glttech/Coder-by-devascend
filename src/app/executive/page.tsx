@@ -100,12 +100,13 @@ export default async function ExecutivePage() {
       item.intel.triage !== 'blocked', // blocked already shown in section 1
   );
 
-  // ── 2. Top-level counts ─────────────────────────────────────────────────────
-  const [totalProjects, totalOpenPRs, totalIncidents, totalTasks] = await Promise.all([
+  // ── 2. Top-level counts + project list ─────────────────────────────────────
+  const [totalProjects, totalOpenPRs, totalIncidents, totalTasks, projects] = await Promise.all([
     prisma.project.count(),
     prisma.githubPR.count({ where: { state: 'open', merged: false } }),
     prisma.incident.count({ where: { status: { in: ['open', 'investigating'] } } }),
     prisma.task.count({ where: { status: { not: 'done' } } }),
+    prisma.project.findMany({ select: { id: true, name: true, repoOwner: true, repoName: true }, orderBy: { name: 'asc' } }),
   ]);
 
   // ── 3. Recent Activity — last 5 merged PRs ──────────────────────────────────
@@ -124,7 +125,19 @@ export default async function ExecutivePage() {
     },
   });
 
-  // ── 4. Recent Incidents ──────────────────────────────────────────────────────
+  // ── 4. Repo health — per-project PR breakdown ───────────────────────────────
+  const repoHealth = projects.map((p) => {
+    const prs = analysed.filter((item) => item.pr.projectId === p.id);
+    return {
+      project: p,
+      total: prs.length,
+      blocked: prs.filter((i) => i.intel.triage === 'blocked').length,
+      needsReview: prs.filter((i) => i.intel.triage === 'needs_review').length,
+      failedCI: prs.filter((i) => i.pr.ciStatus === 'failure').length,
+    };
+  }).filter((r) => r.total > 0);
+
+  // ── 5. Recent Incidents ──────────────────────────────────────────────────────
   const recentIncidents = await prisma.incident.findMany({
     where: { status: { in: ['open', 'investigating'] } },
     orderBy: { createdAt: 'desc' },
@@ -224,13 +237,12 @@ export default async function ExecutivePage() {
             </span>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {blockedPRs.slice(0, 8).map(({ pr, intel }) => {
               const pmeta = PRIORITY_META[intel.priority];
-              const topSignal = intel.signals[0];
               return (
-                <div key={pr.id} className="feed-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div key={pr.id} className="feed-card" style={{ borderLeft: '3px solid var(--red)', paddingLeft: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                     <span className="status-dot status-dot--failed" />
                     <span style={{ fontSize: 11, fontWeight: 700, color: pmeta.color, minWidth: 48 }}>
                       {pmeta.label}
@@ -252,13 +264,27 @@ export default async function ExecutivePage() {
                     </span>
                     <CiBadge status={pr.ciStatus} />
                   </div>
-                  {topSignal && (
-                    <div style={{ marginTop: 4, paddingLeft: 24, fontSize: 11, color: 'var(--text-muted)' }}>
-                      ⚑ {topSignal.label}
-                      {intel.mergeReadiness.blockers.length > 0 &&
-                        ` — ${intel.mergeReadiness.blockers[0]}`}
+                  {/* All signals with evidence */}
+                  {intel.signals.slice(0, 3).map((sig) => (
+                    <div key={sig.key} style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 24, marginBottom: 2, display: 'flex', gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: sig.severity === 'critical' ? 'var(--red)' : sig.severity === 'high' ? 'var(--amber)' : 'var(--blue)', minWidth: 42, textTransform: 'uppercase', fontSize: 10 }}>
+                        {sig.severity}
+                      </span>
+                      <span style={{ fontWeight: 600, minWidth: 100 }}>{sig.label}</span>
+                      <span style={{ flex: 1 }}>{sig.evidence}</span>
                     </div>
-                  )}
+                  ))}
+                  {/* All blockers */}
+                  {intel.mergeReadiness.blockers.map((b, i) => (
+                    <div key={i} style={{ fontSize: 11, color: 'var(--red)', paddingLeft: 24, marginTop: 3, display: 'flex', gap: 6 }}>
+                      <span>⛔</span><span>{b}</span>
+                    </div>
+                  ))}
+                  {/* Required decision + next action */}
+                  <div style={{ marginTop: 6, paddingLeft: 24, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{intel.requiredDecision}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>→ {intel.nextAction}</span>
+                  </div>
                 </div>
               );
             })}
@@ -295,10 +321,9 @@ export default async function ExecutivePage() {
             {reviewNeededPRs.slice(0, 6).map(({ pr, intel }) => {
               const pmeta = PRIORITY_META[intel.priority];
               const tmeta = TRIAGE_META[intel.triage];
-              const topSignal = intel.signals[0];
               return (
-                <div key={pr.id} className="feed-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div key={pr.id} className="feed-card" style={{ borderLeft: '3px solid var(--amber)', paddingLeft: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                     <span className="status-dot status-dot--pending" />
                     <span style={{ fontSize: 11, fontWeight: 700, color: pmeta.color, minWidth: 48 }}>
                       {pmeta.label}
@@ -322,11 +347,19 @@ export default async function ExecutivePage() {
                       {tmeta.label}
                     </span>
                   </div>
-                  {topSignal && (
-                    <div style={{ marginTop: 4, paddingLeft: 24, fontSize: 11, color: 'var(--text-muted)' }}>
-                      ⚑ {topSignal.label}
+                  {intel.signals.slice(0, 2).map((sig) => (
+                    <div key={sig.key} style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 24, marginBottom: 2, display: 'flex', gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: sig.severity === 'critical' ? 'var(--red)' : sig.severity === 'high' ? 'var(--amber)' : 'var(--blue)', minWidth: 42, textTransform: 'uppercase', fontSize: 10 }}>
+                        {sig.severity}
+                      </span>
+                      <span style={{ fontWeight: 600, minWidth: 100 }}>{sig.label}</span>
+                      <span style={{ flex: 1 }}>{sig.evidence}</span>
                     </div>
-                  )}
+                  ))}
+                  <div style={{ marginTop: 6, paddingLeft: 24, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{intel.requiredDecision}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>→ {intel.nextAction}</span>
+                  </div>
                 </div>
               );
             })}
@@ -499,6 +532,81 @@ export default async function ExecutivePage() {
           </div>
         )}
       </div>
+
+      {/* ── Repo Health ── */}
+      {repoHealth.length > 0 && (
+        <div className="section">
+          <div className="section-header">
+            <span className="section-header-title">Repo Health</span>
+            <Link href="/projects" className="section-header-link">All projects →</Link>
+          </div>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Repository</th>
+                  <th style={{ width: 80, textAlign: 'right' }}>Open PRs</th>
+                  <th style={{ width: 80, textAlign: 'right' }}>Blocked</th>
+                  <th style={{ width: 100, textAlign: 'right' }}>Needs Review</th>
+                  <th style={{ width: 80, textAlign: 'right' }}>Failed CI</th>
+                  <th style={{ width: 80 }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repoHealth.map(({ project, total, blocked, needsReview, failedCI }) => {
+                  const repoLabel = project.repoOwner && project.repoName
+                    ? `${project.repoOwner}/${project.repoName}`
+                    : project.name;
+                  const isClean = blocked === 0 && failedCI === 0;
+                  return (
+                    <tr key={project.id}>
+                      <td>
+                        <Link
+                          href={`/projects/${project.id}/prs`}
+                          style={{ fontSize: 13, color: 'var(--blue)', fontFamily: 'monospace' }}
+                        >
+                          {repoLabel}
+                        </Link>
+                      </td>
+                      <td style={{ textAlign: 'right', fontSize: 13 }}>{total}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        {blocked > 0 ? (
+                          <span style={{ fontWeight: 700, color: 'var(--red)', fontSize: 13 }}>{blocked}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {needsReview > 0 ? (
+                          <span style={{ fontWeight: 700, color: 'var(--amber)', fontSize: 13 }}>{needsReview}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>0</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {failedCI > 0 ? (
+                          <span style={{ fontWeight: 700, color: 'var(--red)', fontSize: 13 }}>{failedCI}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>0</span>
+                        )}
+                      </td>
+                      <td>
+                        {isClean ? (
+                          <span className="badge badge-success" style={{ fontSize: 10 }}>Healthy</span>
+                        ) : blocked > 0 ? (
+                          <span className="badge badge-sev-high" style={{ fontSize: 10 }}>Blocked</span>
+                        ) : (
+                          <span className="badge badge-warning" style={{ fontSize: 10 }}>At Risk</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Section 5: Recent Activity ── */}
       <div className="section">
